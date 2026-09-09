@@ -1,0 +1,137 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                 String   @id @default(cuid())
+  email              String   @unique
+  passwordHash       String
+  name               String
+  role               String   @default("Employee") // Admin|CourtManager|Judge|Employee
+  mustChangePassword Boolean  @default(true)
+  active             Boolean  @default(true)
+  employeeId         String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  auditLogs          AuditLog[]
+  documents          Document[] @relation("CreatedBy")
+}
+
+model Court {
+  id        String   @id @default(cuid())
+  name      String
+  city      String?
+  createdAt DateTime @default(now())
+  orgUnits  OrgUnit[]
+}
+
+model OrgUnit {
+  id        String     @id @default(cuid())
+  name      String
+  code      String?
+  courtId   String?
+  court     Court?     @relation(fields: [courtId], references: [id])
+  parentId  String?
+  parent    OrgUnit?   @relation("OrgTree", fields: [parentId], references: [id])
+  children  OrgUnit[]  @relation("OrgTree")
+  employees Employee[]
+}
+
+model Position {
+  id         String     @id @default(cuid())
+  title      String
+  honorific  String
+  rank       Int        @default(0)
+  employees  Employee[]
+}
+
+model Employee {
+  id         String   @id @default(cuid())
+  name       String
+  email      String?
+  phone      String?
+  nationalId String?
+  orgUnitId  String?
+  orgUnit    OrgUnit? @relation(fields: [orgUnitId], references: [id])
+  positionId String?
+  position   Position? @relation(fields: [positionId], references: [id])
+  active     Boolean  @default(true)
+  notes      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model NumberingRule {
+  id        String @id @default(cuid())
+  name      String @default("default")
+  pattern   String // صادر-{year}-{seq}
+  year      Int
+  nextSeq   Int    @default(1)
+  prefix    String @default("صادر")
+}
+
+model Letterhead {
+  id      String @id @default(cuid())
+  name    String @default("default")
+  header  String @default("")
+  footer  String @default("للاستخدام الداخلي فقط")
+  logoUrl String @default("/logo.svg")
+}
+
+model Template {
+  id          String   @id @default(cuid())
+  name        String
+  category    String   // document|freeform
+  description String?
+  fieldsJson  String   @default("[]")
+  bodyHtml    String   @default("")
+  isEmpty     Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+}
+
+model Document {
+  id            String   @id @default(cuid())
+  number        String?  @unique
+  docType       String   @default("مكاتبة")
+  status        String   @default("draft") // draft|issued|archived
+  subject       String   @default("")
+  dateHijri     String?
+  dateGregorian String?
+  recipients    String   @default("")
+  parties       String   @default("")
+  facts         String   @default("")
+  reasons       String   @default("")
+  studyFields   String   @default("")
+  body          String   @default("")
+  fieldsJson    String   @default("{}")
+  templateId    String?
+  createdById   String?
+  createdBy     User?    @relation("CreatedBy", fields: [createdById], references: [id])
+  qrPayload     String?
+  archived      Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  action    String
+  entity    String?
+  entityId  String?
+  details   String?
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+model Setting {
+  id    String @id @default(cuid())
+  key   String @unique
+  value String
+}

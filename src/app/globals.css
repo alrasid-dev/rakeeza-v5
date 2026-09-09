@@ -1,0 +1,51 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --moj-green: #006C35;
+  --moj-light: #e6f2eb;
+  --moj-gold: #C5A059;
+}
+
+html {
+  direction: rtl;
+}
+
+body {
+  color: #1a1a1a;
+  background: var(--moj-light);
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition;
+  }
+  .btn-primary {
+    @apply btn bg-moj-green text-white hover:bg-moj-green/90;
+  }
+  .btn-gold {
+    @apply btn bg-moj-gold text-white hover:bg-moj-gold/90;
+  }
+  .btn-outline {
+    @apply btn border border-moj-green text-moj-green hover:bg-moj-light;
+  }
+  .input {
+    @apply w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-moj-green/40;
+  }
+  .label {
+    @apply block text-sm font-medium text-gray-700 mb-1;
+  }
+  .table-wrap {
+    @apply overflow-x-auto bg-white rounded-xl border shadow-sm;
+  }
+  table.data {
+    @apply w-full text-sm;
+  }
+  table.data th {
+    @apply bg-moj-light text-moj-green text-right px-3 py-2 font-semibold;
+  }
+  table.data td {
+    @apply border-t px-3 py-2;
+  }
+}

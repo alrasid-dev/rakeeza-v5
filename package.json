@@ -1,0 +1,56 @@
+{
+  "name": "rakeeza-v5",
+  "version": "5.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:seed": "tsx prisma/seed.ts",
+    "db:setup": "prisma generate && prisma db push && tsx prisma/seed.ts",
+    "postinstall": "prisma generate",
+    "import:employees": "tsx scripts/import-employees.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.22.0",
+    "bcryptjs": "^3.0.3",
+    "date-fns": "^4.4.0",
+    "docx": "^9.7.1",
+    "exceljs": "^4.4.0",
+    "file-saver": "^2.0.5",
+    "jose": "^6.2.12",
+    "jspdf": "^4.2.1",
+    "mammoth": "^1.12.2",
+    "next": "14.2.35",
+    "qrcode": "^1.5.4",
+    "react": "^18",
+    "react-dom": "^18",
+    "recharts": "^3.10.1",
+    "uuid": "^14.0.2",
+    "xlsx": "^0.18.5",
+    "zod": "^4.6.0"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^3.0.0",
+    "@types/file-saver": "^2.0.7",
+    "@types/node": "^20",
+    "@types/qrcode": "^1.5.6",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "@types/uuid": "^11.0.0",
+    "eslint": "^8",
+    "eslint-config-next": "14.2.35",
+    "postcss": "^8",
+    "prisma": "^5.22.0",
+    "tailwindcss": "^3.4.1",
+    "tsx": "^4.23.13",
+    "typescript": "^5"
+  },
+  "description": "ركيزة للمكاتبات والنماذج القضائية v5",
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  }
+}
