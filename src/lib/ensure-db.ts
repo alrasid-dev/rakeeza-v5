@@ -2,7 +2,7 @@ import 'server-only';
 import fs from 'fs';
 import path from 'path';
 
-const SEED_VERSION = '2026-09-10-pin-setup-v2';
+const SEED_VERSION = '2026-09-10-pin-setup-v3';
 let ready = false;
 
 /** On Vercel, SQLite lives in /tmp. Bootstrap/refresh from bundled seed when version changes. */
