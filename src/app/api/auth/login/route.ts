@@ -33,6 +33,12 @@ export async function POST(req: NextRequest) {
     }
     const ok = await verifyPassword(pin, user.passwordHash);
     if (!ok) {
+      if (user.mustChangePassword) {
+        return NextResponse.json(
+          { error: 'لم يُبرمج الرمز بعد. اختر أول دخول' },
+          { status: 401 },
+        );
+      }
       return NextResponse.json({ error: 'بيانات الدخول غير صحيحة' }, { status: 401 });
     }
     await createSession({

@@ -12,8 +12,8 @@ const notoNaskh = Noto_Naskh_Arabic({
 });
 
 export const metadata: Metadata = {
-  title: 'rakeza-moj-assistant — ركيزة للمكاتبات والنماذج القضائية',
-  description: 'rakeza-moj-assistant — منصة ركيزة للمكاتبات والنماذج القضائية — v5.0.0',
+  title: 'ركيزة — مكتبة المخاطبات والتعاميم',
+  description: 'ركيزة — مكتبة المخاطبات والتعاميم — المحكمة العمالية بالرياض — v5.0.0',
   manifest: '/manifest.json',
   icons: { icon: '/logo.svg' },
 };

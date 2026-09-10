@@ -286,6 +286,17 @@ async function main() {
     },
   });
 
+  await prisma.user.create({
+    data: {
+      email: 'snaswig@moj.gov.sa',
+      passwordHash: hash, // يُستبدل عند أول دخول (برمجة الرمز)
+      name: 'سعد ناصر عبد العزيز الصويغ',
+      role: 'Admin',
+      mustChangePassword: true,
+      active: true,
+    },
+  });
+
   await prisma.setting.create({
     data: { key: 'app_version', value: '5.0.0' },
   });
@@ -293,7 +304,7 @@ async function main() {
     data: { key: 'court_name', value: 'المحكمة العمالية بالرياض' },
   });
 
-  console.log('Seed complete: templates (docs/freeform/study/signature/cover), admin@moj.gov.sa');
+  console.log('Seed complete: templates + admin@moj.gov.sa + snaswig@moj.gov.sa (mustChangePassword)');
 }
 
 main()

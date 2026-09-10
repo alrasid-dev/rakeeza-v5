@@ -1,9 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import ThemeToggle from '@/components/ThemeToggle';
 import { IconFingerprint } from '@/components/Icons';
+
+type Mode = 'pin' | 'setup' | 'fingerprint';
 
 function bufToB64(buf: ArrayBuffer) {
   const bytes = new Uint8Array(buf);
@@ -16,10 +18,15 @@ export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [pin, setPin] = useState('');
+  const [pinConfirm, setPinConfirm] = useState('');
   const [error, setError] = useState('');
+  const [info, setInfo] = useState('');
   const [loading, setLoading] = useState(false);
   const [showReg, setShowReg] = useState(false);
-  const [mode, setMode] = useState<'pin' | 'fingerprint'>('fingerprint');
+  const [mode, setMode] = useState<Mode>('pin');
+  const [setupReady, setSetupReady] = useState(false);
+  const [setupName, setSetupName] = useState('');
+  const statusTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [regMsg, setRegMsg] = useState('');
   const [reg, setReg] = useState({
     name: '',
@@ -30,9 +37,76 @@ export default function LoginPage() {
     pin: '',
   });
 
-  async function onSubmit(e: React.FormEvent) {
+  useEffect(() => {
+    return () => {
+      if (statusTimer.current) clearTimeout(statusTimer.current);
+    };
+  }, []);
+
+  const switchMode = (m: Mode) => {
+    setMode(m);
+    setError('');
+    setInfo('');
+    setPin('');
+    setPinConfirm('');
+    setSetupReady(false);
+    setSetupName('');
+  };
+
+  const checkPinStatus = useCallback(async (rawEmail: string) => {
+    const e = rawEmail.trim().toLowerCase();
+    if (!e || !e.endsWith('@moj.gov.sa')) {
+      setSetupReady(false);
+      setSetupName('');
+      setInfo('');
+      return;
+    }
+    try {
+      const res = await fetch('/api/auth/pin-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: e }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setSetupReady(false);
+        setInfo('');
+        setError(data.error || 'تعذّر التحقق من حالة الرمز');
+        return;
+      }
+      setError('');
+      if (!data.exists) {
+        setSetupReady(false);
+        setSetupName('');
+        setInfo('الحساب غير موجود. قدّم طلب تسجيل موظف جديد أو راجع الإدارة.');
+        return;
+      }
+      if (data.exists && !data.needsSetup) {
+        setSetupReady(false);
+        setSetupName(data.name || '');
+        setInfo('الرمز مضبوط مسبقاً. استخدم «رمز الدخول» للدخول العادي.');
+        return;
+      }
+      if (data.needsSetup) {
+        setSetupReady(true);
+        setSetupName(data.name || '');
+        setInfo(data.name ? `مرحباً ${data.name} — برمّج رمز الدخول (٦ أرقام).` : 'برمّج رمز الدخول (٦ أرقام).');
+      }
+    } catch {
+      setSetupReady(false);
+      setError('خطأ في الاتصال');
+    }
+  }, []);
+
+  const schedulePinStatus = (value: string) => {
+    if (statusTimer.current) clearTimeout(statusTimer.current);
+    statusTimer.current = setTimeout(() => checkPinStatus(value), 400);
+  };
+
+  async function onLogin(e: React.FormEvent) {
     e.preventDefault();
     setError('');
+    setInfo('');
     if (!/^\d{6}$/.test(pin)) {
       setError('رمز المرور ٦ أرقام فقط');
       return;
@@ -58,8 +132,46 @@ export default function LoginPage() {
     }
   }
 
+  async function onSetupPin(e: React.FormEvent) {
+    e.preventDefault();
+    setError('');
+    setInfo('');
+    if (!setupReady) {
+      setError('أدخل بريداً يحتاج برمجة الرمز أولاً');
+      return;
+    }
+    if (!/^\d{6}$/.test(pin) || !/^\d{6}$/.test(pinConfirm)) {
+      setError('الرمز يجب أن يكون ٦ أرقام');
+      return;
+    }
+    if (pin !== pinConfirm) {
+      setError('الرمزان غير متطابقين');
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch('/api/auth/setup-pin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, pin, pinConfirm }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || 'فشل حفظ الرمز');
+        return;
+      }
+      router.push('/');
+      router.refresh();
+    } catch {
+      setError('خطأ في الاتصال');
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function onFingerprint() {
     setError('');
+    setInfo('');
     setLoading(true);
     try {
       if (!window.PublicKeyCredential) {
@@ -129,6 +241,13 @@ export default function LoginPage() {
     }
   }
 
+  const modeHint =
+    mode === 'fingerprint'
+      ? 'استخدم بصمة الجهاز للدخول مباشرة'
+      : mode === 'setup'
+        ? 'أول دخول: برمّج رمزك السري ثم احفظه'
+        : 'أدخل البريد ورمز المرور المكوّن من ٦ أرقام';
+
   return (
     <div
       className="min-h-screen flex items-center justify-center p-4 bg-moj-light dark:bg-transparent"
@@ -136,35 +255,69 @@ export default function LoginPage() {
     >
       <div className="w-full max-w-md rounded-[1.75rem] border border-moj-green/10 dark:border-[#3d8f6a]/35 bg-white dark:bg-[#1a2b25] shadow-2xl p-6 sm:p-8 relative">
         <div className="flex items-center justify-between mb-6">
-          <button
-            type="button"
-            className="text-xs text-gray-400 dark:text-white/45 hover:text-moj-green dark:hover:text-moj-gold"
-            onClick={() => {
-              setMode('pin');
-              setError('');
-            }}
-          >
-            استعادة
-          </button>
+          <span className="text-xs text-gray-400 dark:text-white/45">ركيزة v5</span>
           <ThemeToggle />
         </div>
 
-        <div className="text-center mb-8">
+        <div className="text-center mb-6">
           <div className="mx-auto mb-4 w-[4.5rem] h-[4.5rem] rounded-2xl shadow-[0_0_24px_rgba(61,143,106,0.45)] ring-1 ring-[#3d8f6a]/50 overflow-hidden">
             <img src="/logo.svg" alt="شعار ركيزة" className="w-full h-full" />
           </div>
           <h1 className="text-2xl font-bold text-moj-green dark:text-white">الدخول إلى ركيزة</h1>
-          <p className="text-sm text-gray-500 dark:text-white/50 mt-2">
-            {mode === 'fingerprint'
-              ? 'استخدم بصمة الجهاز للدخول مباشرة'
-              : 'أدخل البريد ورمز المرور المكوّن من ٦ أرقام'}
-          </p>
+          <p className="text-sm text-moj-gold mt-1">مكتبة المخاطبات والتعاميم</p>
+          <p className="text-sm text-gray-500 dark:text-white/50 mt-2">{modeHint}</p>
+        </div>
+
+        <div className="flex flex-wrap justify-center gap-2 mb-5 text-xs">
+          <button
+            type="button"
+            className={`px-3 py-1.5 rounded-full border transition ${
+              mode === 'pin'
+                ? 'border-moj-green bg-moj-green/10 text-moj-green dark:border-moj-gold dark:bg-moj-gold/15 dark:text-moj-gold'
+                : 'border-gray-200 dark:border-white/15 text-gray-500 dark:text-white/45 hover:text-moj-gold'
+            }`}
+            onClick={() => switchMode('pin')}
+          >
+            رمز الدخول
+          </button>
+          <button
+            type="button"
+            className={`px-3 py-1.5 rounded-full border transition ${
+              mode === 'setup'
+                ? 'border-moj-green bg-moj-green/10 text-moj-green dark:border-moj-gold dark:bg-moj-gold/15 dark:text-moj-gold'
+                : 'border-gray-200 dark:border-white/15 text-gray-500 dark:text-white/45 hover:text-moj-gold'
+            }`}
+            onClick={() => switchMode('setup')}
+          >
+            أول دخول (برمجة الرمز)
+          </button>
+          <button
+            type="button"
+            className={`px-3 py-1.5 rounded-full border transition ${
+              mode === 'fingerprint'
+                ? 'border-moj-green bg-moj-green/10 text-moj-green dark:border-moj-gold dark:bg-moj-gold/15 dark:text-moj-gold'
+                : 'border-gray-200 dark:border-white/15 text-gray-500 dark:text-white/45 hover:text-moj-gold'
+            }`}
+            onClick={() => switchMode('fingerprint')}
+          >
+            البصمة
+          </button>
+          <button
+            type="button"
+            className="px-3 py-1.5 rounded-full border border-gray-200 dark:border-white/15 text-gray-500 dark:text-white/45 hover:text-moj-gold"
+            onClick={() => {
+              setShowReg(true);
+              setRegMsg('');
+            }}
+          >
+            تسجيل موظف
+          </button>
         </div>
 
         {mode === 'fingerprint' ? (
           <div className="space-y-4">
             <div>
-              <label className="label">البريد الإلكتروني</label>
+              <label className="label">البريد الإلكتروني (اختياري)</label>
               <input
                 className="input"
                 type="email"
@@ -188,24 +341,88 @@ export default function LoginPage() {
               <IconFingerprint size={20} />
               {loading ? 'جاري التحقق...' : 'الدخول بالبصمة'}
             </button>
-            <div className="flex flex-wrap justify-center gap-4 pt-2 text-xs text-gray-400 dark:text-white/40">
-              <button type="button" className="hover:text-moj-gold" onClick={() => setMode('pin')}>
-                رمز الدخول
-              </button>
-              <button
-                type="button"
-                className="hover:text-moj-gold"
-                onClick={() => {
-                  setShowReg(true);
-                  setRegMsg('');
-                }}
-              >
-                أول دخول
-              </button>
-            </div>
+            <p className="text-center text-xs text-gray-400 dark:text-white/40">
+              البصمة خيار ثانوي — يُفضَّل الدخول بالرمز بعد برمجته.
+            </p>
           </div>
+        ) : mode === 'setup' ? (
+          <form onSubmit={onSetupPin} className="space-y-4">
+            <div>
+              <label className="label">البريد الإلكتروني</label>
+              <input
+                className="input"
+                type="email"
+                value={email}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setEmail(v);
+                  setSetupReady(false);
+                  setInfo('');
+                  setError('');
+                  schedulePinStatus(v);
+                }}
+                onBlur={() => checkPinStatus(email)}
+                placeholder="name@moj.gov.sa"
+                required
+                dir="ltr"
+              />
+              <p className="text-xs text-gray-400 dark:text-white/35 mt-1">يجب أن ينتهي بـ @moj.gov.sa</p>
+            </div>
+            {info && (
+              <div className="text-sm text-moj-green dark:text-moj-gold bg-moj-light dark:bg-white/5 rounded-xl p-2">
+                {info}
+              </div>
+            )}
+            {setupReady && (
+              <>
+                <div>
+                  <label className="label">رمز الدخول الجديد (٦ أرقام)</label>
+                  <input
+                    className="input tracking-[0.4em] text-center text-lg"
+                    type="password"
+                    inputMode="numeric"
+                    pattern="\d{6}"
+                    maxLength={6}
+                    value={pin}
+                    onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    required
+                    dir="ltr"
+                    autoComplete="new-password"
+                  />
+                </div>
+                <div>
+                  <label className="label">تأكيد الرمز</label>
+                  <input
+                    className="input tracking-[0.4em] text-center text-lg"
+                    type="password"
+                    inputMode="numeric"
+                    pattern="\d{6}"
+                    maxLength={6}
+                    value={pinConfirm}
+                    onChange={(e) => setPinConfirm(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    required
+                    dir="ltr"
+                    autoComplete="new-password"
+                  />
+                </div>
+              </>
+            )}
+            {error && (
+              <div className="text-sm text-red-600 dark:text-red-300 bg-red-50 dark:bg-red-950/40 rounded-xl p-2">
+                {error}
+              </div>
+            )}
+            <button
+              type="submit"
+              className="btn-primary w-full py-3.5 rounded-2xl"
+              disabled={loading || !setupReady}
+              title={setupName || undefined}
+            >
+              {loading ? 'جاري الحفظ...' : 'حفظ الرمز والدخول'}
+            </button>
+          </form>
         ) : (
-          <form onSubmit={onSubmit} className="space-y-4">
+          <form onSubmit={onLogin} className="space-y-4">
             <div>
               <label className="label">البريد الإلكتروني</label>
               <input
@@ -242,21 +459,9 @@ export default function LoginPage() {
             <button type="submit" className="btn-primary w-full py-3.5 rounded-2xl" disabled={loading}>
               {loading ? 'جاري الدخول...' : 'تسجيل الدخول'}
             </button>
-            <div className="flex flex-wrap justify-center gap-4 pt-1 text-xs text-gray-400 dark:text-white/40">
-              <button type="button" className="hover:text-moj-gold" onClick={() => setMode('fingerprint')}>
-                الدخول بالبصمة
-              </button>
-              <button
-                type="button"
-                className="hover:text-moj-gold"
-                onClick={() => {
-                  setShowReg(true);
-                  setRegMsg('');
-                }}
-              >
-                تسجيل موظف جديد
-              </button>
-            </div>
+            <p className="text-center text-xs text-gray-400 dark:text-white/40">
+              أول مرة؟ اختر «أول دخول (برمجة الرمز)» لحفظ رمزك.
+            </p>
           </form>
         )}
       </div>

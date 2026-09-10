@@ -332,7 +332,8 @@ function SidebarInner({ user }: { user?: { name: string; role: string; email?: s
         <img src="/logo.svg" alt="شعار" className="w-12 h-12 rounded-xl ring-1 ring-white/20 shadow-[0_0_16px_rgba(61,143,106,0.4)]" />
         <div className="flex-1 min-w-0">
           <div className="font-bold text-sm leading-tight">ركيزة</div>
-          <div className="text-xs text-moj-gold">v5.0.0</div>
+          <div className="text-[10px] text-moj-gold leading-tight">مكتبة المخاطبات والتعاميم</div>
+          <div className="text-[10px] text-white/50">v5.0.0</div>
         </div>
         <ThemeToggle className="!border-white/25 !bg-white/10 !text-moj-gold hover:!bg-white/20" />
       </div>
