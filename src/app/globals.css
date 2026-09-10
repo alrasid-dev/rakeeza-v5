@@ -26,11 +26,14 @@ html.dark {
 
 html {
   direction: rtl;
+  overflow-x: hidden;
 }
 
 body {
   color: var(--ink);
   background: var(--moj-light);
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
 }
 
 html.dark body {

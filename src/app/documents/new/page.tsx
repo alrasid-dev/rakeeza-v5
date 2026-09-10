@@ -192,12 +192,12 @@ function NewDocumentInner() {
         </div>
       )}
       <PageHeader title={title} subtitle="معالج من 3 خطوات مع صندوق لصق ذكي ومعاينة رسمية" />
-      <div className="flex gap-2 mb-4 text-sm">
+      <div className="flex flex-wrap gap-2 mb-4 text-sm">
         {[1, 2, 3].map((n) => (
           <button
             key={n}
             onClick={() => setStep(n)}
-            className={`px-3 py-1 rounded-full ${step === n ? 'bg-moj-green text-white' : 'bg-white border'}`}
+            className={`flex-1 sm:flex-none min-w-[5.5rem] px-3 py-2 rounded-full text-center ${step === n ? 'bg-moj-green text-white' : 'bg-white dark:bg-[var(--surface)] border dark:border-white/15'}`}
           >
             {n === 1 ? 'القالب' : n === 2 ? 'اللصق الذكي' : 'الحقول'}
           </button>
@@ -205,7 +205,7 @@ function NewDocumentInner() {
       </div>
 
       {step === 1 && (
-        <div className="bg-white rounded-xl border p-4 space-y-3">
+        <div className="bg-white dark:bg-[var(--surface)] rounded-xl border dark:border-white/10 p-3 sm:p-4 space-y-3">
           <label className="label">اختر قالباً (اختياري)</label>
           <select className="input" value={templateId} onChange={(e) => setTemplateId(e.target.value)}>
             <option value="">— بدون قالب / حر —</option>
@@ -215,14 +215,14 @@ function NewDocumentInner() {
               </option>
             ))}
           </select>
-          <button className="btn-primary" onClick={() => setStep(2)}>
+          <button className="btn-primary w-full sm:w-auto" onClick={() => setStep(2)}>
             التالي
           </button>
         </div>
       )}
 
       {step === 2 && (
-        <div className="bg-white rounded-xl border p-4 space-y-3">
+        <div className="bg-white dark:bg-[var(--surface)] rounded-xl border dark:border-white/10 p-3 sm:p-4 space-y-3">
           <label className="label">الصق نص المكاتبة بالكامل — سيتم توزيع الحقول تلقائياً</label>
           <textarea
             className="input min-h-[220px] font-arabic"
@@ -230,11 +230,11 @@ function NewDocumentInner() {
             onChange={(e) => setPaste(e.target.value)}
             placeholder={`مثال:\nالرقم: ...\nالتاريخ: ...\nالموضوع: بشأن ...\nإلى: فضيلة القاضي / ...\nالسلام عليكم ورحمة الله وبركاته وبعد:-\n...`}
           />
-          <div className="flex gap-2">
-            <button className="btn-primary" onClick={applyPaste}>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <button className="btn-primary w-full sm:w-auto" onClick={applyPaste}>
               توزيع الحقول
             </button>
-            <button className="btn-outline" onClick={() => setStep(3)}>
+            <button className="btn-outline w-full sm:w-auto" onClick={() => setStep(3)}>
               تخطي
             </button>
           </div>
@@ -242,9 +242,9 @@ function NewDocumentInner() {
       )}
 
       {step === 3 && (
-        <div className="grid lg:grid-cols-2 gap-4">
-          <div className="bg-white rounded-xl border p-4 space-y-3">
-            <div className="grid md:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="bg-white dark:bg-[var(--surface)] rounded-xl border dark:border-white/10 p-3 sm:p-4 space-y-3 min-w-0">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <label className="label">الموضوع</label>
                 <input
@@ -317,18 +317,18 @@ function NewDocumentInner() {
               </div>
             )}
             {error && <div className="text-red-600 text-sm">{error}</div>}
-            <div className="flex gap-2 flex-wrap">
-              <button className="btn-outline" disabled={saving} onClick={() => save(false)}>
+            <div className="flex flex-col sm:flex-row gap-2 flex-wrap">
+              <button className="btn-outline w-full sm:w-auto" disabled={saving} onClick={() => save(false)}>
                 حفظ مسودة
               </button>
-              <button className="btn-primary" disabled={saving} onClick={() => save(true)}>
+              <button className="btn-primary w-full sm:w-auto" disabled={saving} onClick={() => save(true)}>
                 إصدار برقم صادر
               </button>
             </div>
           </div>
 
-          <div>
-            <div className="text-sm font-medium text-gray-500 mb-2">معاينة ورقية رسمية</div>
+          <div className="min-w-0">
+            <div className="text-sm font-medium text-gray-500 dark:text-white/50 mb-2">معاينة ورقية رسمية</div>
             <OfficialPaperPreview
               doc={{
                 number: null,

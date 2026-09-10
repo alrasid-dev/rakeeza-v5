@@ -36,8 +36,8 @@ export default function ChartsPlaceholder({
       : [{ name: '—', count: 0 }];
 
   return (
-    <div className="grid md:grid-cols-2 gap-4">
-      <div className="bg-white rounded-xl border border-moj-green/15 p-4 h-72">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+      <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-moj-green/15 dark:border-white/10 p-3 sm:p-4 h-64 sm:h-72 min-w-0 overflow-hidden">
         <h3 className="text-sm font-semibold text-moj-green mb-2">المكاتبات حسب النوع</h3>
         <ResponsiveContainer width="100%" height="90%">
           <BarChart data={typeData}>
@@ -49,7 +49,7 @@ export default function ChartsPlaceholder({
           </BarChart>
         </ResponsiveContainer>
       </div>
-      <div className="bg-white rounded-xl border border-moj-green/15 p-4 h-72">
+      <div className="bg-white dark:bg-[var(--surface)] rounded-xl border border-moj-green/15 dark:border-white/10 p-3 sm:p-4 h-64 sm:h-72 min-w-0 overflow-hidden">
         <h3 className="text-sm font-semibold text-moj-green mb-2">حسب الحالة</h3>
         <ResponsiveContainer width="100%" height="90%">
           <PieChart>

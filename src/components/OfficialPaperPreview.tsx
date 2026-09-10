@@ -37,9 +37,10 @@ export default function OfficialPaperPreview({
   const footer = doc.footer || 'للاستخدام الداخلي فقط';
 
   return (
+    <div className="w-full max-w-full overflow-x-auto">
     <div
       dir="rtl"
-      className={`bg-white rounded-lg overflow-hidden shadow-sm font-arabic ${className}`}
+      className={`bg-white rounded-lg overflow-hidden shadow-sm font-arabic min-w-[min(100%,20rem)] max-w-full ${className}`}
       style={{ border: '2px solid #006C35' }}
     >
       <div
@@ -169,6 +170,7 @@ export default function OfficialPaperPreview({
       >
         {footer}
       </div>
+    </div>
     </div>
   );
 }

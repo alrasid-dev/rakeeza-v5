@@ -77,16 +77,16 @@ function templateHref(t: { id: string; name: string }) {
 
 function TemplateCard({ t }: { t: { id: string; name: string; description?: string | null } }) {
   return (
-    <div className="card-surface rounded-2xl p-6 min-h-[7.5rem] flex flex-col justify-between shadow-sm hover:shadow-md transition border border-moj-green/15 dark:border-white/10 bg-white dark:bg-[var(--surface)]">
-      <div>
-        <div className="text-lg font-semibold text-moj-green dark:text-moj-gold leading-snug">{t.name}</div>
+    <div className="card-surface rounded-2xl p-4 sm:p-6 min-h-[7.5rem] flex flex-col justify-between shadow-sm hover:shadow-md transition border border-moj-green/15 dark:border-white/10 bg-white dark:bg-[var(--surface)] min-w-0">
+      <div className="min-w-0">
+        <div className="text-base sm:text-lg font-semibold text-moj-green dark:text-moj-gold leading-snug break-words">{t.name}</div>
         {t.description && (
           <p className="mt-1 text-xs text-gray-500 dark:text-white/45 line-clamp-2">{t.description}</p>
         )}
       </div>
       <Link
         href={templateHref(t)}
-        className="mt-4 inline-flex items-center justify-center rounded-xl bg-moj-green text-white dark:bg-[#2d4a3e] px-4 py-2.5 text-sm font-medium hover:opacity-90 transition"
+        className="mt-4 w-full inline-flex items-center justify-center rounded-xl bg-moj-green text-white dark:bg-[#2d4a3e] px-4 py-2.5 text-sm font-medium hover:opacity-90 transition"
       >
         استخدام
       </Link>
@@ -110,7 +110,7 @@ function Section({
         <h2 className="text-base font-bold text-moj-green dark:text-moj-gold">{title}</h2>
         {subtitle && <p className="text-xs text-gray-500 dark:text-white/45 mt-0.5">{subtitle}</p>}
       </div>
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
         {items.map((t) => (
           <TemplateCard key={t.id} t={t} />
         ))}

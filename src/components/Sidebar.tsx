@@ -197,6 +197,7 @@ function TreeGroup({
   pathname,
   search,
   icon,
+  onNavigate,
 }: {
   group: NavGroup;
   open: boolean;
@@ -204,6 +205,7 @@ function TreeGroup({
   pathname: string;
   search: string;
   icon: React.ReactNode;
+  onNavigate?: () => void;
 }) {
   const anyActive = groupHasActive(pathname, search, group.children);
   return (
@@ -231,6 +233,7 @@ function TreeGroup({
                 <li key={child.href + child.label}>
                   <Link
                     href={child.href}
+                    onClick={onNavigate}
                     className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-[13px] transition ${
                       active
                         ? 'bg-gradient-to-l from-moj-gold/30 to-white/15 text-moj-gold font-medium'
@@ -250,7 +253,15 @@ function TreeGroup({
   );
 }
 
-function SidebarInner({ user }: { user?: { name: string; role: string; email?: string } | null }) {
+function SidebarInner({
+  user,
+  mobileOpen = false,
+  onClose,
+}: {
+  user?: { name: string; role: string; email?: string } | null;
+  mobileOpen?: boolean;
+  onClose?: () => void;
+}) {
   const path = usePathname();
   const searchParams = useSearchParams();
   const search = searchParams?.toString() ?? '';
@@ -327,7 +338,13 @@ function SidebarInner({ user }: { user?: { name: string; role: string; email?: s
   const homeLabel = isAdmin ? 'لوحة التحكم' : 'الرئيسية';
 
   return (
-    <aside className="w-64 min-h-screen bg-moj-green text-white flex flex-col shrink-0 print:hidden">
+    <aside
+      className={`w-64 max-w-[85vw] h-dvh md:h-auto md:min-h-screen bg-moj-green text-white flex flex-col shrink-0 print:hidden
+        fixed md:static inset-y-0 right-0 z-50
+        transition-transform duration-300 ease-out
+        ${mobileOpen ? 'translate-x-0' : 'translate-x-full pointer-events-none'}
+        md:translate-x-0 md:pointer-events-auto shadow-2xl md:shadow-none`}
+    >
       <div className="p-4 border-b border-white/20 flex items-center gap-3">
         <img src="/logo.svg" alt="شعار" className="w-12 h-12 rounded-xl ring-1 ring-white/20 shadow-[0_0_16px_rgba(61,143,106,0.4)]" />
         <div className="flex-1 min-w-0">
@@ -336,11 +353,22 @@ function SidebarInner({ user }: { user?: { name: string; role: string; email?: s
           <div className="text-[10px] text-white/50">v5.0.0</div>
         </div>
         <ThemeToggle className="!border-white/25 !bg-white/10 !text-moj-gold hover:!bg-white/20" />
+        <button
+          type="button"
+          onClick={onClose}
+          className="md:hidden inline-flex items-center justify-center w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 transition shrink-0"
+          aria-label="إغلاق القائمة"
+        >
+          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+            <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
+          </svg>
+        </button>
       </div>
 
       <nav className="flex-1 overflow-y-auto p-2 space-y-0.5 text-sm">
         <Link
           href="/"
+          onClick={onClose}
           className={`flex items-center gap-2 rounded-xl px-3 py-2 transition ${
             homeActive
               ? 'bg-gradient-to-l from-moj-gold/30 to-white/15 text-moj-gold'
@@ -358,6 +386,7 @@ function SidebarInner({ user }: { user?: { name: string; role: string; email?: s
           pathname={path}
           search={search}
           icon={<IconForms open={!!openMap.forms} />}
+          onNavigate={onClose}
         />
 
         <TreeGroup
@@ -367,6 +396,7 @@ function SidebarInner({ user }: { user?: { name: string; role: string; email?: s
           pathname={path}
           search={search}
           icon={<IconLibrary open={!!openMap.library} />}
+          onNavigate={onClose}
         />
 
         {isAminRole &&
@@ -377,6 +407,7 @@ function SidebarInner({ user }: { user?: { name: string; role: string; email?: s
               <Link
                 key={l.href}
                 href={l.href}
+                onClick={onClose}
                 className={`flex items-center gap-2 rounded-xl px-3 py-2 transition ${
                   active
                     ? 'bg-gradient-to-l from-moj-gold/30 to-white/15 text-moj-gold'
@@ -397,6 +428,7 @@ function SidebarInner({ user }: { user?: { name: string; role: string; email?: s
             pathname={path}
             search={search}
             icon={<IconAdmin open={!!openMap.admin} />}
+            onNavigate={onClose}
           />
         )}
 
@@ -404,6 +436,7 @@ function SidebarInner({ user }: { user?: { name: string; role: string; email?: s
           <>
             <Link
               href="/documents"
+              onClick={onClose}
               className={`flex items-center gap-2 rounded-xl px-3 py-2 transition ${
                 path === '/documents' || (path.startsWith('/documents/') && !path.startsWith('/documents/new'))
                   ? 'bg-gradient-to-l from-moj-gold/30 to-white/15 text-moj-gold'
@@ -414,6 +447,7 @@ function SidebarInner({ user }: { user?: { name: string; role: string; email?: s
             </Link>
             <Link
               href="/settings/password"
+              onClick={onClose}
               className={`flex items-center gap-2 rounded-xl px-3 py-2 transition ${
                 path.startsWith('/settings/password')
                   ? 'bg-gradient-to-l from-moj-gold/30 to-white/15 text-moj-gold'
@@ -439,16 +473,29 @@ function SidebarInner({ user }: { user?: { name: string; role: string; email?: s
   );
 }
 
-export default function Sidebar({ user }: { user?: { name: string; role: string; email?: string } | null }) {
+export default function Sidebar({
+  user,
+  mobileOpen = false,
+  onClose,
+}: {
+  user?: { name: string; role: string; email?: string } | null;
+  mobileOpen?: boolean;
+  onClose?: () => void;
+}) {
   return (
     <Suspense
       fallback={
-        <aside className="w-64 min-h-screen bg-moj-green text-white flex flex-col shrink-0 print:hidden">
+        <aside
+          className={`w-64 max-w-[85vw] h-dvh md:h-auto md:min-h-screen bg-moj-green text-white flex flex-col shrink-0 print:hidden
+            fixed md:static inset-y-0 right-0 z-50
+            ${mobileOpen ? 'translate-x-0' : 'translate-x-full pointer-events-none'}
+            md:translate-x-0 md:pointer-events-auto`}
+        >
           <div className="p-4 text-sm text-white/70">جاري التحميل...</div>
         </aside>
       }
     >
-      <SidebarInner user={user} />
+      <SidebarInner user={user} mobileOpen={mobileOpen} onClose={onClose} />
     </Suspense>
   );
 }

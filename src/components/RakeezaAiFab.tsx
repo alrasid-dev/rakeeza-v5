@@ -61,9 +61,12 @@ export default function RakeezaAiFab() {
   }
 
   return (
-    <div className="fixed bottom-5 left-5 z-50 print:hidden font-arabic" dir="rtl">
+    <div
+      className="fixed z-50 print:hidden font-arabic bottom-[max(1.25rem,env(safe-area-inset-bottom))] left-[max(1rem,env(safe-area-inset-left))] sm:bottom-5 sm:left-5"
+      dir="rtl"
+    >
       {open && (
-        <div className="mb-3 w-[min(100vw-2rem,22rem)] max-h-[70vh] flex flex-col rounded-3xl border border-moj-gold/40 bg-white shadow-2xl overflow-hidden">
+        <div className="mb-3 w-[min(100vw-2rem,22rem)] max-h-[min(70vh,calc(100dvh-8rem))] flex flex-col rounded-3xl border border-moj-gold/40 bg-white dark:bg-[var(--surface)] dark:border-white/15 shadow-2xl overflow-hidden">
           <div className="bg-gradient-to-l from-moj-green to-[#0a8f4a] text-white px-4 py-3 flex items-center gap-3">
             <img src="/rakeeza-ai-icon.svg" alt="" className="w-10 h-10 drop-shadow" />
             <div className="flex-1 min-w-0">
@@ -80,13 +83,13 @@ export default function RakeezaAiFab() {
             </button>
           </div>
 
-          <div className="flex flex-wrap gap-1.5 px-3 py-2 border-b bg-moj-light/60">
+          <div className="flex flex-wrap gap-1.5 px-3 py-2 border-b bg-moj-light/60 dark:bg-white/5 dark:border-white/10">
             {CHIPS.map((c) => (
               <Link
                 key={c.href}
                 href={c.href}
                 onClick={() => setOpen(false)}
-                className="text-[11px] px-2.5 py-1 rounded-full bg-white border border-moj-green/20 text-moj-green hover:bg-moj-green hover:text-white transition"
+                className="text-[11px] px-2.5 py-1 rounded-full bg-white dark:bg-white/10 border border-moj-green/20 dark:border-white/15 text-moj-green dark:text-moj-gold hover:bg-moj-green hover:text-white transition"
               >
                 {c.label}
               </Link>
@@ -100,7 +103,7 @@ export default function RakeezaAiFab() {
                 className={`text-sm whitespace-pre-wrap rounded-2xl px-3 py-2 max-w-[95%] ${
                   m.role === 'user'
                     ? 'mr-auto bg-moj-green text-white rounded-bl-md'
-                    : 'ml-auto bg-moj-light text-gray-800 border border-moj-green/10 rounded-br-md'
+                    : 'ml-auto bg-moj-light dark:bg-white/10 text-gray-800 dark:text-white/90 border border-moj-green/10 dark:border-white/10 rounded-br-md'
                 }`}
               >
                 {m.text}
@@ -111,7 +114,7 @@ export default function RakeezaAiFab() {
                         key={a.href + a.label}
                         href={a.href}
                         onClick={() => setOpen(false)}
-                        className="text-[11px] px-2 py-0.5 rounded-full bg-white text-moj-green border border-moj-gold/50 hover:bg-moj-gold hover:text-white"
+                        className="text-[11px] px-2 py-0.5 rounded-full bg-white dark:bg-white/10 text-moj-green dark:text-moj-gold border border-moj-gold/50 hover:bg-moj-gold hover:text-white"
                       >
                         {a.label}
                       </Link>
@@ -127,7 +130,7 @@ export default function RakeezaAiFab() {
           </div>
 
           <form
-            className="p-3 border-t flex gap-2 bg-white"
+            className="p-3 border-t dark:border-white/10 flex gap-2 bg-white dark:bg-[var(--surface)]"
             onSubmit={(e) => {
               e.preventDefault();
               void send();
@@ -150,11 +153,11 @@ export default function RakeezaAiFab() {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="group relative w-16 h-16 rounded-full shadow-xl border-2 border-moj-gold/70 bg-gradient-to-br from-moj-green to-[#0a8f4a] hover:scale-105 active:scale-95 transition"
+        className="group relative w-14 h-14 sm:w-16 sm:h-16 rounded-full shadow-xl border-2 border-moj-gold/70 bg-gradient-to-br from-moj-green to-[#0a8f4a] hover:scale-105 active:scale-95 transition"
         aria-label="فتح ركيزة Ai"
       >
         <span className="absolute inset-0 rounded-full animate-ping bg-moj-gold/30 pointer-events-none" />
-        <img src="/rakeeza-ai-icon.svg" alt="ركيزة Ai" className="relative w-12 h-12 mx-auto drop-shadow-lg" />
+        <img src="/rakeeza-ai-icon.svg" alt="ركيزة Ai" className="relative w-10 h-10 sm:w-12 sm:h-12 mx-auto drop-shadow-lg" />
         <span className="absolute -top-1 -right-1 text-[10px] font-bold bg-moj-gold text-white rounded-full px-1.5 py-0.5 shadow">
           Ai
         </span>

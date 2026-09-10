@@ -35,8 +35,8 @@ export default function ImportPage() {
   return (
     <AppShell user={user}>
       <PageHeader title="الاستيراد الذكي" subtitle="استخراج نص من DOCX/XLSX/TXT + تصنيف محلي + معاينة رسمية" />
-      <div className="bg-white rounded-xl border p-6 max-w-3xl space-y-4 mb-4">
-        <label className="btn-primary cursor-pointer inline-flex">
+      <div className="bg-white dark:bg-[var(--surface)] rounded-xl border dark:border-white/10 p-3 sm:p-6 max-w-3xl w-full space-y-4 mb-4 min-w-0">
+        <label className="btn-primary cursor-pointer inline-flex w-full sm:w-auto justify-center">
           {loading ? 'جاري المعالجة...' : 'اختر ملفاً'}
           <input
             type="file"
@@ -68,7 +68,7 @@ export default function ImportPage() {
             {result.error && <div className="text-red-600">{result.error}</div>}
             {parsed && (
               <a
-                className="btn-primary inline-flex"
+                className="btn-primary inline-flex w-full sm:w-auto justify-center"
                 href={`/documents/new?form=import-paste&name=${encodeURIComponent('مستورد')}`}
                 onClick={() => {
                   try {
@@ -105,8 +105,8 @@ export default function ImportPage() {
         )}
       </div>
       {parsed && (
-        <div className="max-w-3xl">
-          <div className="text-sm font-medium text-gray-500 mb-2">معاينة رسمية للمستخرج</div>
+        <div className="max-w-3xl w-full min-w-0">
+          <div className="text-sm font-medium text-gray-500 dark:text-white/50 mb-2">معاينة رسمية للمستخرج</div>
           <OfficialPaperPreview
             doc={{
               number: parsed.number || null,

@@ -38,12 +38,12 @@ export default async function DashboardPage() {
         <div className="max-w-3xl mx-auto mt-4 space-y-6">
           <Link
             href="/documents/new"
-            className="block rounded-2xl bg-moj-green text-white text-center py-14 shadow-lg hover:bg-moj-green/90 transition border-b-4 border-moj-gold"
+            className="block rounded-2xl bg-moj-green text-white text-center py-10 sm:py-14 px-4 shadow-lg hover:bg-moj-green/90 transition border-b-4 border-moj-gold"
           >
-            <div className="text-3xl font-bold mb-2">مستند جديد</div>
+            <div className="text-2xl sm:text-3xl font-bold mb-2">مستند جديد</div>
             <div className="text-sm text-moj-gold">إنشاء مكاتبة أو فتح قالب رسمي</div>
           </Link>
-          <div className="grid sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <Card title="أرشيفي" hint="المكاتبات المحفوظة والمؤرشفة" href="/archive" />
             <Card title="دليلي" hint="دليل الموظفين والألقاب" href="/directory" />
           </div>
@@ -94,14 +94,14 @@ export default async function DashboardPage() {
         title="لوحة التحكم"
         subtitle={`${roleLabel(user.role, user.email)} — مؤشرات حية من قاعدة البيانات`}
       />
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
         <Card title="اليوم" value={docsToday} href="/documents" />
         <Card title="هذا الأسبوع" value={docsWeek} href="/documents" />
         <Card title="مسودات معلّقة" value={pending} href="/documents" />
         <Card title="صادرة" value={issued} href="/documents" />
       </div>
       <ChartsPlaceholder byStatus={byStatus} byType={byType} />
-      <div className="mt-6 grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <Card title="مستند جديد" hint="معالج إنشاء مع لصق ذكي" href="/documents/new" />
         <Card title="الموظفون" hint={`${employees} سجل`} href="/employees" />
         <Card
