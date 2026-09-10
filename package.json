@@ -15,6 +15,8 @@
     "import:employees": "tsx scripts/import-employees.ts"
   },
   "dependencies": {
+    "@libsql/client": "^0.8.1",
+    "@prisma/adapter-libsql": "^5.22.0",
     "@prisma/client": "^5.22.0",
     "@sparticuz/chromium": "^152.0.0",
     "bcryptjs": "^3.0.3",
