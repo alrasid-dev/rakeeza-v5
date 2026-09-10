@@ -41,7 +41,7 @@ export default function LoginPage() {
   const [info, setInfo] = useState('');
   const [loading, setLoading] = useState(false);
   const [showReg, setShowReg] = useState(false);
-  const [mode, setMode] = useState<Mode>('pin');
+  const [mode, setMode] = useState<Mode>('setup');
   const [setupReady, setSetupReady] = useState(false);
   const [setupName, setSetupName] = useState('');
   const statusTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -108,7 +108,7 @@ export default function LoginPage() {
       if (!data.exists) {
         setSetupReady(false);
         setSetupName('');
-        setInfo('الحساب غير موجود. قدّم طلب تسجيل موظف جديد أو راجع الإدارة.');
+        setInfo('الحساب غير موجود. قدّم طلب تسجيل موظف جديد (لمن ليس له حساب) أو راجع الإدارة.');
         return;
       }
       if (data.exists && !data.needsSetup) {
@@ -132,6 +132,42 @@ export default function LoginPage() {
     if (statusTimer.current) clearTimeout(statusTimer.current);
     statusTimer.current = setTimeout(() => checkPinStatus(value), 400);
   };
+
+  async function openRegister() {
+    setRegMsg('');
+    const e = (email || reg.email).trim().toLowerCase();
+    if (e.endsWith('@moj.gov.sa')) {
+      try {
+        const res = await fetch('/api/auth/pin-status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: e }),
+        });
+        const data = await res.json();
+        if (res.ok && data.exists) {
+          setShowReg(false);
+          setEmail(e);
+          switchMode(data.needsSetup ? 'setup' : 'pin');
+          if (data.needsSetup) {
+            setSetupReady(true);
+            setSetupName(data.name || '');
+            setInfo(
+              data.name
+                ? `حسابك موجود (${data.name}). برمّج رمز الدخول هنا — لا حاجة لطلب تسجيل.`
+                : 'حسابك موجود. برمّج رمز الدخول هنا — لا حاجة لطلب تسجيل.',
+            );
+          } else {
+            setInfo('حسابك موجود والرمز مضبوط. استخدم «رمز الدخول».');
+          }
+          return;
+        }
+      } catch {
+        /* fall through */
+      }
+    }
+    setShowReg(true);
+    if (e) setReg((r) => ({ ...r, email: e }));
+  }
 
   async function onLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -311,24 +347,30 @@ export default function LoginPage() {
           <button
             type="button"
             className={`px-3 py-1.5 rounded-full border transition ${
-              mode === 'pin'
-                ? 'border-moj-green bg-moj-green/10 text-moj-green dark:border-moj-gold dark:bg-moj-gold/15 dark:text-moj-gold'
+              mode === 'setup'
+                ? 'border-moj-green bg-moj-green text-white dark:border-moj-gold dark:bg-moj-gold dark:text-[#1a2b25]'
                 : 'border-gray-200 dark:border-white/15 text-gray-500 dark:text-white/45 hover:text-moj-gold'
             }`}
-            onClick={() => switchMode('pin')}
+            onClick={() => {
+              setShowReg(false);
+              switchMode('setup');
+            }}
           >
-            رمز الدخول
+            أول دخول — برمجة الرمز
           </button>
           <button
             type="button"
             className={`px-3 py-1.5 rounded-full border transition ${
-              mode === 'setup'
+              mode === 'pin'
                 ? 'border-moj-green bg-moj-green/10 text-moj-green dark:border-moj-gold dark:bg-moj-gold/15 dark:text-moj-gold'
                 : 'border-gray-200 dark:border-white/15 text-gray-500 dark:text-white/45 hover:text-moj-gold'
             }`}
-            onClick={() => switchMode('setup')}
+            onClick={() => {
+              setShowReg(false);
+              switchMode('pin');
+            }}
           >
-            أول دخول (برمجة الرمز)
+            رمز الدخول
           </button>
           <button
             type="button"
@@ -337,50 +379,12 @@ export default function LoginPage() {
                 ? 'border-moj-green bg-moj-green/10 text-moj-green dark:border-moj-gold dark:bg-moj-gold/15 dark:text-moj-gold'
                 : 'border-gray-200 dark:border-white/15 text-gray-500 dark:text-white/45 hover:text-moj-gold'
             }`}
-            onClick={() => switchMode('fingerprint')}
-          >
-            البصمة
-          </button>
-          <button
-            type="button"
-            className="px-3 py-1.5 rounded-full border border-gray-200 dark:border-white/15 text-gray-500 dark:text-white/45 hover:text-moj-gold"
-            onClick={async () => {
-              setRegMsg('');
-              const e = (email || reg.email).trim().toLowerCase();
-              if (e.endsWith('@moj.gov.sa')) {
-                try {
-                  const res = await fetch('/api/auth/pin-status', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email: e }),
-                  });
-                  const data = await res.json();
-                  if (res.ok && data.exists) {
-                    setShowReg(false);
-                    setEmail(e);
-                    switchMode(data.needsSetup ? 'setup' : 'pin');
-                    if (data.needsSetup) {
-                      setSetupReady(true);
-                      setSetupName(data.name || '');
-                      setInfo(
-                        data.name
-                          ? `حسابك موجود (${data.name}). برمّج رمز الدخول هنا — لا حاجة لطلب تسجيل.`
-                          : 'حسابك موجود. برمّج رمز الدخول هنا — لا حاجة لطلب تسجيل.',
-                      );
-                    } else {
-                      setInfo('حسابك موجود والرمز مضبوط. استخدم «رمز الدخول».');
-                    }
-                    return;
-                  }
-                } catch {
-                  /* fall through to registration */
-                }
-              }
-              setShowReg(true);
-              if (e) setReg((r) => ({ ...r, email: e }));
+            onClick={() => {
+              setShowReg(false);
+              switchMode('fingerprint');
             }}
           >
-            تسجيل موظف
+            البصمة
           </button>
         </div>
 
@@ -530,11 +534,18 @@ export default function LoginPage() {
               {loading ? 'جاري الدخول...' : 'تسجيل الدخول'}
             </button>
             <p className="text-center text-xs text-gray-400 dark:text-white/40">
-              أول مرة؟ اختر «أول دخول (برمجة الرمز)» لحفظ رمزك.
+              أول مرة؟ اختر التبويب الأخضر «أول دخول — برمجة الرمز» أعلاه (ليس طلب تسجيل).
             </p>
           </form>
         )}
       </div>
+
+      <p className="text-center text-[11px] text-gray-400 dark:text-white/35 mt-4 relative z-10">
+        ليس لديك حساب في الدليل؟{' '}
+        <button type="button" className="underline hover:text-moj-gold" onClick={() => openRegister()}>
+          اطلب تسجيلاً جديداً من الرئيس
+        </button>
+      </p>
 
       {showReg && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" dir="rtl">
