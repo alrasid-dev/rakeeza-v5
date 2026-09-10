@@ -5,9 +5,13 @@ import path from 'path';
 const SEED_VERSION = '2026-09-10-staff-logins-v1';
 let ready = false;
 
+function env(name: string): string {
+  return process.env[name] || '';
+}
+
 function hasTursoEnv() {
-  const url = process.env.TURSO_DATABASE_URL || process.env.LIBSQL_URL || '';
-  const token = process.env.TURSO_AUTH_TOKEN || '';
+  const url = env('TURSO_DATABASE_URL') || env('LIBSQL_URL');
+  const token = env('TURSO_AUTH_TOKEN');
   return Boolean(url && token);
 }
 
@@ -19,7 +23,7 @@ export function ensureDb() {
     ready = true;
     return;
   }
-  const url = process.env.DATABASE_URL || 'file:/tmp/rakeeza.db';
+  const url = env('DATABASE_URL') || 'file:/tmp/rakeeza.db';
   if (!url.startsWith('file:')) {
     ready = true;
     return;

@@ -4,6 +4,8 @@ const nextConfig = {
   experimental: {
     serverComponentsExternalPackages: [
       '@prisma/client',
+      '@libsql/client',
+      '@prisma/adapter-libsql',
       'bcryptjs',
       '@sparticuz/chromium',
       'puppeteer-core',

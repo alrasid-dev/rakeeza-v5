@@ -5,13 +5,18 @@ import { createClient } from '@libsql/client';
 
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
 
-function tursoUrl() {
-  return process.env.TURSO_DATABASE_URL || process.env.LIBSQL_URL || '';
+/** Dynamic lookup so Next.js cannot inline Sensitive Vercel secrets away at build time. */
+function env(name: string): string {
+  return process.env[name] || '';
+}
+
+export function isTursoMode(): boolean {
+  return Boolean((env('TURSO_DATABASE_URL') || env('LIBSQL_URL')) && env('TURSO_AUTH_TOKEN'));
 }
 
 function createPrismaClient() {
-  const url = tursoUrl();
-  const authToken = process.env.TURSO_AUTH_TOKEN || '';
+  const url = env('TURSO_DATABASE_URL') || env('LIBSQL_URL');
+  const authToken = env('TURSO_AUTH_TOKEN');
   if (url && authToken) {
     const libsql = createClient({ url, authToken });
     const adapter = new PrismaLibSQL(libsql);
