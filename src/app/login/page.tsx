@@ -7,6 +7,24 @@ import { IconFingerprint } from '@/components/Icons';
 
 type Mode = 'pin' | 'setup' | 'fingerprint';
 
+const NETWORK_HINT =
+  'تعذّر الاتصال بالخادم. قد تكون شبكة الوزارة تحجب نطاق vercel.app. جرّب Ctrl+F5، أو متصفحاً آخر، أو نقطة اتصال الجوال (hotspot).';
+
+function networkErrorMsg(err?: unknown): string {
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    return 'لا يوجد اتصال بالإنترنت. تحقّق من الشبكة ثم أعد المحاولة. إن كنت على شبكة الوزارة فقد يكون نطاق vercel.app محجوباً — جرّب نقطة اتصال الجوال.';
+  }
+  const msg = err instanceof Error ? err.message : String(err || '');
+  if (
+    err instanceof TypeError ||
+    /failed to fetch|networkerror|load failed|fetch/i.test(msg)
+  ) {
+    return NETWORK_HINT;
+  }
+  return NETWORK_HINT;
+}
+
+
 function bufToB64(buf: ArrayBuffer) {
   const bytes = new Uint8Array(buf);
   let s = '';
@@ -38,7 +56,19 @@ export default function LoginPage() {
   });
 
   useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/auth/ping', { cache: 'no-store' });
+        if (!res.ok && !cancelled) {
+          setError((e) => e || NETWORK_HINT);
+        }
+      } catch (err) {
+        if (!cancelled) setError(networkErrorMsg(err));
+      }
+    })();
     return () => {
+      cancelled = true;
       if (statusTimer.current) clearTimeout(statusTimer.current);
     };
   }, []);
@@ -92,9 +122,9 @@ export default function LoginPage() {
         setSetupName(data.name || '');
         setInfo(data.name ? `مرحباً ${data.name} — برمّج رمز الدخول (٦ أرقام).` : 'برمّج رمز الدخول (٦ أرقام).');
       }
-    } catch {
+    } catch (err) {
       setSetupReady(false);
-      setError('خطأ في الاتصال');
+      setError(networkErrorMsg(err));
     }
   }, []);
 
@@ -134,8 +164,8 @@ export default function LoginPage() {
       }
       router.push('/');
       router.refresh();
-    } catch {
-      setError('خطأ في الاتصال');
+    } catch (err) {
+      setError(networkErrorMsg(err));
     } finally {
       setLoading(false);
     }
@@ -171,8 +201,8 @@ export default function LoginPage() {
       }
       router.push('/');
       router.refresh();
-    } catch {
-      setError('خطأ في الاتصال');
+    } catch (err) {
+      setError(networkErrorMsg(err));
     } finally {
       setLoading(false);
     }
@@ -243,8 +273,8 @@ export default function LoginPage() {
       }
       setRegMsg(data.message || 'تم إرسال الطلب وبانتظار موافقة الرئيس');
       setReg({ name: '', email: '', phone: '', nationalId: '', orgUnitName: '', pin: '' });
-    } catch {
-      setRegMsg('خطأ في الاتصال');
+    } catch (err) {
+      setRegMsg(networkErrorMsg(err));
     } finally {
       setLoading(false);
     }

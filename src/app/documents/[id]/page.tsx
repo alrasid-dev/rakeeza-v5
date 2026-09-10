@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import AppShell from '@/components/AppShell';
 import PageHeader from '@/components/PageHeader';
+import OfficialPaperPreview from '@/components/OfficialPaperPreview';
 import { buildLetterHtml, copyOutlookHtml } from '@/lib/outlook-clipboard';
 
 type Doc = {
@@ -83,7 +84,10 @@ export default function DocumentDetailPage() {
     );
   }
 
-  const fields = JSON.parse(doc.fieldsJson || '{}');
+  const fields = JSON.parse(doc.fieldsJson || '{}') as {
+    qrDataUrl?: string;
+    tableRows?: { name: string; id?: string; extra?: string }[];
+  };
 
   return (
     <AppShell user={user}>
@@ -109,36 +113,23 @@ export default function DocumentDetailPage() {
       />
       {msg && <div className="mb-3 text-sm text-moj-green bg-white border rounded p-2">{msg}</div>}
       <div className="grid lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2 bg-white rounded-xl border p-6 space-y-3 font-arabic">
-          <div className="text-center text-moj-green font-bold">المحكمة العمالية بالرياض</div>
-          <div>الرقم: <span dir="ltr">{doc.number || '—'}</span></div>
-          <div>التاريخ: {doc.dateGregorian || '—'}</div>
-          <div>الموضوع: {doc.subject}</div>
-          <div>إلى: {doc.recipients}</div>
-          {doc.parties && <div>الأطراف: {doc.parties}</div>}
-          {doc.facts && (
-            <div>
-              <div className="font-semibold text-moj-green">الوقائع</div>
-              <pre className="whitespace-pre-wrap text-sm">{doc.facts}</pre>
-            </div>
-          )}
-          {doc.reasons && (
-            <div>
-              <div className="font-semibold text-moj-green">الأسباب</div>
-              <pre className="whitespace-pre-wrap text-sm">{doc.reasons}</pre>
-            </div>
-          )}
-          {doc.studyFields && (
-            <div>
-              <div className="font-semibold text-moj-green">الدراسة</div>
-              <pre className="whitespace-pre-wrap text-sm">{doc.studyFields}</pre>
-            </div>
-          )}
-          <div>
-            <div className="font-semibold text-moj-green">النص</div>
-            <pre className="whitespace-pre-wrap text-sm">{doc.body}</pre>
-          </div>
-          <div className="text-center text-xs text-gray-500 border-t pt-2">للاستخدام الداخلي فقط</div>
+        <div className="lg:col-span-2">
+          <OfficialPaperPreview
+            doc={{
+              number: doc.number,
+              subject: doc.subject,
+              dateGregorian: doc.dateGregorian,
+              recipients: doc.recipients,
+              parties: doc.parties,
+              facts: doc.facts,
+              reasons: doc.reasons,
+              studyFields: doc.studyFields,
+              body: doc.body,
+              docType: doc.docType,
+              qrDataUrl: fields.qrDataUrl,
+              tableRows: fields.tableRows,
+            }}
+          />
         </div>
         <div className="space-y-4">
           <div className="bg-white rounded-xl border p-4">

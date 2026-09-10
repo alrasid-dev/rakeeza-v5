@@ -6,6 +6,7 @@ const PUBLIC = [
   '/login',
   '/verify',
   '/api/auth/login',
+  '/api/auth/ping',
   '/api/auth/setup-pin',
   '/api/auth/pin-status',
   '/api/auth/fingerprint',

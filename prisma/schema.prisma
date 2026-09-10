@@ -89,7 +89,7 @@ model Letterhead {
 model Template {
   id          String   @id @default(cuid())
   name        String
-  category    String   // document|freeform|study
+  category    String   // letter-official|letter-identity|pdf-official|pdf-identity|excel
   description String?
   fieldsJson  String   @default("[]")
   bodyHtml    String   @default("")

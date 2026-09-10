@@ -186,8 +186,8 @@ async function main() {
     await prisma.template.create({
       data: {
         name,
-        category: 'document',
-        description: 'قالب فارغ جاهز للتعبئة',
+        category: 'letter-official',
+        description: 'قالب خطاب رسمي فارغ جاهز للتعبئة',
         fieldsJson: JSON.stringify([
           'number',
           'date',
@@ -209,8 +209,8 @@ async function main() {
     await prisma.template.create({
       data: {
         name,
-        category: 'freeform',
-        description: 'تصميم حر',
+        category: 'letter-identity',
+        description: 'تصميم حر بهوية المحكمة',
         fieldsJson: '[]',
         bodyHtml: '',
         isEmpty: true,
@@ -232,7 +232,7 @@ async function main() {
   await prisma.template.create({
     data: {
       name: 'نموذج تحليل حكم (شكوى)',
-      category: 'study',
+      category: 'pdf-identity',
       description: 'نموذج فارغ بهوية الوزارة — حقول الدراسة فقط دون بيانات جاهزة',
       fieldsJson: JSON.stringify(STUDY_FIELDS),
       bodyHtml: studyHtml,
@@ -252,7 +252,7 @@ async function main() {
   await prisma.template.create({
     data: {
       name: 'التوقيع الرقمي للبريد الإلكتروني',
-      category: 'signature',
+      category: 'pdf-identity',
       description: 'قالب فارغ: الاسم · المسمى · الإدارة · البريد · الهاتف · المدينة',
       fieldsJson: JSON.stringify(['fullName', 'jobTitle', 'department', 'email', 'phone', 'city']),
       bodyHtml: readRef('email-signature-empty.html'),
@@ -264,10 +264,34 @@ async function main() {
   await prisma.template.create({
     data: {
       name: 'غلاف تقرير / عرض تقديمي',
-      category: 'cover',
+      category: 'pdf-identity',
       description: 'غلاف فارغ: عنوان التقرير · وزارة العدل · عنوان الفصل · شكراً لكم',
       fieldsJson: JSON.stringify(['reportTitle', 'subtitle', 'chapterTitle', 'thanks']),
       bodyHtml: readRef('report-cover-empty.html'),
+      isEmpty: true,
+      sortOrder: order++,
+    },
+  });
+
+  await prisma.template.create({
+    data: {
+      name: 'نموذج خطاب PDF رسمي',
+      category: 'pdf-official',
+      description: 'قالب PDF رسمي للطباعة بهوية الوزارة',
+      fieldsJson: JSON.stringify(['number', 'date', 'subject', 'recipients', 'body']),
+      bodyHtml: '',
+      isEmpty: true,
+      sortOrder: order++,
+    },
+  });
+
+  await prisma.template.create({
+    data: {
+      name: 'كشف أسماء / Excel',
+      category: 'excel',
+      description: 'قالب لكشوف الأسماء وأرقام الهوية (لصق جدول أو استيراد)',
+      fieldsJson: JSON.stringify(['tableRows', 'parties', 'body']),
+      bodyHtml: '',
       isEmpty: true,
       sortOrder: order++,
     },

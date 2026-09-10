@@ -4,7 +4,8 @@ import { Suspense, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import AppShell from '@/components/AppShell';
 import PageHeader from '@/components/PageHeader';
-import { parsePaste } from '@/lib/parse-paste';
+import OfficialPaperPreview from '@/components/OfficialPaperPreview';
+import { parsePaste, type TableRow } from '@/lib/parse-paste';
 import { clearDraft, loadDraft, saveDraft } from '@/lib/draft-store';
 
 type Template = { id: string; name: string; category: string };
@@ -35,6 +36,7 @@ function NewDocumentInner() {
   const [templateId, setTemplateId] = useState('');
   const [paste, setPaste] = useState('');
   const [form, setForm] = useState({ ...EMPTY_FORM });
+  const [tableRows, setTableRows] = useState<TableRow[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [draftRestored, setDraftRestored] = useState(false);
@@ -57,6 +59,12 @@ function NewDocumentInner() {
       if (draft.templateId) setTemplateId(draft.templateId);
       if (typeof draft.paste === 'string') setPaste(draft.paste);
       if (typeof draft.step === 'number') setStep(draft.step);
+      try {
+        const tr = (draft.form as { tableRowsJson?: string }).tableRowsJson;
+        if (tr) setTableRows(JSON.parse(tr));
+      } catch {
+        /* ignore */
+      }
       setDraftRestored(true);
     } else {
       setForm({
@@ -67,6 +75,7 @@ function NewDocumentInner() {
       setPaste('');
       setStep(1);
       setTemplateId(templateIdParam || '');
+      setTableRows([]);
       setDraftRestored(false);
     }
 
@@ -99,25 +108,29 @@ function NewDocumentInner() {
       });
   }, [searchParams]);
 
-  // When templates arrive later, match by name if no template yet
   useEffect(() => {
     if (!formName || templateId || !templates.length) return;
     const match = templates.find((t) => t.name === formName);
     if (match) setTemplateId(match.id);
   }, [templates, formName, templateId]);
 
-  // Debounced draft save
   useEffect(() => {
     if (!formSlug || skipSave.current) return;
     const handle = window.setTimeout(() => {
-      saveDraft(formSlug, { templateId, paste, step, form });
+      saveDraft(formSlug, {
+        templateId,
+        paste,
+        step,
+        form: { ...form, tableRowsJson: JSON.stringify(tableRows) },
+      });
       setDraftRestored(true);
     }, 300);
     return () => window.clearTimeout(handle);
-  }, [formSlug, templateId, paste, step, form]);
+  }, [formSlug, templateId, paste, step, form, tableRows]);
 
   function applyPaste() {
     const parsed = parsePaste(paste);
+    setTableRows(parsed.tableRows || []);
     setForm((f) => ({
       ...f,
       subject: parsed.subject || f.subject,
@@ -139,7 +152,13 @@ function NewDocumentInner() {
       const res = await fetch('/api/documents', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, templateId: templateId || null, issue, assignNumber: issue }),
+        body: JSON.stringify({
+          ...form,
+          templateId: templateId || null,
+          issue,
+          assignNumber: issue,
+          fields: { tableRows },
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -172,7 +191,7 @@ function NewDocumentInner() {
           )}
         </div>
       )}
-      <PageHeader title={title} subtitle="معالج من 3 خطوات مع صندوق لصق ذكي" />
+      <PageHeader title={title} subtitle="معالج من 3 خطوات مع صندوق لصق ذكي ومعاينة رسمية" />
       <div className="flex gap-2 mb-4 text-sm">
         {[1, 2, 3].map((n) => (
           <button
@@ -192,7 +211,7 @@ function NewDocumentInner() {
             <option value="">— بدون قالب / حر —</option>
             {templates.map((t) => (
               <option key={t.id} value={t.id}>
-                {t.name} ({t.category === 'freeform' ? 'حر' : 'وثيقة'})
+                {t.name}
               </option>
             ))}
           </select>
@@ -209,7 +228,7 @@ function NewDocumentInner() {
             className="input min-h-[220px] font-arabic"
             value={paste}
             onChange={(e) => setPaste(e.target.value)}
-            placeholder={`مثال:\nالرقم: ...\nالتاريخ: ...\nالموضوع: بشأن ...\nإلى: ...\nالوقائع:\n...\nالأسباب:\n...`}
+            placeholder={`مثال:\nالرقم: ...\nالتاريخ: ...\nالموضوع: بشأن ...\nإلى: فضيلة القاضي / ...\nالسلام عليكم ورحمة الله وبركاته وبعد:-\n...`}
           />
           <div className="flex gap-2">
             <button className="btn-primary" onClick={applyPaste}>
@@ -223,82 +242,108 @@ function NewDocumentInner() {
       )}
 
       {step === 3 && (
-        <div className="bg-white rounded-xl border p-4 space-y-3">
-          <div className="grid md:grid-cols-2 gap-3">
+        <div className="grid lg:grid-cols-2 gap-4">
+          <div className="bg-white rounded-xl border p-4 space-y-3">
+            <div className="grid md:grid-cols-2 gap-3">
+              <div>
+                <label className="label">الموضوع</label>
+                <input
+                  className="input"
+                  value={form.subject}
+                  onChange={(e) => setForm({ ...form, subject: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="label">التاريخ</label>
+                <input
+                  className="input"
+                  type="date"
+                  value={form.dateGregorian}
+                  onChange={(e) => setForm({ ...form, dateGregorian: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="label">إلى / المستلمون</label>
+                <input
+                  className="input"
+                  value={form.recipients}
+                  onChange={(e) => setForm({ ...form, recipients: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="label">الأطراف</label>
+                <input
+                  className="input"
+                  value={form.parties}
+                  onChange={(e) => setForm({ ...form, parties: e.target.value })}
+                />
+              </div>
+            </div>
             <div>
-              <label className="label">الموضوع</label>
-              <input
-                className="input"
-                value={form.subject}
-                onChange={(e) => setForm({ ...form, subject: e.target.value })}
+              <label className="label">الوقائع</label>
+              <textarea
+                className="input min-h-[80px]"
+                value={form.facts}
+                onChange={(e) => setForm({ ...form, facts: e.target.value })}
               />
             </div>
             <div>
-              <label className="label">التاريخ</label>
-              <input
-                className="input"
-                type="date"
-                value={form.dateGregorian}
-                onChange={(e) => setForm({ ...form, dateGregorian: e.target.value })}
+              <label className="label">الأسباب / الحيثيات</label>
+              <textarea
+                className="input min-h-[80px]"
+                value={form.reasons}
+                onChange={(e) => setForm({ ...form, reasons: e.target.value })}
               />
             </div>
             <div>
-              <label className="label">إلى / المستلمون</label>
-              <input
-                className="input"
-                value={form.recipients}
-                onChange={(e) => setForm({ ...form, recipients: e.target.value })}
+              <label className="label">حقول الدراسة</label>
+              <textarea
+                className="input min-h-[60px]"
+                value={form.studyFields}
+                onChange={(e) => setForm({ ...form, studyFields: e.target.value })}
               />
             </div>
             <div>
-              <label className="label">الأطراف</label>
-              <input
-                className="input"
-                value={form.parties}
-                onChange={(e) => setForm({ ...form, parties: e.target.value })}
+              <label className="label">نص المكاتبة</label>
+              <textarea
+                className="input min-h-[140px]"
+                value={form.body}
+                onChange={(e) => setForm({ ...form, body: e.target.value })}
               />
             </div>
+            {tableRows.length > 0 && (
+              <div className="text-xs text-moj-green bg-moj-light rounded-lg p-2">
+                تم استخراج {tableRows.length} صف/صفوف من جدول الأسماء والهويات — تظهر في المعاينة.
+              </div>
+            )}
+            {error && <div className="text-red-600 text-sm">{error}</div>}
+            <div className="flex gap-2 flex-wrap">
+              <button className="btn-outline" disabled={saving} onClick={() => save(false)}>
+                حفظ مسودة
+              </button>
+              <button className="btn-primary" disabled={saving} onClick={() => save(true)}>
+                إصدار برقم صادر
+              </button>
+            </div>
           </div>
+
           <div>
-            <label className="label">الوقائع</label>
-            <textarea
-              className="input min-h-[80px]"
-              value={form.facts}
-              onChange={(e) => setForm({ ...form, facts: e.target.value })}
+            <div className="text-sm font-medium text-gray-500 mb-2">معاينة ورقية رسمية</div>
+            <OfficialPaperPreview
+              doc={{
+                number: null,
+                subject: form.subject,
+                dateGregorian: form.dateGregorian,
+                recipients: form.recipients,
+                parties: form.parties,
+                facts: form.facts,
+                reasons: form.reasons,
+                studyFields: form.studyFields,
+                body: form.body,
+                docType: form.docType,
+                tableRows,
+              }}
             />
-          </div>
-          <div>
-            <label className="label">الأسباب / الحيثيات</label>
-            <textarea
-              className="input min-h-[80px]"
-              value={form.reasons}
-              onChange={(e) => setForm({ ...form, reasons: e.target.value })}
-            />
-          </div>
-          <div>
-            <label className="label">حقول الدراسة</label>
-            <textarea
-              className="input min-h-[60px]"
-              value={form.studyFields}
-              onChange={(e) => setForm({ ...form, studyFields: e.target.value })}
-            />
-          </div>
-          <div>
-            <label className="label">نص المكاتبة</label>
-            <textarea
-              className="input min-h-[140px]"
-              value={form.body}
-              onChange={(e) => setForm({ ...form, body: e.target.value })}
-            />
-          </div>
-          {error && <div className="text-red-600 text-sm">{error}</div>}
-          <div className="flex gap-2 flex-wrap">
-            <button className="btn-outline" disabled={saving} onClick={() => save(false)}>
-              حفظ مسودة
-            </button>
-            <button className="btn-primary" disabled={saving} onClick={() => save(true)}>
-              إصدار برقم صادر
-            </button>
           </div>
         </div>
       )}
