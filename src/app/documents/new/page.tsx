@@ -1,39 +1,120 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useEffect, useRef, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import AppShell from '@/components/AppShell';
 import PageHeader from '@/components/PageHeader';
 import { parsePaste } from '@/lib/parse-paste';
+import { clearDraft, loadDraft, saveDraft } from '@/lib/draft-store';
 
 type Template = { id: string; name: string; category: string };
 type User = { name: string; role: string };
 
-export default function NewDocumentPage() {
+const EMPTY_FORM = {
+  subject: '',
+  recipients: '',
+  parties: '',
+  facts: '',
+  reasons: '',
+  studyFields: '',
+  body: '',
+  dateGregorian: new Date().toISOString().slice(0, 10),
+  docType: 'مكاتبة',
+};
+
+function NewDocumentInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const formSlug = searchParams.get('form') || '';
+  const formName = searchParams.get('name') || '';
+  const templateIdParam = searchParams.get('templateId') || '';
+
   const [user, setUser] = useState<User | null>(null);
   const [step, setStep] = useState(1);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [templateId, setTemplateId] = useState('');
   const [paste, setPaste] = useState('');
-  const [form, setForm] = useState({
-    subject: '',
-    recipients: '',
-    parties: '',
-    facts: '',
-    reasons: '',
-    studyFields: '',
-    body: '',
-    dateGregorian: new Date().toISOString().slice(0, 10),
-    docType: 'مكاتبة',
-  });
+  const [form, setForm] = useState({ ...EMPTY_FORM });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [draftRestored, setDraftRestored] = useState(false);
+  const hydratedSlug = useRef<string | null>(null);
+  const skipSave = useRef(true);
+
+  // Restore draft / set docType when form slug or name changes
+  useEffect(() => {
+    skipSave.current = true;
+    hydratedSlug.current = formSlug || '__default__';
+
+    const draft = formSlug ? loadDraft(formSlug) : null;
+    if (draft) {
+      setForm({
+        ...EMPTY_FORM,
+        ...draft.form,
+        dateGregorian: draft.form.dateGregorian || EMPTY_FORM.dateGregorian,
+        docType: formName || draft.form.docType || EMPTY_FORM.docType,
+      });
+      if (draft.templateId) setTemplateId(draft.templateId);
+      if (typeof draft.paste === 'string') setPaste(draft.paste);
+      if (typeof draft.step === 'number') setStep(draft.step);
+      setDraftRestored(true);
+    } else {
+      setForm({
+        ...EMPTY_FORM,
+        dateGregorian: new Date().toISOString().slice(0, 10),
+        docType: formName || 'مكاتبة',
+      });
+      setPaste('');
+      setStep(1);
+      setTemplateId(templateIdParam || '');
+      setDraftRestored(false);
+    }
+
+    const t = window.setTimeout(() => {
+      skipSave.current = false;
+    }, 50);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formSlug, formName]);
 
   useEffect(() => {
-    fetch('/api/auth/me').then((r) => r.json()).then((d) => setUser(d.user));
-    fetch('/api/templates').then((r) => r.json()).then((d) => setTemplates(d.templates || []));
-  }, []);
+    fetch('/api/auth/me')
+      .then((r) => r.json())
+      .then((d) => setUser(d.user));
+    fetch('/api/templates')
+      .then((r) => r.json())
+      .then((d) => {
+        const list: Template[] = d.templates || [];
+        setTemplates(list);
+        const q = searchParams.get('templateId');
+        if (q) {
+          setTemplateId(q);
+          return;
+        }
+        const nameQ = searchParams.get('name');
+        if (nameQ) {
+          const match = list.find((t) => t.name === nameQ);
+          if (match) setTemplateId(match.id);
+        }
+      });
+  }, [searchParams]);
+
+  // When templates arrive later, match by name if no template yet
+  useEffect(() => {
+    if (!formName || templateId || !templates.length) return;
+    const match = templates.find((t) => t.name === formName);
+    if (match) setTemplateId(match.id);
+  }, [templates, formName, templateId]);
+
+  // Debounced draft save
+  useEffect(() => {
+    if (!formSlug || skipSave.current) return;
+    const handle = window.setTimeout(() => {
+      saveDraft(formSlug, { templateId, paste, step, form });
+      setDraftRestored(true);
+    }, 300);
+    return () => window.clearTimeout(handle);
+  }, [formSlug, templateId, paste, step, form]);
 
   function applyPaste() {
     const parsed = parsePaste(paste);
@@ -65,6 +146,7 @@ export default function NewDocumentPage() {
         setError(data.error || 'فشل الحفظ');
         return;
       }
+      if (formSlug) clearDraft(formSlug);
       router.push(`/documents/${data.document.id}`);
     } catch {
       setError('خطأ في الاتصال');
@@ -73,9 +155,24 @@ export default function NewDocumentPage() {
     }
   }
 
+  const title = formName || 'مكاتبة جديدة';
+
   return (
     <AppShell user={user}>
-      <PageHeader title="مكاتبة جديدة" subtitle="معالج من 3 خطوات مع صندوق لصق ذكي" />
+      {(formName || formSlug) && (
+        <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-moj-gold/30 bg-gradient-to-l from-moj-gold/15 to-moj-green/5 px-3 py-2 text-sm text-moj-green">
+          <span className="font-medium">مساحة العمل</span>
+          <span className="text-moj-gold">·</span>
+          <span>{formName || formSlug}</span>
+          {draftRestored && (
+            <>
+              <span className="text-moj-gold">·</span>
+              <span className="text-xs text-gray-600">المسودة محفوظة محلياً</span>
+            </>
+          )}
+        </div>
+      )}
+      <PageHeader title={title} subtitle="معالج من 3 خطوات مع صندوق لصق ذكي" />
       <div className="flex gap-2 mb-4 text-sm">
         {[1, 2, 3].map((n) => (
           <button
@@ -99,7 +196,9 @@ export default function NewDocumentPage() {
               </option>
             ))}
           </select>
-          <button className="btn-primary" onClick={() => setStep(2)}>التالي</button>
+          <button className="btn-primary" onClick={() => setStep(2)}>
+            التالي
+          </button>
         </div>
       )}
 
@@ -113,8 +212,12 @@ export default function NewDocumentPage() {
             placeholder={`مثال:\nالرقم: ...\nالتاريخ: ...\nالموضوع: بشأن ...\nإلى: ...\nالوقائع:\n...\nالأسباب:\n...`}
           />
           <div className="flex gap-2">
-            <button className="btn-primary" onClick={applyPaste}>توزيع الحقول</button>
-            <button className="btn-outline" onClick={() => setStep(3)}>تخطي</button>
+            <button className="btn-primary" onClick={applyPaste}>
+              توزيع الحقول
+            </button>
+            <button className="btn-outline" onClick={() => setStep(3)}>
+              تخطي
+            </button>
           </div>
         </div>
       )}
@@ -124,44 +227,89 @@ export default function NewDocumentPage() {
           <div className="grid md:grid-cols-2 gap-3">
             <div>
               <label className="label">الموضوع</label>
-              <input className="input" value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })} />
+              <input
+                className="input"
+                value={form.subject}
+                onChange={(e) => setForm({ ...form, subject: e.target.value })}
+              />
             </div>
             <div>
               <label className="label">التاريخ</label>
-              <input className="input" type="date" value={form.dateGregorian} onChange={(e) => setForm({ ...form, dateGregorian: e.target.value })} />
+              <input
+                className="input"
+                type="date"
+                value={form.dateGregorian}
+                onChange={(e) => setForm({ ...form, dateGregorian: e.target.value })}
+              />
             </div>
             <div>
               <label className="label">إلى / المستلمون</label>
-              <input className="input" value={form.recipients} onChange={(e) => setForm({ ...form, recipients: e.target.value })} />
+              <input
+                className="input"
+                value={form.recipients}
+                onChange={(e) => setForm({ ...form, recipients: e.target.value })}
+              />
             </div>
             <div>
               <label className="label">الأطراف</label>
-              <input className="input" value={form.parties} onChange={(e) => setForm({ ...form, parties: e.target.value })} />
+              <input
+                className="input"
+                value={form.parties}
+                onChange={(e) => setForm({ ...form, parties: e.target.value })}
+              />
             </div>
           </div>
           <div>
             <label className="label">الوقائع</label>
-            <textarea className="input min-h-[80px]" value={form.facts} onChange={(e) => setForm({ ...form, facts: e.target.value })} />
+            <textarea
+              className="input min-h-[80px]"
+              value={form.facts}
+              onChange={(e) => setForm({ ...form, facts: e.target.value })}
+            />
           </div>
           <div>
             <label className="label">الأسباب / الحيثيات</label>
-            <textarea className="input min-h-[80px]" value={form.reasons} onChange={(e) => setForm({ ...form, reasons: e.target.value })} />
+            <textarea
+              className="input min-h-[80px]"
+              value={form.reasons}
+              onChange={(e) => setForm({ ...form, reasons: e.target.value })}
+            />
           </div>
           <div>
             <label className="label">حقول الدراسة</label>
-            <textarea className="input min-h-[60px]" value={form.studyFields} onChange={(e) => setForm({ ...form, studyFields: e.target.value })} />
+            <textarea
+              className="input min-h-[60px]"
+              value={form.studyFields}
+              onChange={(e) => setForm({ ...form, studyFields: e.target.value })}
+            />
           </div>
           <div>
             <label className="label">نص المكاتبة</label>
-            <textarea className="input min-h-[140px]" value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} />
+            <textarea
+              className="input min-h-[140px]"
+              value={form.body}
+              onChange={(e) => setForm({ ...form, body: e.target.value })}
+            />
           </div>
           {error && <div className="text-red-600 text-sm">{error}</div>}
           <div className="flex gap-2 flex-wrap">
-            <button className="btn-outline" disabled={saving} onClick={() => save(false)}>حفظ مسودة</button>
-            <button className="btn-primary" disabled={saving} onClick={() => save(true)}>إصدار برقم صادر</button>
+            <button className="btn-outline" disabled={saving} onClick={() => save(false)}>
+              حفظ مسودة
+            </button>
+            <button className="btn-primary" disabled={saving} onClick={() => save(true)}>
+              إصدار برقم صادر
+            </button>
           </div>
         </div>
       )}
     </AppShell>
+  );
+}
+
+export default function NewDocumentPage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-moj-green" dir="rtl">جاري التحميل...</div>}>
+      <NewDocumentInner />
+    </Suspense>
   );
 }

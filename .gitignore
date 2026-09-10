@@ -7,3 +7,10 @@ uploads/
 .env.local
 *.log
 .DS_Store
+
+# PIN distribution (secret)
+data/pins-moj.csv
+
+.tsbuildinfo
+*.tsbuildinfo
+reference-models/

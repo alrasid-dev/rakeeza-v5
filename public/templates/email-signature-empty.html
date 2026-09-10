@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>قالب التوقيع الرقمي للبريد — ركيزة</title>
+<style>
+  :root { --g:#006C35; --gold:#C5A059; --ink:#424041; }
+  body { font-family:"Traditional Arabic","Sakkal Majalla","Noto Naskh Arabic",Tahoma,Arial,sans-serif; background:#e6f2eb; margin:0; padding:24px; color:var(--ink); }
+  .wrap { max-width:720px; margin:0 auto; }
+  h1 { color:var(--g); font-size:20px; border-bottom:3px solid var(--gold); padding-bottom:6px; }
+  .hint { font-size:13px; color:#666; margin-bottom:16px; }
+  .sig {
+    background:#fff; border:1px solid #d0e5d8; border-right:6px solid var(--g);
+    padding:16px 18px; display:grid; grid-template-columns:120px 1fr; gap:14px; align-items:center;
+    box-shadow:0 2px 10px rgba(0,108,53,.08);
+  }
+  .logo { width:96px; height:96px; object-fit:contain; }
+  .line { margin:2px 0; min-height:1.3em; }
+  .name { font-weight:700; color:var(--g); font-size:18px; border-bottom:1px dotted #ccc; min-width:12em; display:inline-block; }
+  .job, .dept { color:var(--ink); border-bottom:1px dotted #ccc; min-width:10em; display:inline-block; }
+  .email { color:var(--g); direction:ltr; unicode-bidi:embed; border-bottom:1px dotted #ccc; min-width:14em; display:inline-block; }
+  .phone { direction:ltr; unicode-bidi:embed; border-bottom:1px dotted #ccc; min-width:12em; display:inline-block; }
+  .city { border-bottom:1px dotted #ccc; min-width:14em; display:inline-block; }
+  .web { color:var(--gold); font-size:13px; margin-top:6px; }
+  .labels { font-size:11px; color:#888; margin-top:12px; }
+  .foot { margin-top:18px; text-align:center; font-size:12px; color:#666; border-top:2px solid var(--gold); padding-top:8px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>قالب التوقيع الرقمي للبريد الإلكتروني</h1>
+  <p class="hint">حقول فارغة فقط — عبّئ: الاسم الثلاثي، المسمى الوظيفي، اسم الإدارة، البريد @moj.gov.sa، رقم الهاتف، المدينة. للاستخدام الداخلي فقط.</p>
+  <div class="sig" contenteditable="true">
+    <img class="logo" src="/logo.svg" alt="شعار وزارة العدل">
+    <div>
+      <div class="line"><span class="name" data-field="fullName">&nbsp;</span></div>
+      <div class="line"><span class="job" data-field="jobTitle">&nbsp;</span></div>
+      <div class="line"><span class="dept" data-field="department">&nbsp;</span></div>
+      <div class="line"><span class="email" data-field="email">@moj.gov.sa</span></div>
+      <div class="line"><span class="phone" data-field="phone">(+966) —————</span></div>
+      <div class="line"><span class="city" data-field="city">، المملكة العربية السعودية</span></div>
+      <div class="web">www.moj.gov.sa</div>
+    </div>
+  </div>
+  <p class="labels">الحقول: الاسم الثلاثي · المسمى الوظيفي · اسم الإدارة · البريد · الهاتف · المدينة</p>
+  <div class="foot">للاستخدام الداخلي فقط · المحكمة العمالية بالرياض · ركيزة</div>
+</div>
+</body>
+</html>

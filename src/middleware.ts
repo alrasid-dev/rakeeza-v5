@@ -2,7 +2,17 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { jwtVerify } from 'jose';
 
-const PUBLIC = ['/login', '/verify', '/api/auth/login', '/api/public', '/manifest.json', '/sw.js', '/logo.svg', '/icons'];
+const PUBLIC = [
+  '/login',
+  '/verify',
+  '/api/auth/login',
+  '/api/auth/register-request',
+  '/api/public',
+  '/manifest.json',
+  '/sw.js',
+  '/logo.svg',
+  '/icons',
+];
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
@@ -26,7 +36,13 @@ export async function middleware(req: NextRequest) {
   try {
     const secret = new TextEncoder().encode(process.env.AUTH_SECRET || 'dev-secret');
     const { payload } = await jwtVerify(token, secret);
-    if (payload.mustChangePassword && !pathname.startsWith('/change-password') && !pathname.startsWith('/api/auth/change-password') && !pathname.startsWith('/api/auth/logout') && !pathname.startsWith('/api/auth/me')) {
+    if (
+      payload.mustChangePassword &&
+      !pathname.startsWith('/change-password') &&
+      !pathname.startsWith('/api/auth/change-password') &&
+      !pathname.startsWith('/api/auth/logout') &&
+      !pathname.startsWith('/api/auth/me')
+    ) {
       if (pathname.startsWith('/api/')) {
         return NextResponse.json({ error: 'يجب تغيير كلمة المرور' }, { status: 403 });
       }

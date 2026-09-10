@@ -1,21 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { createSession, isMojEmail, verifyPassword, audit } from '@/lib/auth';
+import { isPlatformOwnerEmail } from '@/lib/roles';
+
+function isPin(v: unknown) {
+  return typeof v === 'string' && /^\d{6}$/.test(v);
+}
 
 export async function POST(req: NextRequest) {
   try {
-    const { email, password } = await req.json();
-    if (!email || !password) {
-      return NextResponse.json({ error: 'البريد وكلمة المرور مطلوبان' }, { status: 400 });
+    const body = await req.json();
+    const email = String(body.email || '').trim().toLowerCase();
+    const pin = String(body.pin || body.password || '').trim();
+    if (!email || !pin) {
+      return NextResponse.json({ error: 'البريد ورمز المرور مطلوبان' }, { status: 400 });
     }
     if (!isMojEmail(email)) {
       return NextResponse.json({ error: 'البريد يجب أن ينتهي بـ @moj.gov.sa' }, { status: 400 });
     }
-    const user = await prisma.user.findUnique({ where: { email: email.trim().toLowerCase() } });
+    if (!isPin(pin)) {
+      return NextResponse.json({ error: 'رمز المرور يجب أن يكون ٦ أرقام فقط' }, { status: 400 });
+    }
+    const user = await prisma.user.findUnique({ where: { email } });
     if (!user || !user.active) {
       return NextResponse.json({ error: 'بيانات الدخول غير صحيحة' }, { status: 401 });
     }
-    const ok = await verifyPassword(password, user.passwordHash);
+    if (!user.employeeId && !isPlatformOwnerEmail(user.email)) {
+      return NextResponse.json(
+        { error: 'الحساب غير مرتبط بسجل موظف. قدّم طلب تسجيل أو راجع الرئيس.' },
+        { status: 403 },
+      );
+    }
+    const ok = await verifyPassword(pin, user.passwordHash);
     if (!ok) {
       return NextResponse.json({ error: 'بيانات الدخول غير صحيحة' }, { status: 401 });
     }
@@ -24,12 +40,12 @@ export async function POST(req: NextRequest) {
       email: user.email,
       name: user.name,
       role: user.role,
-      mustChangePassword: user.mustChangePassword,
+      mustChangePassword: false,
     });
     await audit('login', 'User', user.id, undefined, user.id);
     return NextResponse.json({
       ok: true,
-      mustChangePassword: user.mustChangePassword,
+      mustChangePassword: false,
       user: { id: user.id, email: user.email, name: user.name, role: user.role },
     });
   } catch (e) {

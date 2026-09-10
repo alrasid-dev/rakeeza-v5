@@ -44,16 +44,17 @@ export default function AdminUsersPage() {
 
   return (
     <AppShell user={user}>
-      <PageHeader title="المستخدمون" subtitle="Admin فقط — البريد @moj.gov.sa" />
+      <PageHeader title="المستخدمون" subtitle="الرئيس فقط — البريد @moj.gov.sa · يُربط بسجل موظف تلقائياً" />
       {error && <div className="text-red-600 text-sm mb-3">{error}</div>}
       <form onSubmit={create} className="bg-white border rounded-xl p-4 grid md:grid-cols-5 gap-2 mb-4">
         <input className="input" placeholder="الاسم" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
         <input className="input" placeholder="email@moj.gov.sa" dir="ltr" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
         <select className="input" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
-          <option>Admin</option>
-          <option>CourtManager</option>
-          <option>Judge</option>
-          <option>Employee</option>
+          <option value="Admin">الرئيس (Admin)</option>
+          <option value="CourtManager">الأمين (CourtManager)</option>
+          <option value="Secretary">الأمين (Secretary)</option>
+          <option value="Judge">قاضي (Judge)</option>
+          <option value="Employee">موظف (Employee)</option>
         </select>
         <input className="input" type="password" dir="ltr" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
         <button className="btn-primary" type="submit">إضافة</button>

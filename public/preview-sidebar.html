@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>معاينة الشريط الجانبي — ركيزة</title>
+  <style>
+    :root {
+      --moj-green: #006C35;
+      --moj-light: #e6f2eb;
+      --moj-gold: #C5A059;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Traditional Arabic", "Sakkal Majalla", Tahoma, Arial, sans-serif;
+      background: var(--moj-light);
+      color: #1a1a1a;
+      direction: rtl;
+    }
+    .shell { display: flex; min-height: 100vh; }
+    aside {
+      width: 280px;
+      background: var(--moj-green);
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
+    .brand {
+      padding: 1rem;
+      border-bottom: 1px solid rgba(255,255,255,.2);
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+    }
+    .brand-mark {
+      width: 48px; height: 48px; border-radius: 12px;
+      background: linear-gradient(135deg, var(--moj-gold), #fff3);
+      display: grid; place-items: center; font-weight: bold; color: var(--moj-green);
+    }
+    .brand .gold { color: var(--moj-gold); font-size: 12px; }
+    nav { flex: 1; overflow-y: auto; padding: .5rem; font-size: 14px; }
+    .nav-btn, .nav-link {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      border: 0;
+      background: transparent;
+      color: inherit;
+      text-align: right;
+      padding: .5rem .75rem;
+      border-radius: 12px;
+      cursor: pointer;
+      font: inherit;
+      text-decoration: none;
+      transition: background .2s;
+    }
+    .nav-btn:hover, .nav-link:hover { background: rgba(255,255,255,.1); }
+    .nav-btn.active, .nav-link.active {
+      background: linear-gradient(to left, rgba(197,160,89,.3), rgba(255,255,255,.15));
+      color: var(--moj-gold);
+      font-weight: 600;
+    }
+    .chev {
+      width: 14px; height: 14px; margin-inline-start: auto;
+      transition: transform .3s;
+      opacity: .75;
+    }
+    .chev.open { transform: rotate(90deg); color: var(--moj-gold); opacity: 1; }
+    .icon { width: 16px; height: 16px; flex-shrink: 0; }
+    .icon.glow { filter: drop-shadow(0 0 6px rgba(197,160,89,.85)); color: var(--moj-gold); }
+    .sidebar-tree {
+      display: grid;
+      grid-template-rows: 0fr;
+      transition: grid-template-rows .35s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .sidebar-tree.open { grid-template-rows: 1fr; }
+    .sidebar-tree > div { overflow: hidden; min-height: 0; }
+    .tree-list {
+      list-style: none;
+      margin: .15rem 0 0;
+      padding: 0 .5rem 0 0;
+      border-right: 1px solid rgba(255,255,255,.15);
+      margin-right: 1rem;
+    }
+    .tree-list a {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      padding: .35rem .75rem;
+      border-radius: 8px;
+      color: rgba(255,255,255,.92);
+      text-decoration: none;
+      font-size: 13px;
+    }
+    .tree-list a:hover { background: rgba(255,255,255,.1); }
+    .tree-list a.active {
+      background: linear-gradient(to left, rgba(197,160,89,.3), rgba(255,255,255,.15));
+      color: var(--moj-gold);
+      font-weight: 600;
+    }
+    .dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--moj-gold);
+      animation: softPulse 2s ease-in-out infinite;
+      flex-shrink: 0;
+    }
+    @keyframes softPulse { 0%,100%{opacity:1} 50%{opacity:.85} }
+    .user {
+      padding: .75rem;
+      border-top: 1px solid rgba(255,255,255,.2);
+      font-size: 12px;
+    }
+    .user .role { color: var(--moj-gold); margin: .25rem 0 .5rem; }
+    .user button {
+      width: 100%;
+      background: rgba(255,255,255,.1);
+      border: 0; color: #fff;
+      border-radius: 12px;
+      padding: .4rem;
+      cursor: pointer;
+    }
+    main {
+      flex: 1;
+      margin: .5rem;
+      border-radius: 1.5rem 0 0 1.5rem;
+      background: rgba(255,255,255,.6);
+      border: 1px solid rgba(255,255,255,.4);
+      box-shadow: 0 1px 3px rgba(0,0,0,.06);
+      min-height: calc(100vh - 1rem);
+      padding: 1.5rem;
+    }
+    .banner {
+      display: flex; flex-wrap: wrap; gap: .5rem; align-items: center;
+      border-radius: 12px;
+      border: 1px solid rgba(197,160,89,.3);
+      background: linear-gradient(to left, rgba(197,160,89,.15), rgba(0,108,53,.05));
+      color: var(--moj-green);
+      padding: .5rem .75rem;
+      font-size: 14px;
+      margin-bottom: .75rem;
+    }
+    .banner .sep { color: var(--moj-gold); }
+    h1 { color: var(--moj-green); margin: 0 0 .25rem; font-size: 1.4rem; }
+    .sub { color: #555; font-size: 13px; margin-bottom: 1rem; }
+    .card {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 1rem;
+    }
+    .card label { display: block; font-size: 13px; color: #374151; margin: .5rem 0 .25rem; }
+    .card input, .card textarea {
+      width: 100%;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      padding: .5rem .75rem;
+      font: inherit;
+    }
+    .hint { font-size: 12px; color: #6b7280; margin-top: 1rem; }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <aside>
+      <div class="brand">
+        <div class="brand-mark">ر</div>
+        <div>
+          <div style="font-weight:700;font-size:14px">ركيزة</div>
+          <div class="gold">v5.0.0 · معاينة</div>
+        </div>
+      </div>
+      <nav id="nav">
+        <a href="#" class="nav-link" data-leaf="home" onclick="selectHome(event)">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 10.5 12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1v-10.5z" stroke-linejoin="round"/></svg>
+          الرئيسية
+        </a>
+
+        <div class="group" data-id="forms">
+          <button type="button" class="nav-btn" onclick="toggleGroup('forms')">
+            <svg class="icon" id="icon-forms" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 3h7l5 5v13a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M15 3v5h5"/></svg>
+            <span style="flex:1;font-weight:500">النماذج</span>
+            <svg class="chev" id="chev-forms" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 6l-6 6 6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="sidebar-tree" id="tree-forms"><div>
+            <ul class="tree-list" id="forms-list"></ul>
+          </div></div>
+        </div>
+
+        <div class="group" data-id="library">
+          <button type="button" class="nav-btn" onclick="toggleGroup('library')">
+            <svg class="icon" id="icon-library" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" stroke-linecap="round"/><path d="M6.5 2H20v15H6.5A2.5 2.5 0 0 0 4 19.5V4.5A2.5 2.5 0 0 1 6.5 2z"/></svg>
+            <span style="flex:1;font-weight:500">المكتبة</span>
+            <svg class="chev" id="chev-library" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 6l-6 6 6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="sidebar-tree" id="tree-library"><div>
+            <ul class="tree-list" id="library-list"></ul>
+          </div></div>
+        </div>
+
+        <div class="group" data-id="admin">
+          <button type="button" class="nav-btn" onclick="toggleGroup('admin')">
+            <svg class="icon" id="icon-admin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" stroke-linecap="round"/></svg>
+            <span style="flex:1;font-weight:500">إدارة</span>
+            <svg class="chev" id="chev-admin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 6l-6 6 6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="sidebar-tree" id="tree-admin"><div>
+            <ul class="tree-list" id="admin-list"></ul>
+          </div></div>
+        </div>
+      </nav>
+      <div class="user">
+        <div>مدير النظام</div>
+        <div class="role">الرئيس</div>
+        <button type="button">تسجيل الخروج</button>
+      </div>
+    </aside>
+
+    <main>
+      <div class="banner" id="banner">
+        <span style="font-weight:600">مساحة العمل</span>
+        <span class="sep">·</span>
+        <span id="banner-title">اختر نموذجاً من الشريط</span>
+        <span class="sep">·</span>
+        <span style="font-size:12px;color:#555">المسودة محفوظة محلياً (معاينة)</span>
+      </div>
+      <h1 id="page-title">مكاتبة جديدة</h1>
+      <p class="sub">معاينة تفاعلية للشريط الشجري — بدون Next.js</p>
+      <div class="card" id="workspace">
+        <p>انقر عنصراً من «النماذج» أو «المكتبة» أو «إدارة» لتحديث مساحة العمل.</p>
+        <div id="form-placeholder" hidden>
+          <label>الموضوع</label>
+          <input type="text" placeholder="موضوع المكاتبة..." />
+          <label>إلى / المستلمون</label>
+          <input type="text" placeholder="الجهة المستلمة..." />
+          <label>نص المكاتبة</label>
+          <textarea rows="5" placeholder="نص تجريبي..."></textarea>
+        </div>
+        <p class="hint">الألوان: أخضر وزارة العدل #006C35 · ذهبي #C5A059 · RTL</p>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const FORMS = [
+      ['khitab-sadir', 'خطاب صادر'],
+      ['muthakkira-dakhiliya', 'مذكرة داخلية'],
+      ['taameem-farigh', 'تعميم (فارغ)'],
+      ['mahdar-jalsa', 'محضر جلسة'],
+      ['taqrir-dirasa', 'تقرير دراسة'],
+      ['talab-ihala', 'طلب إحالة'],
+      ['ifada', 'إفادة'],
+      ['ishar-mawid', 'إشعار موعد'],
+      ['radd-istifsar', 'رد على استفسار'],
+      ['muthakkira-qanuniya', 'مذكرة قانونية'],
+      ['namudhaj-hifz', 'نموذج حفظ'],
+      ['namudhaj-arshafa', 'نموذج أرشفة'],
+      ['khitab-shukr', 'خطاب شكر'],
+      ['khitab-tanbih', 'خطاب تنبيه إداري'],
+      ['talab-bayanat', 'طلب بيانات'],
+      ['namudhaj-mutabaa', 'نموذج متابعة'],
+      ['namudhaj-ihata', 'نموذج إحاطة'],
+      ['namudhaj-aam', 'نموذج عام'],
+      ['freeform-khitab', 'تصميم حر — خطاب'],
+      ['freeform-taqrir', 'تصميم حر — تقرير'],
+      ['freeform-mahdar', 'تصميم حر — محضر'],
+      ['freeform-taameem', 'تصميم حر — تعميم'],
+      ['study-complaint', 'نموذج تحليل حكم (شكوى)'],
+      ['email-signature', 'التوقيع الرقمي للبريد الإلكتروني'],
+      ['report-cover', 'غلاف تقرير / عرض تقديمي'],
+    ];
+    const LIBRARY = [
+      ['templates', 'القوالب'],
+      ['archive', 'أرشيفي'],
+      ['directory', 'دليلي'],
+      ['import', 'الاستيراد الذكي'],
+      ['assistant', 'المساعد الذكي'],
+    ];
+    const ADMIN = [
+      ['registrations', 'طلبات التسجيل'],
+      ['users', 'المستخدمون'],
+      ['org', 'الوحدات التنظيمية'],
+      ['titles', 'المناصب والألقاب'],
+      ['numbering', 'الترقيم'],
+      ['letterhead', 'الترويسة'],
+      ['legal', 'المراجع النظامية'],
+      ['employees', 'الموظفون'],
+      ['reports', 'التقارير'],
+      ['audit', 'سجل التدقيق'],
+      ['documents', 'المكاتبات'],
+      ['password', 'تغيير الرمز'],
+    ];
+
+    const openMap = { forms: true, library: false, admin: false };
+
+    function fillList(elId, items, kind) {
+      const ul = document.getElementById(elId);
+      ul.innerHTML = items.map(([id, label]) =>
+        `<li><a href="#" data-kind="${kind}" data-id="${id}" data-label="${label}" onclick="selectLeaf(event)">${label}</a></li>`
+      ).join('');
+    }
+    fillList('forms-list', FORMS, 'form');
+    fillList('library-list', LIBRARY, 'library');
+    fillList('admin-list', ADMIN, 'admin');
+
+    function applyOpenState() {
+      ['forms', 'library', 'admin'].forEach((id) => {
+        const open = !!openMap[id];
+        document.getElementById('tree-' + id).classList.toggle('open', open);
+        document.getElementById('chev-' + id).classList.toggle('open', open);
+        document.getElementById('icon-' + id).classList.toggle('glow', open);
+        document.querySelector(`.group[data-id="${id}"] .nav-btn`).classList.toggle('active', open);
+      });
+    }
+
+    function toggleGroup(id) {
+      openMap[id] = !openMap[id];
+      applyOpenState();
+    }
+
+    function clearLeafActive() {
+      document.querySelectorAll('.tree-list a, .nav-link').forEach((a) => {
+        a.classList.remove('active');
+        const dot = a.querySelector('.dot');
+        if (dot) dot.remove();
+      });
+    }
+
+    function selectLeaf(e) {
+      e.preventDefault();
+      const a = e.currentTarget;
+      clearLeafActive();
+      a.classList.add('active');
+      a.insertAdjacentHTML('afterbegin', '<span class="dot"></span>');
+      const label = a.dataset.label;
+      const kind = a.dataset.kind;
+      document.getElementById('page-title').textContent = label;
+      document.getElementById('banner-title').textContent = label;
+      const ph = document.getElementById('form-placeholder');
+      ph.hidden = kind !== 'form';
+      if (kind === 'form') {
+        document.querySelector('#workspace > p').textContent = 'نموذج تجريبي — ' + label;
+      } else {
+        document.querySelector('#workspace > p').textContent = 'صفحة: ' + label;
+      }
+    }
+
+    function selectHome(e) {
+      e.preventDefault();
+      clearLeafActive();
+      e.currentTarget.classList.add('active');
+      document.getElementById('page-title').textContent = 'الرئيسية';
+      document.getElementById('banner-title').textContent = 'لوحة التحكم';
+      document.getElementById('form-placeholder').hidden = true;
+      document.querySelector('#workspace > p').textContent = 'مرحباً بك في معاينة الشريط الجانبي الشجري.';
+    }
+
+    applyOpenState();
+  </script>
+</body>
+</html>

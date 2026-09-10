@@ -1,3 +1,7 @@
+## تحديث الدخول
+- دخول برمز 6 أرقام + بصمة الجهاز (WebAuthn محلي عبر credentialId).
+- ملف الرموز: `data/pins-moj.csv` (سري — للرئيس فقط).
+
 # Rakeeza v5.0.0 — STATUS
 
 **Path:** `/workspace/rakeeza-v5`  
@@ -33,6 +37,14 @@ npm run build && npm start
 - 18 empty document templates + 4 freeform designs
 - Admin user only (no real case party names)
 
+## UX / roles (updated)
+- Employee home: light cards only (مستند جديد / أرشيفي / دليلي)
+- الرئيس (Admin) + الأمين (CourtManager/Secretary): live KPIs + charts
+- RegistrationRequest flow + `/admin/registrations` inbox for الرئيس
+- Login requires Employee link except seed owner
+- Empty branded templates: study, email signature, report cover
+- Luxury DOCX export (MOJ green/gold, بسم الله, parties table, banners)
+
 ## LIVE features
 
 | Area | Status |
@@ -66,7 +78,7 @@ npm run build && npm start
 | Official circular body | Intentionally empty |
 | Fingerprint auth | UI only — «قريباً» |
 | Entra/Azure | Not implemented (by design) |
-| Recharts data | Placeholder sample series until real aggregates grow |
+| Recharts data | Live counts from DB for Admin/أمين dashboard |
 | PWA icons PNG | Minimal placeholder PNGs; SVG logo is primary |
 | next-pwa package | Manual manifest+SW instead (no paid deps) |
 

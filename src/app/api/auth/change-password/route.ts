@@ -5,11 +5,12 @@ import { createSession, destroySession, getSession, hashPassword, audit } from '
 export async function POST(req: NextRequest) {
   const s = await getSession();
   if (!s) return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
-  const { password } = await req.json();
-  if (!password || String(password).length < 8) {
-    return NextResponse.json({ error: 'كلمة المرور قصيرة' }, { status: 400 });
+  const { password, pin } = await req.json();
+  const value = String(pin || password || '').trim();
+  if (!/^\d{6}$/.test(value)) {
+    return NextResponse.json({ error: 'رمز المرور يجب أن يكون ٦ أرقام' }, { status: 400 });
   }
-  const passwordHash = await hashPassword(String(password));
+  const passwordHash = await hashPassword(value);
   const user = await prisma.user.update({
     where: { id: s.id },
     data: { passwordHash, mustChangePassword: false },
@@ -22,6 +23,6 @@ export async function POST(req: NextRequest) {
     role: user.role,
     mustChangePassword: false,
   });
-  await audit('change_password', 'User', user.id, undefined, user.id);
+  await audit('change_pin', 'User', user.id, undefined, user.id);
   return NextResponse.json({ ok: true });
 }

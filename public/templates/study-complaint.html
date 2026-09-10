@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>نموذج تحليل حكم (شكوى) — ركيزة</title>
+<style>
+  @page { size: A4; margin: 12mm; }
+  :root { --g:#006C35; --gl:#e6f2eb; --gold:#C5A059; }
+  body { margin:0; font-family:"Traditional Arabic","Sakkal Majalla","Noto Naskh Arabic",Tahoma,sans-serif; color:#111; background:#e6f2eb; }
+  .sheet { width:210mm; min-height:297mm; margin:12px auto; background:#fff; padding:10mm 12mm; box-shadow:0 2px 12px rgba(0,0,0,.08); position:relative; }
+  .strip { background:var(--g); color:#fff; text-align:center; padding:6px; font-weight:700; border-bottom:3px solid var(--gold); }
+  .head { display:grid; grid-template-columns:1.2fr 1fr; gap:8px; margin-top:8px; align-items:start; }
+  .brand { color:var(--g); font-weight:700; }
+  .meta { border:1px solid var(--g); }
+  .meta div { display:grid; grid-template-columns:90px 1fr; border-bottom:1px solid #cfe3d6; }
+  .meta div:last-child { border:0; }
+  .meta b { background:var(--gl); padding:4px 6px; }
+  .meta span { padding:4px 6px; min-height:1.4em; }
+  h1 { text-align:center; color:var(--g); font-size:22px; margin:14px 0 8px; border-bottom:2px solid var(--gold); padding-bottom:4px; }
+  table { width:100%; border-collapse:collapse; margin:8px 0; font-size:15px; }
+  th, td { border:1px solid var(--g); padding:5px 6px; text-align:right; vertical-align:top; }
+  th { background:var(--gl); width:32%; }
+  td { min-height:28px; }
+  .banner { background:var(--g); color:#fff; text-align:center; font-weight:700; padding:5px; margin:12px 0 6px; border-bottom:3px solid var(--gold); }
+  .foot { margin-top:18px; text-align:center; color:#555; font-size:13px; border-top:2px solid var(--gold); padding-top:8px; }
+  .note { font-size:12px; color:#666; text-align:center; margin-top:4px; }
+</style>
+</head>
+<body>
+<article class="sheet">
+  <div class="strip">بسم الله الرحمن الرحيم</div>
+  <div class="head">
+    <div class="brand">المملكة العربية السعودية<br>وزارة العدل<br>المحكمة العمالية بالرياض<br><span style="color:var(--gold)">منصة ركيزة الذكية</span></div>
+    <div class="meta">
+      <div><b>الرقم</b><span contenteditable="true"></span></div>
+      <div><b>التاريخ</b><span contenteditable="true"></span></div>
+      <div><b>الموضوع</b><span contenteditable="true">تحليل حكم (شكوى)</span></div>
+    </div>
+  </div>
+  <h1>نموذج تحليل حكم (شكوى)</h1>
+  <table>
+    <tr><th>رقم القضية</th><td contenteditable="true"></td></tr>
+    <tr><th>رقم الصك</th><td contenteditable="true"></td></tr>
+    <tr><th>رقم الدائرة</th><td contenteditable="true"></td></tr>
+    <tr><th>المدعي / ة</th><td contenteditable="true"></td></tr>
+    <tr><th>المدعى عليه / ا</th><td contenteditable="true"></td></tr>
+    <tr><th>الاختصاص النوعي</th><td contenteditable="true"></td></tr>
+    <tr><th>القبول</th><td contenteditable="true"></td></tr>
+    <tr><th>سبب عدم القبول</th><td contenteditable="true"></td></tr>
+    <tr><th>المطالبة</th><td contenteditable="true"></td></tr>
+    <tr><th>مقدارها</th><td contenteditable="true"></td></tr>
+    <tr><th>التحقق من التمثيل</th><td contenteditable="true"></td></tr>
+    <tr><th>نوع التمثيل</th><td contenteditable="true"></td></tr>
+    <tr><th>حالة التمثيل</th><td contenteditable="true"></td></tr>
+    <tr><th>إجراءات سابقة للدعوى</th><td contenteditable="true"></td></tr>
+  </table>
+  <div class="banner">ملخص الدعوى</div>
+  <table>
+    <tr><th>دعوى المدعي</th><td contenteditable="true" style="min-height:48px"></td></tr>
+    <tr><th>إجابة المدعى عليه</th><td contenteditable="true" style="min-height:48px"></td></tr>
+    <tr><th>تحليل الشكوى</th><td contenteditable="true" style="min-height:48px"></td></tr>
+    <tr><th>طلبات المدعي</th><td contenteditable="true"></td></tr>
+    <tr><th>طلبات المدعى عليه</th><td contenteditable="true"></td></tr>
+  </table>
+  <div class="banner">الرأي والتوصية</div>
+  <table>
+    <tr><th>الرأي القانوني</th><td contenteditable="true" style="min-height:64px"></td></tr>
+    <tr><th>التوصية</th><td contenteditable="true" style="min-height:48px"></td></tr>
+    <tr><th>دارس القضية</th><td contenteditable="true"></td></tr>
+    <tr><th>تاريخ إعداد الدراسة</th><td contenteditable="true"></td></tr>
+    <tr><th>تاريخ التصديق</th><td contenteditable="true"></td></tr>
+  </table>
+  <div class="foot">للاستخدام الداخلي فقط · المحكمة العمالية بالرياض</div>
+  <p class="note">قالب فارغ بهوية الوزارة — يعبّئه الموظف دون بيانات جاهزة.</p>
+</article>
+</body>
+</html>

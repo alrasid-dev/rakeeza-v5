@@ -1,19 +1,15 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
-  <circle cx="100" cy="100" r="95" fill="#006C35"/>
-  <circle cx="100" cy="100" r="88" fill="none" stroke="#C5A059" stroke-width="3"/>
-  <!-- scales -->
-  <g stroke="#C5A059" stroke-width="2.5" fill="none">
-    <line x1="100" y1="45" x2="100" y2="110"/>
-    <line x1="70" y1="60" x2="130" y2="60"/>
-    <path d="M70 60 L55 85 Q70 95 85 85 Z" fill="#C5A059" opacity="0.85"/>
-    <path d="M130 60 L115 85 Q130 95 145 85 Z" fill="#C5A059" opacity="0.85"/>
-  </g>
-  <!-- crossed swords -->
-  <g stroke="#C5A059" stroke-width="3" fill="none" stroke-linecap="round">
-    <line x1="55" y1="130" x2="145" y2="160"/>
-    <line x1="145" y1="130" x2="55" y2="160"/>
-    <circle cx="55" cy="130" r="4" fill="#C5A059"/>
-    <circle cx="145" cy="130" r="4" fill="#C5A059"/>
-  </g>
-  <text x="100" y="185" text-anchor="middle" fill="#C5A059" font-size="11" font-family="Tahoma, Arial, sans-serif">المحكمة العمالية بالرياض</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" fill="none">
+  <rect x="2" y="2" width="76" height="76" rx="18" fill="#14352a"/>
+  <rect x="2" y="2" width="76" height="76" rx="18" stroke="#3d8f6a" stroke-width="2" opacity="0.9"/>
+  <!-- pillar: capital -->
+  <rect x="24" y="18" width="32" height="5" rx="1.5" fill="#ffffff"/>
+  <rect x="27" y="24" width="26" height="3.5" rx="1" fill="#ffffff"/>
+  <!-- shafts -->
+  <rect x="28" y="29" width="5" height="28" rx="1" fill="#ffffff"/>
+  <rect x="35.5" y="29" width="5" height="28" rx="1" fill="#ffffff"/>
+  <rect x="43" y="29" width="5" height="28" rx="1" fill="#ffffff"/>
+  <rect x="50.5" y="29" width="5" height="28" rx="1" fill="#ffffff"/>
+  <!-- base -->
+  <rect x="27" y="58" width="26" height="3.5" rx="1" fill="#ffffff"/>
+  <rect x="24" y="63" width="32" height="5" rx="1.5" fill="#ffffff"/>
 </svg>

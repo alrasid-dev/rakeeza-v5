@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function ReportsPage() {
   const user = await currentUser();
-  if (user.role !== 'Admin' && user.role !== 'CourtManager') redirect('/');
+  if (user.role !== 'Admin') redirect('/');
   const [docs, issued, drafts, archived, employees, users] = await Promise.all([
     prisma.document.count(),
     prisma.document.count({ where: { status: 'issued' } }),

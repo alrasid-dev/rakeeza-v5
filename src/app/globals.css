@@ -6,6 +6,22 @@
   --moj-green: #006C35;
   --moj-light: #e6f2eb;
   --moj-gold: #C5A059;
+  --surface: #ffffff;
+  --surface-2: #f3f7f4;
+  --ink: #1a1a1a;
+  --muted: #6b7280;
+  --border: rgba(0, 108, 53, 0.12);
+}
+
+html.dark {
+  --moj-light: #0a1a14;
+  --surface: #1a2b25;
+  --surface-2: #12201b;
+  --ink: #f3f6f4;
+  
+  --muted: #a8b5af;
+  --border: rgba(61, 143, 106, 0.35);
+  color-scheme: dark;
 }
 
 html {
@@ -13,16 +29,26 @@ html {
 }
 
 body {
-  color: #1a1a1a;
+  color: var(--ink);
   background: var(--moj-light);
+}
+
+html.dark body {
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 10%, rgba(20, 70, 50, 0.55), transparent 55%),
+    radial-gradient(ellipse 70% 50% at 90% 80%, rgba(15, 50, 35, 0.5), transparent 50%),
+    #0a1a14;
 }
 
 @layer components {
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium transition;
   }
   .btn-primary {
     @apply btn bg-moj-green text-white hover:bg-moj-green/90;
+  }
+  html.dark .btn-primary {
+    @apply bg-[#2d4a3e] hover:bg-[#355647];
   }
   .btn-gold {
     @apply btn bg-moj-gold text-white hover:bg-moj-gold/90;
@@ -30,14 +56,26 @@ body {
   .btn-outline {
     @apply btn border border-moj-green text-moj-green hover:bg-moj-light;
   }
+  html.dark .btn-outline {
+    @apply border-white/25 text-white hover:bg-white/10;
+  }
   .input {
-    @apply w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-moj-green/40;
+    @apply w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-moj-green/40;
+  }
+  html.dark .input {
+    @apply border-white/10 bg-[#121c18] text-white placeholder:text-white/35 focus:ring-[#3d8f6a]/40;
   }
   .label {
     @apply block text-sm font-medium text-gray-700 mb-1;
   }
+  html.dark .label {
+    @apply text-white/70;
+  }
   .table-wrap {
     @apply overflow-x-auto bg-white rounded-xl border shadow-sm;
+  }
+  html.dark .table-wrap {
+    @apply bg-[var(--surface)] border-white/10;
   }
   table.data {
     @apply w-full text-sm;
@@ -45,7 +83,36 @@ body {
   table.data th {
     @apply bg-moj-light text-moj-green text-right px-3 py-2 font-semibold;
   }
+  html.dark table.data th {
+    @apply bg-[#12201b] text-moj-gold;
+  }
   table.data td {
     @apply border-t px-3 py-2;
   }
+  html.dark table.data td {
+    @apply border-white/10;
+  }
+  .card-surface {
+    background: var(--surface);
+    border: 1px solid var(--border);
+  }
+}
+
+.sidebar-tree {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.sidebar-tree.open { grid-template-rows: 1fr; }
+.sidebar-tree > div { overflow: hidden; min-height: 0; }
+.sidebar-icon-glow { filter: drop-shadow(0 0 6px rgba(197,160,89,0.85)); }
+@keyframes softPulse { 0%,100%{opacity:1} 50%{opacity:.85} }
+.sidebar-active-dot { animation: softPulse 2s ease-in-out infinite; }
+
+html.dark aside.bg-moj-green {
+  background: linear-gradient(180deg, #0f241c 0%, #0a1a14 100%);
+}
+html.dark main {
+  background: rgba(26, 43, 37, 0.72) !important;
+  border-color: rgba(255,255,255,0.08) !important;
 }

@@ -1,32 +1,82 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import fs from 'fs';
+import path from 'path';
 
 const prisma = new PrismaClient();
 
-const ORG_UNITS = [
-  'رئاسة المحكمة',
-  'الدائرة العمالية الأولى',
-  'الدائرة العمالية الثانية',
-  'الدائرة العمالية الثالثة',
-  'إدارة القضايا',
-  'إدارة الجلسات',
-  'إدارة التنفيذ',
-  'الشؤون الإدارية',
-  'الموارد البشرية',
-  'تقنية المعلومات',
-  'الأرشيف',
-  'الاستقبال',
+/** الهيكل التنظيمي والتشغيلي: المحاكم العمالية (من مخطط المستخدم) */
+type OrgNode = { name: string; children?: OrgNode[] };
+const ORG_TREE: OrgNode[] = [
+  {
+    name: 'رئيس المحكمة',
+    children: [
+      { name: 'مكتب رئيس المحكمة' },
+      {
+        name: 'مساعد رئيس المحكمة',
+        children: [
+          { name: 'مكتب مساعد رئيس المحكمة' },
+          { name: 'الدوائر القضائية' },
+        ],
+      },
+      { name: 'مكتب المصالحة' },
+      {
+        name: 'القسم النسائي',
+        children: [
+          { name: 'وحدة الأمن والسلامة' },
+          { name: 'وحدة خدمات المستفيدين' },
+        ],
+      },
+      { name: 'قسم مراقبة الأداء والعمليات' },
+      { name: 'قسم شؤون القضاة' },
+      { name: 'المكتب الفني' },
+      {
+        name: 'أمانة المحكمة',
+        children: [
+          { name: 'المكتب التنسيقي' },
+          {
+            name: 'إدارة الخدمات المشتركة',
+            children: [
+              { name: 'قسم الموارد البشرية' },
+              { name: 'قسم الخدمات والصيانة' },
+              { name: 'قسم الاتصالات الإدارية' },
+            ],
+          },
+          {
+            name: 'إدارة الإسناد القضائي',
+            children: [
+              { name: 'قسم محضري الخصوم' },
+              { name: 'قسم أمانة السر' },
+              { name: 'قسم الباحثين' },
+              { name: 'قسم الخبراء' },
+              { name: 'قسم الجلسات' },
+            ],
+          },
+          {
+            name: 'إدارة الدعاوى والأحكام',
+            children: [
+              { name: 'قسم الوثائق والمحفوظات' },
+              { name: 'قسم الدعاوى' },
+              { name: 'قسم خدمات المستفيدين' },
+              { name: 'قسم تسليم الأحكام' },
+            ],
+          },
+        ],
+      },
+    ],
+  },
 ];
 
 const POSITIONS: { title: string; honorific: string; rank: number }[] = [
   { title: 'رئيس محكمة', honorific: 'فضيلة رئيس المحكمة', rank: 100 },
-  { title: 'قاضي', honorific: 'فضيلة الشيخ', rank: 90 },
-  { title: 'رئيس دائرة', honorific: 'فضيلة رئيس الدائرة', rank: 85 },
-  { title: 'كاتب ضبط', honorific: 'الأستاذ', rank: 50 },
-  { title: 'محضر', honorific: 'الأستاذ', rank: 45 },
-  { title: 'مدير إدارة', honorific: 'سعادة المدير', rank: 70 },
-  { title: 'موظف إداري', honorific: 'الأستاذ', rank: 40 },
-  { title: 'سكرتير', honorific: 'الأستاذ', rank: 35 },
+  { title: 'رئيس محكمة مكلف', honorific: 'فضيلة رئيس المحكمة المكلف', rank: 98 },
+  { title: 'رئيس تشكيل', honorific: 'فضيلة رئيس التشكيل', rank: 96 },
+  { title: 'الرئيس المساعد', honorific: 'فضيلة الرئيس المساعد', rank: 94 },
+  { title: 'أمين المحكمة', honorific: 'سعادة', rank: 92 },
+  { title: 'قاضي', honorific: 'فضيلة القاضي', rank: 90 },
+  { title: 'باحث شرعي', honorific: 'سعادة', rank: 70 },
+  { title: 'باحث قانوني', honorific: 'سعادة', rank: 70 },
+  { title: 'موظف إداري', honorific: 'سعادة', rank: 40 },
 ];
 
 const DOC_TEMPLATES = [
@@ -57,26 +107,55 @@ const FREEFORM = [
   'تصميم حر — تعميم',
 ];
 
+const STUDY_FIELDS = [
+  'caseNumber',
+  'deedNumber',
+  'circuitNumber',
+  'plaintiff',
+  'defendant',
+  'subjectMatterJurisdiction',
+  'acceptance',
+  'claim',
+  'representationCheck',
+  'priorProcedures',
+  'caseSummary',
+  'plaintiffClaim',
+  'defendantAnswer',
+  'complaintAnalysis',
+  'requests',
+  'legalOpinion',
+  'recommendation',
+  'preparedAt',
+  'approvedAt',
+];
+
 async function main() {
   await prisma.auditLog.deleteMany();
   await prisma.document.deleteMany();
+  await prisma.registrationRequest.deleteMany();
   await prisma.template.deleteMany();
+  await prisma.user.deleteMany();
   await prisma.employee.deleteMany();
   await prisma.position.deleteMany();
   await prisma.orgUnit.deleteMany();
   await prisma.court.deleteMany();
   await prisma.numberingRule.deleteMany();
   await prisma.letterhead.deleteMany();
-  await prisma.user.deleteMany();
   await prisma.setting.deleteMany();
 
   const court = await prisma.court.create({
     data: { name: 'المحكمة العمالية بالرياض', city: 'الرياض' },
   });
 
-  for (const name of ORG_UNITS) {
-    await prisma.orgUnit.create({ data: { name, courtId: court.id } });
+  async function seedOrg(nodes: OrgNode[], parentId: string | null = null) {
+    for (const node of nodes) {
+      const unit = await prisma.orgUnit.create({
+        data: { name: node.name, courtId: court.id, parentId: parentId ?? undefined },
+      });
+      if (node.children?.length) await seedOrg(node.children, unit.id);
+    }
   }
+  await seedOrg(ORG_TREE);
 
   for (const p of POSITIONS) {
     await prisma.position.create({ data: p });
@@ -140,6 +219,60 @@ async function main() {
     });
   }
 
+  // Empty branded study template — field labels only, no party names
+  let studyHtml = '';
+  try {
+    studyHtml = fs.readFileSync(
+      path.join(process.cwd(), 'reference-models', 'study-complaint-empty.html'),
+      'utf8',
+    );
+  } catch {
+    studyHtml = '';
+  }
+  await prisma.template.create({
+    data: {
+      name: 'نموذج تحليل حكم (شكوى)',
+      category: 'study',
+      description: 'نموذج فارغ بهوية الوزارة — حقول الدراسة فقط دون بيانات جاهزة',
+      fieldsJson: JSON.stringify(STUDY_FIELDS),
+      bodyHtml: studyHtml,
+      isEmpty: true,
+      sortOrder: order++,
+    },
+  });
+
+  function readRef(name: string) {
+    try {
+      return fs.readFileSync(path.join(process.cwd(), 'reference-models', name), 'utf8');
+    } catch {
+      return '';
+    }
+  }
+
+  await prisma.template.create({
+    data: {
+      name: 'التوقيع الرقمي للبريد الإلكتروني',
+      category: 'signature',
+      description: 'قالب فارغ: الاسم · المسمى · الإدارة · البريد · الهاتف · المدينة',
+      fieldsJson: JSON.stringify(['fullName', 'jobTitle', 'department', 'email', 'phone', 'city']),
+      bodyHtml: readRef('email-signature-empty.html'),
+      isEmpty: true,
+      sortOrder: order++,
+    },
+  });
+
+  await prisma.template.create({
+    data: {
+      name: 'غلاف تقرير / عرض تقديمي',
+      category: 'cover',
+      description: 'غلاف فارغ: عنوان التقرير · وزارة العدل · عنوان الفصل · شكراً لكم',
+      fieldsJson: JSON.stringify(['reportTitle', 'subtitle', 'chapterTitle', 'thanks']),
+      bodyHtml: readRef('report-cover-empty.html'),
+      isEmpty: true,
+      sortOrder: order++,
+    },
+  });
+
   const hash = await bcrypt.hash('ChangeMe123!', 10);
   await prisma.user.create({
     data: {
@@ -149,6 +282,7 @@ async function main() {
       role: 'Admin',
       mustChangePassword: true,
       active: true,
+      // Seed owner: no employeeId required
     },
   });
 
@@ -159,7 +293,7 @@ async function main() {
     data: { key: 'court_name', value: 'المحكمة العمالية بالرياض' },
   });
 
-  console.log('Seed complete: court, org units, positions, 22 templates, admin@moj.gov.sa');
+  console.log('Seed complete: templates (docs/freeform/study/signature/cover), admin@moj.gov.sa');
 }
 
 main()

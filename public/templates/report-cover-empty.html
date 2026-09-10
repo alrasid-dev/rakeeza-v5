@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>غلاف تقرير / عرض — ركيزة</title>
+<style>
+  @page { size: A4; margin: 0; }
+  :root { --g:#006C35; --g2:#187860; --gold:#C5A059; --gold2:#fdbd10; --cream:#f7f4ea; }
+  body { margin:0; font-family:"Traditional Arabic","Sakkal Majalla","Noto Naskh Arabic",Tahoma,sans-serif; background:#cfe3d6; }
+  .page {
+    width:210mm; min-height:297mm; margin:12px auto; background:var(--cream); position:relative; overflow:hidden;
+    box-shadow:0 4px 18px rgba(0,0,0,.12);
+  }
+  .page::before {
+    content:""; position:absolute; left:0; bottom:0; width:42%; height:38%;
+    background: radial-gradient(circle at 20% 80%, rgba(197,160,89,.35), transparent 55%),
+                linear-gradient(135deg, transparent 40%, rgba(0,108,53,.12) 41%, transparent 70%);
+    pointer-events:none;
+  }
+  .footer-band {
+    position:absolute; left:0; right:0; bottom:0; height:28mm; background:var(--g);
+    border-top:4px solid var(--gold);
+  }
+  .footer-band .mark {
+    position:absolute; right:18mm; bottom:10mm; color:#fff; font-size:14px; opacity:.9;
+  }
+  .side {
+    position:absolute; top:0; bottom:28mm; width:14mm; background:linear-gradient(180deg, var(--g), var(--g2));
+  }
+  .side.left { left:0; }
+  .side.right { right:0; width:4mm; background:var(--gold); }
+  .inner { padding:28mm 28mm 40mm 24mm; position:relative; z-index:1; }
+  .brand { color:var(--g); font-weight:700; font-size:18px; line-height:1.6; }
+  .brand .gold { color:var(--gold); font-size:14px; font-weight:600; }
+  .logo { width:88px; height:88px; margin-bottom:12px; }
+  .title {
+    margin-top:48mm; text-align:center; color:var(--g); font-size:36px; font-weight:700;
+    border-bottom:3px solid var(--gold); padding-bottom:10px; min-height:1.4em;
+  }
+  .subtitle {
+    text-align:center; color:#424041; font-size:22px; margin-top:18px; min-height:1.3em;
+    border-bottom:1px dotted #bbb;
+  }
+  .chapter {
+    margin-top:36mm; text-align:center; color:var(--g2); font-size:26px; font-weight:700;
+    min-height:1.3em; border-bottom:1px dotted #bbb;
+  }
+  .thanks {
+    margin-top:40mm; text-align:center; color:var(--g); font-size:28px; font-weight:700;
+  }
+  .meta { margin-top:20px; text-align:center; font-size:13px; color:#666; }
+  .label { display:block; font-size:11px; color:#999; margin-bottom:4px; }
+  .note { text-align:center; font-size:12px; color:#777; margin-top:8px; }
+</style>
+</head>
+<body>
+<article class="page">
+  <div class="side left"></div>
+  <div class="side right"></div>
+  <div class="inner">
+    <img class="logo" src="/logo.svg" alt="شعار">
+    <div class="brand">
+      المملكة العربية السعودية<br>
+      وزارة العدل<br>
+      <span class="gold">المحكمة العمالية بالرياض · ركيزة</span>
+    </div>
+    <div class="title" contenteditable="true">
+      <span class="label">عنوان التقرير</span>
+      &nbsp;
+    </div>
+    <div class="subtitle" contenteditable="true">
+      <span class="label">عنوان فرعي (اختياري)</span>
+      &nbsp;
+    </div>
+    <div class="chapter" contenteditable="true">
+      <span class="label">عنوان الفصل</span>
+      &nbsp;
+    </div>
+    <div class="thanks" contenteditable="true">شكراً لكم</div>
+    <div class="meta">للاستخدام الداخلي فقط</div>
+    <p class="note">غلاف فارغ بهوية الوزارة — لا تُدرج أسماء أو بيانات قضايا.</p>
+  </div>
+  <div class="footer-band"><span class="mark">وزارة العدل</span></div>
+</article>
+</body>
+</html>

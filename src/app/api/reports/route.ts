@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getSession } from '@/lib/auth';
+import { isAdmin } from '@/lib/roles';
 
 export async function GET() {
   const s = await getSession();
-  if (!s || (s.role !== 'Admin' && s.role !== 'CourtManager')) {
+  if (!s || !isAdmin(s.role)) {
     return NextResponse.json({ error: 'ممنوع' }, { status: 403 });
   }
   const [docs, issued, drafts, archived, employees, users] = await Promise.all([

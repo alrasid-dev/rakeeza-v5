@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { Noto_Naskh_Arabic } from 'next/font/google';
 import './globals.css';
 import PwaRegister from '@/components/PwaRegister';
+import ThemeProvider from '@/components/ThemeProvider';
 
 const notoNaskh = Noto_Naskh_Arabic({
   subsets: ['arabic'],
@@ -21,12 +22,19 @@ export const viewport: Viewport = {
   themeColor: '#006C35',
 };
 
+const themeBoot = `(function(){try{var t=localStorage.getItem('rakeeza-theme');if(t==='dark'||(!t&&window.matchMedia('(prefers-color-scheme: dark)').matches)){document.documentElement.classList.add('dark');}}catch(e){}})();`;
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ar" dir="rtl" className={notoNaskh.variable}>
+    <html lang="ar" dir="rtl" className={notoNaskh.variable} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeBoot }} />
+      </head>
       <body className="font-arabic antialiased">
-        <PwaRegister />
-        {children}
+        <ThemeProvider>
+          <PwaRegister />
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );
