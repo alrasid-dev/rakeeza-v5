@@ -1,54 +1,35 @@
 # ركيزة للمكاتبات والنماذج القضائية — Rakeeza v5.0.0
 
-منصة ويب مجانية بالكامل (بدون خدمات مدفوعة إلزامية) للمكاتبات والنماذج القضائية — المحكمة العمالية بالرياض.
+منصة ويب للمكاتبات والنماذج القضائية — المحكمة العمالية بالرياض.
 
-## Stack / التقنية
-
-- Next.js 14 (App Router) + TypeScript + Tailwind CSS
-- SQLite عبر Prisma
-- مصادقة JWT بـ `jose` (بريد `@moj.gov.sa` فقط)
-- PWA يدوي (`manifest.json` + `sw.js`)
-- خطوط: Noto Naskh Arabic + Traditional Arabic / Sakkal Majalla
-
-## Quick start / التشغيل السريع
+## التشغيل السريع
 
 ```bash
-cd /workspace/rakeeza-v5
-cp .env.example .env   # إن لم يكن موجوداً
+git clone https://github.com/alrasid-dev/rakeeza-v5.git
+cd rakeeza-v5
+cp .env.example .env
 npm install
-npm run db:setup       # generate + push + seed
-npm run dev            # http://localhost:3000
+npm run db:setup
+npm run dev
 ```
 
-Production:
+افتح: http://localhost:3000/login
 
-```bash
-npm run build
-npm start
-```
+## الدخول
 
-## Admin credentials / بيانات المدير
+- **مالك المنصة / رئيس المحكمة:** `snaswig@moj.gov.sa` — رمز ٦ أرقام يُدار من `/admin/pins`
+- بعد أول إعداد محلي شغّل `npx tsx scripts/provision-pins.ts` مرة واحدة (إن لزم) أو عيّن الرموز من لوحة **رموز الدخول**
+- حساب تقني احتياطي للبذرة: `admin@moj.gov.sa` (ليس بديلاً عن المالك)
 
-- Email: `admin@moj.gov.sa`
-- Password: `ChangeMe123!`
-- عند أول دخول يُطلب تغيير كلمة المرور.
+## الصلاحيات
 
-## Scripts
+| الدور | التسمية | المؤشرات |
+|------|---------|----------|
+| Admin | رئيس المحكمة / مالك المنصة | نعم |
+| CourtManager / Secretary | الأمين | لا |
+| Judge / Employee | قاضي / موظف | لا — شاشة خفيفة |
 
-| Script | Description |
-|--------|-------------|
-| `npm run dev` | تطوير |
-| `npm run build` | بناء |
-| `npm start` | تشغيل الإنتاج |
-| `npm run db:seed` | بذر قاعدة البيانات |
-| `npm run db:setup` | generate + push + seed |
-| `npm run import:employees -- file.xlsx` | استيراد موظفين |
+## ملاحظات أمنية
 
-## Optional
-
-- `OPENAI_API_KEY` في `.env` لتفعيل المساعد السحابي؛ بدونها يعمل مساعد محلي.
-- `PUBLIC_API_KEY` لمسار `/api/public/documents` (رأس `x-api-key`).
-
-## License
-
-للاستخدام الداخلي للمحكمة — «للاستخدام الداخلي فقط».
+- لا ترفع `data/pins-moj.csv` أو ملفات `.db`
+- الرموز تُدار من داخل المنصة بواسطة المالك
