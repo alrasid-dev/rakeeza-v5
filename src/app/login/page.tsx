@@ -120,7 +120,16 @@ export default function LoginPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || 'فشل تسجيل الدخول');
+        const msg = data.error || 'فشل تسجيل الدخول';
+        if (String(msg).includes('أول دخول') || String(msg).includes('لم يُبرمج')) {
+          switchMode('setup');
+          setEmail(email);
+          setInfo('لم يُبرمج الرمز بعد — أكمل برمجة الرمز أدناه.');
+          await checkPinStatus(email);
+          setError('');
+          return;
+        }
+        setError(msg);
         return;
       }
       router.push('/');
@@ -305,9 +314,40 @@ export default function LoginPage() {
           <button
             type="button"
             className="px-3 py-1.5 rounded-full border border-gray-200 dark:border-white/15 text-gray-500 dark:text-white/45 hover:text-moj-gold"
-            onClick={() => {
-              setShowReg(true);
+            onClick={async () => {
               setRegMsg('');
+              const e = (email || reg.email).trim().toLowerCase();
+              if (e.endsWith('@moj.gov.sa')) {
+                try {
+                  const res = await fetch('/api/auth/pin-status', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: e }),
+                  });
+                  const data = await res.json();
+                  if (res.ok && data.exists) {
+                    setShowReg(false);
+                    setEmail(e);
+                    switchMode(data.needsSetup ? 'setup' : 'pin');
+                    if (data.needsSetup) {
+                      setSetupReady(true);
+                      setSetupName(data.name || '');
+                      setInfo(
+                        data.name
+                          ? `حسابك موجود (${data.name}). برمّج رمز الدخول هنا — لا حاجة لطلب تسجيل.`
+                          : 'حسابك موجود. برمّج رمز الدخول هنا — لا حاجة لطلب تسجيل.',
+                      );
+                    } else {
+                      setInfo('حسابك موجود والرمز مضبوط. استخدم «رمز الدخول».');
+                    }
+                    return;
+                  }
+                } catch {
+                  /* fall through to registration */
+                }
+              }
+              setShowReg(true);
+              if (e) setReg((r) => ({ ...r, email: e }));
             }}
           >
             تسجيل موظف
