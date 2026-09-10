@@ -1,6 +1,9 @@
+import { ensureDb } from './ensure-db';
 import { PrismaClient } from '@prisma/client';
 
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
+
+ensureDb();
 
 export const prisma =
   globalForPrisma.prisma ||

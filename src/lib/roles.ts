@@ -8,7 +8,7 @@ export const ROLE_LABELS: Record<string, string> = {
   Employee: 'موظف',
 };
 
-/** مالك المنصة الفعلي (رئيس المحكمة) */
+/** بريد رئيس المحكمة داخل المنصة (ليس ناشر المشروع) */
 export const PLATFORM_OWNER_EMAIL = 'snaswig@moj.gov.sa';
 
 const PLATFORM_OWNER_EMAILS = new Set([
@@ -19,7 +19,7 @@ const PLATFORM_OWNER_EMAILS = new Set([
 export function roleLabel(role: string, email?: string | null): string {
   const e = (email || '').trim().toLowerCase();
   if (role === 'Admin' && e === PLATFORM_OWNER_EMAIL) {
-    return 'مالك المنصة · رئيس المحكمة';
+    return 'رئيس المحكمة';
   }
   if (role === 'Admin' && e === 'admin@moj.gov.sa') {
     return 'حساب تقني (بذرة)';
@@ -47,7 +47,7 @@ export function canSeeFullAdmin(role: string) {
   return isAdmin(role);
 }
 
-/** مالك المنصة — دخول بدون ربط موظف + إدارة الرموز */
+/** حسابات يُسمح لها بالدخول بدون ربط موظف */
 export function isPlatformOwnerEmail(email: string) {
   return PLATFORM_OWNER_EMAILS.has(email.trim().toLowerCase());
 }
