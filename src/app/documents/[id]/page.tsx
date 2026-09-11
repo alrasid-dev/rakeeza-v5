@@ -131,6 +131,7 @@ export default function DocumentDetailPage() {
             fontFamily: fields.style?.fontFamily,
             fontSizePt: fields.style?.fontSizePt,
           }}
+          onRequestIssue={issue}
         />
       </div>
 

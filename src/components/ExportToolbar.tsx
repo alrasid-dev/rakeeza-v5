@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { buildLetterHtml, copyOutlookHtml } from '@/lib/outlook-clipboard';
 import { buildOfficialLetterHtml } from '@/lib/official-letter-html';
 import { normalizeBodyText } from '@/components/OfficialPaperPreview';
+import { hasOfficialOutgoingNumber } from '@/lib/honorific';
 import type { PaperLayoutId } from '@/lib/paper-layouts';
 import type { StudySections } from '@/lib/parse-study';
 
@@ -36,6 +37,8 @@ const FORMATS: { id: FormatId; label: string; hint: string }[] = [
   { id: 'outlook', label: 'Outlook', hint: 'HTML جاهز للصق في البريد' },
 ];
 
+const BLOCK_MSG = 'أصدر الخطاب برقم رسمي أولاً لتتمكن من التصدير';
+
 function contentFingerprint(doc: ExportDoc) {
   return [
     doc.subject || '',
@@ -46,6 +49,7 @@ function contentFingerprint(doc: ExportDoc) {
     normalizeBodyText(doc.body),
     doc.dateGregorian || '',
     doc.paperLayout || '',
+    doc.number || '',
   ].join('\u0001');
 }
 
@@ -83,14 +87,17 @@ function buildPlainLetter(doc: ExportDoc) {
 export default function ExportToolbar({
   doc,
   className = '',
-  /** Called when a file export needs a persisted id; should save draft and return document id */
   ensureSavedId,
   onExported,
+  onRequestIssue,
 }: {
   doc: ExportDoc;
   className?: string;
+  /** Called when a file export needs a persisted id; should save draft and return document id */
   ensureSavedId?: () => Promise<string | null>;
   onExported?: () => void;
+  /** Optional: jump user to official issue action */
+  onRequestIssue?: () => void;
 }) {
   const [picked, setPicked] = useState<FormatId | null>(null);
   const [busy, setBusy] = useState(false);
@@ -98,8 +105,8 @@ export default function ExportToolbar({
   const [exportedOnce, setExportedOnce] = useState(false);
   const [exportedForFp, setExportedForFp] = useState<string | null>(null);
   const fp = useMemo(() => contentFingerprint(doc), [doc]);
+  const canExport = hasOfficialOutgoingNumber(doc.number);
 
-  // Reset copy gate when content materially changes after an export
   useEffect(() => {
     if (exportedForFp && exportedForFp !== fp) {
       setExportedOnce(false);
@@ -120,7 +127,15 @@ export default function ExportToolbar({
     return ensureSavedId();
   }
 
+  function blockUnlessNumbered(): boolean {
+    if (canExport) return false;
+    setMsg(BLOCK_MSG);
+    onRequestIssue?.();
+    return true;
+  }
+
   async function runExport(format: FormatId) {
+    if (blockUnlessNumbered()) return;
     setBusy(true);
     setMsg('');
     try {
@@ -145,7 +160,7 @@ export default function ExportToolbar({
 
       const id = await resolveId();
       if (!id) {
-        setMsg('احفظ المسودة أولاً ثم صدّر الملف');
+        setMsg('احفظ المسودة أولاً ثم أصدر برقم رسمي قبل التصدير');
         return;
       }
       const path =
@@ -157,7 +172,6 @@ export default function ExportToolbar({
               ? `/api/export/pdf?id=${encodeURIComponent(id)}`
               : `/api/export/pptx?id=${encodeURIComponent(id)}`;
 
-      // Trigger download via navigation — marks export on click
       const a = document.createElement('a');
       a.href = path;
       a.rel = 'noopener';
@@ -180,6 +194,11 @@ export default function ExportToolbar({
   }
 
   async function copyFullLetter() {
+    if (!canExport) {
+      setMsg(BLOCK_MSG);
+      onRequestIssue?.();
+      return;
+    }
     if (!exportedOnce) {
       setMsg('صدر الخطاب أولاً لتتمكن من النسخ');
       return;
@@ -227,16 +246,33 @@ export default function ExportToolbar({
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="text-sm font-bold text-moj-green dark:text-moj-gold">تصدير الخطاب</div>
-        {exportedOnce ? (
-          <span className="text-[11px] text-moj-green bg-moj-light/80 rounded-full px-2 py-0.5">
-            تم التصدير — النسخ متاح
-          </span>
+        {canExport ? (
+          exportedOnce ? (
+            <span className="text-[11px] text-moj-green bg-moj-light/80 rounded-full px-2 py-0.5">
+              تم التصدير — النسخ متاح
+            </span>
+          ) : (
+            <span className="text-[11px] text-amber-800 bg-amber-50 dark:bg-amber-900/30 dark:text-amber-200 rounded-full px-2 py-0.5">
+              رقم رسمي: {doc.number} — صدّر ثم انسخ
+            </span>
+          )
         ) : (
-          <span className="text-[11px] text-amber-800 bg-amber-50 dark:bg-amber-900/30 dark:text-amber-200 rounded-full px-2 py-0.5">
-            صدّر أولاً ثم انسخ
+          <span className="text-[11px] text-amber-900 bg-amber-50 dark:bg-amber-900/30 dark:text-amber-100 rounded-full px-2 py-0.5">
+            يلزم إصدار برقم رسمي قبل التصدير
           </span>
         )}
       </div>
+
+      {!canExport && (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-700/40 px-3 py-2 text-sm text-amber-950 dark:text-amber-100">
+          {BLOCK_MSG}
+          {onRequestIssue && (
+            <button type="button" className="btn-primary text-xs mt-2 block" onClick={onRequestIssue}>
+              إصدار برقم رسمي
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
         {FORMATS.map((f) => {
@@ -245,9 +281,15 @@ export default function ExportToolbar({
             <button
               key={f.id}
               type="button"
-              disabled={busy}
-              onClick={() => setPicked(f.id)}
-              className={`text-right rounded-xl border px-2.5 py-2 transition ${
+              disabled={busy || !canExport}
+              onClick={() => {
+                if (!canExport) {
+                  setMsg(BLOCK_MSG);
+                  return;
+                }
+                setPicked(f.id);
+              }}
+              className={`text-right rounded-xl border px-2.5 py-2 transition disabled:opacity-45 ${
                 active
                   ? 'border-moj-green ring-2 ring-moj-green/25 bg-moj-light/40'
                   : 'border-moj-green/20 hover:border-moj-gold/50'
@@ -264,20 +306,32 @@ export default function ExportToolbar({
         <button
           type="button"
           className="btn-primary text-sm disabled:opacity-50"
-          disabled={busy || !picked}
+          disabled={busy || !picked || !canExport}
           onClick={() => picked && runExport(picked)}
         >
-          {busy ? 'جاري التصدير…' : picked ? `تصدير — ${FORMATS.find((x) => x.id === picked)?.label}` : 'اختر صيغة ثم صدّر'}
+          {busy
+            ? 'جاري التصدير…'
+            : !canExport
+              ? 'التصدير بعد الإصدار الرسمي'
+              : picked
+                ? `تصدير — ${FORMATS.find((x) => x.id === picked)?.label}`
+                : 'اختر صيغة ثم صدّر'}
         </button>
         <button
           type="button"
           className={`text-sm px-4 py-2.5 rounded-xl font-medium border transition ${
-            exportedOnce
+            canExport && exportedOnce
               ? 'btn-gold'
               : 'border-gray-300 text-gray-400 cursor-not-allowed bg-gray-50 dark:bg-white/5 dark:border-white/10'
           }`}
           onClick={copyFullLetter}
-          title={exportedOnce ? 'نسخ الخطاب كامل' : 'صدر الخطاب أولاً لتتمكن من النسخ'}
+          title={
+            !canExport
+              ? BLOCK_MSG
+              : exportedOnce
+                ? 'نسخ الخطاب كامل'
+                : 'صدر الخطاب أولاً لتتمكن من النسخ'
+          }
         >
           نسخ الخطاب كامل
         </button>
@@ -286,7 +340,7 @@ export default function ExportToolbar({
       {msg && (
         <div
           className={`text-sm rounded-lg px-3 py-2 ${
-            msg.includes('صدر الخطاب أولاً')
+            msg.includes('أولاً') || msg.includes('رسمي')
               ? 'bg-amber-50 text-amber-900 border border-amber-200 dark:bg-amber-900/20 dark:text-amber-100 dark:border-amber-700/40'
               : 'bg-moj-light/70 text-moj-green border border-moj-green/20'
           }`}

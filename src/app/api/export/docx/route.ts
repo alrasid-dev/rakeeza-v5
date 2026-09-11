@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getSession } from '@/lib/auth';
+import { hasOfficialOutgoingNumber } from '@/lib/honorific';
 import {
   Document,
   Packer,
@@ -118,6 +119,9 @@ export async function GET(req: NextRequest) {
   if (!id) return NextResponse.json({ error: 'id مطلوب' }, { status: 400 });
   const doc = await prisma.document.findUnique({ where: { id } });
   if (!doc) return NextResponse.json({ error: 'غير موجود' }, { status: 404 });
+  if (!hasOfficialOutgoingNumber(doc.number)) {
+    return NextResponse.json({ error: 'أصدر الخطاب برقم رسمي أولاً لتتمكن من التصدير' }, { status: 403 });
+  }
   const letterhead = await prisma.letterhead.findFirst({ where: { name: 'default' } });
   const headerLines = (letterhead?.header || 'المملكة العربية السعودية\nوزارة العدل\nالمحكمة العمالية بالرياض').split(
     '\n',

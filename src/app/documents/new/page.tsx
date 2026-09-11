@@ -547,13 +547,13 @@ function NewDocumentInner() {
                   حفظ مسودة
                 </button>
                 <button className="btn-primary w-full sm:w-auto" disabled={saving} onClick={() => save(true)}>
-                  إصدار برقم صادر
+                  إصدار برقم رسمي
                 </button>
               </div>
             </div>
 
             <div className="min-w-0 space-y-3">
-              <ExportToolbar doc={exportDoc} ensureSavedId={ensureSavedId} />
+              <ExportToolbar doc={exportDoc} ensureSavedId={ensureSavedId} onRequestIssue={() => save(true)} />
               <div className="text-sm font-medium text-gray-500 dark:text-white/50">
                 معاينة ورقية رسمية — انقر قسماً للتحرير
               </div>

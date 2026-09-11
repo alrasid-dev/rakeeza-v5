@@ -5,7 +5,9 @@ export type PaperLayoutId =
   | 'formal-gold'
   | 'compact-memo'
   | 'taameem-circular'
-  | 'study-report';
+  | 'study-report'
+  | 'identity-service-a'
+  | 'identity-service-b';
 
 export type PaperLayoutMeta = {
   id: PaperLayoutId;
@@ -39,6 +41,16 @@ export const PAPER_LAYOUTS: PaperLayoutMeta[] = [
     nameAr: 'تقرير / دراسة',
     description: 'مناسب لنماذج الدراسة والتقارير المقسّمة',
   },
+  {
+    id: 'identity-service-a',
+    nameAr: 'هوية خدمة أ',
+    description: 'صفحة كريمية وترويسة خضراء مع نمط هندسي ذهبي في التذييل',
+  },
+  {
+    id: 'identity-service-b',
+    nameAr: 'هوية خدمة ب',
+    description: 'شريط علوي تركوازي/أخضر مع نمط هندسي في الأسفل',
+  },
 ];
 
 export const DEFAULT_PAPER_LAYOUT: PaperLayoutId = 'classic-green';
@@ -50,3 +62,16 @@ export function isPaperLayoutId(v: unknown): v is PaperLayoutId {
 export function normalizePaperLayout(v: unknown): PaperLayoutId {
   return isPaperLayoutId(v) ? v : DEFAULT_PAPER_LAYOUT;
 }
+
+/** Shared identity motif colors (inspired by brand cards — not emblem art) */
+export const IDENTITY_COLORS = {
+  cream: '#F7F1E3',
+  creamDeep: '#EFE6D4',
+  green: '#006C35',
+  greenDeep: '#004d26',
+  teal: '#0B6E4F',
+  tealBand: '#147A5F',
+  gold: '#C5A059',
+  goldSoft: '#D4B97A',
+  beige: '#E8DCC8',
+} as const;

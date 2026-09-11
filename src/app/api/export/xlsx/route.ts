@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getSession } from '@/lib/auth';
+import { hasOfficialOutgoingNumber } from '@/lib/honorific';
 import ExcelJS from 'exceljs';
 
 const GREEN = '006C35';
@@ -14,6 +15,9 @@ export async function GET(req: NextRequest) {
   if (id) {
     const doc = await prisma.document.findUnique({ where: { id } });
     if (!doc) return NextResponse.json({ error: 'غير موجود' }, { status: 404 });
+  if (!hasOfficialOutgoingNumber(doc.number)) {
+    return NextResponse.json({ error: 'أصدر الخطاب برقم رسمي أولاً لتتمكن من التصدير' }, { status: 403 });
+  }
     const fields = JSON.parse(doc.fieldsJson || '{}') as {
       studySections?: Record<string, string | undefined>;
       tableRows?: { name: string; id?: string; extra?: string }[];

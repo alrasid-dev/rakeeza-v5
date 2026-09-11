@@ -248,6 +248,7 @@ function StudyFormView({ s }: { s: StudySections }) {
 
 type LayoutChrome = {
   paperBorder: string;
+  paperBg?: string;
   bismillahBg: string;
   bismillahBorder: string;
   brandBorder: string;
@@ -257,6 +258,7 @@ type LayoutChrome = {
   titleAccent: 'green' | 'gold';
   showCircularBadge: boolean;
   compact: boolean;
+  identityFooter?: 'a' | 'b' | null;
 };
 
 function chromeFor(layout: PaperLayoutId): LayoutChrome {
@@ -317,10 +319,43 @@ function chromeFor(layout: PaperLayoutId): LayoutChrome {
         showCircularBadge: false,
         compact: false,
       };
+    case 'identity-service-a':
+      return {
+        paperBorder: '2px solid #C5A059',
+        paperBg: '#F7F1E3',
+        bismillahBg: '#006C35',
+        bismillahBorder: '#C5A059',
+        brandBorder: 'border-b-2 border-[#C5A059]',
+        metaClass:
+          'mx-4 my-3 rounded-lg border border-[#E8DCC8] bg-white px-3 py-2 text-sm grid sm:grid-cols-2 gap-1.5 shadow-[0_0_0_1px_rgba(197,160,89,0.2)]',
+        sectionPad: 'px-4 pb-3 space-y-3 text-sm',
+        footClass: 'text-center text-xs text-gray-600 py-0 bg-transparent border-0',
+        titleAccent: 'gold',
+        showCircularBadge: false,
+        compact: false,
+        identityFooter: 'a',
+      };
+    case 'identity-service-b':
+      return {
+        paperBorder: '2px solid #0B6E4F',
+        paperBg: '#ffffff',
+        bismillahBg: 'linear-gradient(90deg,#004d26,#147A5F,#006C35)',
+        bismillahBorder: '#C5A059',
+        brandBorder: 'border-b-[3px] border-moj-gold',
+        metaClass:
+          'mx-4 my-3 rounded-md border border-[#0B6E4F99] bg-[#F0F7F4] px-3 py-2 text-sm grid sm:grid-cols-2 gap-1.5',
+        sectionPad: 'px-4 pb-3 space-y-3 text-sm',
+        footClass: 'text-center text-xs text-gray-600 py-0 bg-transparent border-0',
+        titleAccent: 'green',
+        showCircularBadge: false,
+        compact: false,
+        identityFooter: 'b',
+      };
     case 'classic-green':
     default:
       return {
         paperBorder: '2px solid #006C35',
+        paperBg: '#ffffff',
         bismillahBg: '#006C35',
         bismillahBorder: '#C5A059',
         brandBorder: 'border-b-2 border-moj-gold',
@@ -331,6 +366,7 @@ function chromeFor(layout: PaperLayoutId): LayoutChrome {
         titleAccent: 'green',
         showCircularBadge: false,
         compact: false,
+        identityFooter: null,
       };
   }
 }
@@ -438,7 +474,7 @@ export default function OfficialPaperPreview({
       <div
         dir="rtl"
         className={`bg-white rounded-lg overflow-hidden shadow-sm font-arabic min-w-[min(100%,20rem)] max-w-full ${className}`}
-        style={{ border: chrome.paperBorder, fontFamily, fontSize, textAlign }}
+        style={{ border: chrome.paperBorder, background: chrome.paperBg || '#fff', fontFamily, fontSize, textAlign }}
         data-paper-layout={layout}
       >
         <div
@@ -545,7 +581,35 @@ export default function OfficialPaperPreview({
         </div>
 
         <div className={chrome.footClass} style={{ borderColor: chrome.bismillahBorder }}>
-          {footer}
+          {chrome.identityFooter === 'a' && (
+            <div className="leading-none" aria-hidden>
+              <svg xmlns="http://www.w3.org/2000/svg" width="100%" height="48" viewBox="0 0 600 48" preserveAspectRatio="none">
+                <rect width="600" height="48" fill="#EFE6D4" />
+                <path d="M0 48 L40 0 L80 48 Z" fill="#006C35" opacity="0.35" />
+                <path d="M60 48 L100 8 L140 48 Z" fill="#C5A059" opacity="0.55" />
+                <path d="M120 48 L160 0 L200 48 Z" fill="#006C35" opacity="0.28" />
+                <path d="M220 48 L260 12 L300 48 Z" fill="#C5A059" opacity="0.45" />
+                <path d="M320 48 L360 0 L400 48 Z" fill="#006C35" opacity="0.32" />
+                <path d="M400 48 L440 10 L480 48 Z" fill="#C5A059" opacity="0.5" />
+                <path d="M500 48 L540 4 L580 48 Z" fill="#006C35" opacity="0.3" />
+                <rect y="44" width="600" height="4" fill="#C5A059" />
+              </svg>
+            </div>
+          )}
+          {chrome.identityFooter === 'b' && (
+            <div className="leading-none" aria-hidden>
+              <svg xmlns="http://www.w3.org/2000/svg" width="100%" height="40" viewBox="0 0 600 40" preserveAspectRatio="none">
+                <rect width="600" height="40" fill="#0B6E4F" />
+                <path
+                  d="M0 40 L50 5 L100 40 L150 8 L200 40 L250 5 L300 40 L350 10 L400 40 L450 6 L500 40 L550 12 L600 40 Z"
+                  fill="#C5A059"
+                  opacity="0.35"
+                />
+                <rect y="0" width="600" height="3" fill="#C5A059" />
+              </svg>
+            </div>
+          )}
+          <div className={chrome.identityFooter ? 'py-2.5 px-3' : undefined}>{footer}</div>
         </div>
       </div>
     </div>

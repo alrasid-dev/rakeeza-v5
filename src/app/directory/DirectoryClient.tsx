@@ -56,7 +56,7 @@ export default function DirectoryClient({
   const addressBlock = addressEmployees(
     selectedEmps.map((e) => ({
       name: e.name,
-      position: { title: e.positionTitle, honorific: e.honorific || 'زميلنا الأستاذ' },
+      position: { title: e.positionTitle, honorific: e.honorific || '' },
     })),
   );
 
@@ -123,7 +123,7 @@ export default function DirectoryClient({
 
         {selected.size > 0 && (
           <div className="rounded-xl border border-moj-gold/40 bg-moj-gold/10 p-3 text-sm whitespace-pre-wrap font-arabic">
-            <div className="text-xs text-moj-green font-bold mb-1">معاينة المخاطبة (زميلنا الأستاذ…)</div>
+            <div className="text-xs text-moj-green font-bold mb-1">معاينة المخاطبة (زميلنا الأستاذ / زميلتنا الأستاذة)</div>
             {addressBlock}
           </div>
         )}
@@ -133,7 +133,7 @@ export default function DirectoryClient({
             const checked = selected.has(e.id);
             const line = addressEmployee({
               name: e.name,
-              position: { title: e.positionTitle, honorific: e.honorific || 'زميلنا الأستاذ' },
+              position: { title: e.positionTitle, honorific: e.honorific || '' },
             });
             return (
               <label

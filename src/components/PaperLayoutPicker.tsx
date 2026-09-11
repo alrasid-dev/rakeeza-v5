@@ -48,11 +48,32 @@ export default function PaperLayoutPicker({
                         ? '#C5A059'
                         : l.id === 'taameem-circular'
                           ? '#004d26'
-                          : '#006C35',
+                          : l.id === 'identity-service-a'
+                            ? '#F7F1E3'
+                            : l.id === 'identity-service-b'
+                              ? '#147A5F'
+                              : '#006C35',
+                    border:
+                      l.id === 'identity-service-a' ? '1px solid #C5A059' : undefined,
                   }}
                 />
-                <span className="h-2 w-6 rounded-sm bg-moj-gold/80" />
-                <span className="h-2 w-4 rounded-sm border border-dashed border-moj-gold" />
+                <span
+                  className="h-2 w-6 rounded-sm"
+                  style={{
+                    background:
+                      l.id === 'identity-service-a'
+                        ? '#006C35'
+                        : l.id === 'identity-service-b'
+                          ? '#0B6E4F'
+                          : '#C5A059',
+                  }}
+                />
+                <span
+                  className="h-2 w-4 rounded-sm border border-dashed"
+                  style={{
+                    borderColor: l.id.startsWith('identity-') ? '#C5A059' : undefined,
+                  }}
+                />
               </div>
             </button>
           );

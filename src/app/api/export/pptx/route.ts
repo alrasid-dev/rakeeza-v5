@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getSession } from '@/lib/auth';
+import { hasOfficialOutgoingNumber } from '@/lib/honorific';
 import JSZip from 'jszip';
 
 /** Minimal PPTX (one title slide + one content slide) — no extra deps beyond jszip */
@@ -57,6 +58,9 @@ export async function GET(req: NextRequest) {
   if (!id) return NextResponse.json({ error: 'id مطلوب' }, { status: 400 });
   const doc = await prisma.document.findUnique({ where: { id } });
   if (!doc) return NextResponse.json({ error: 'غير موجود' }, { status: 404 });
+  if (!hasOfficialOutgoingNumber(doc.number)) {
+    return NextResponse.json({ error: 'أصدر الخطاب برقم رسمي أولاً لتتمكن من التصدير' }, { status: 403 });
+  }
 
   const title = doc.subject || doc.docType || 'مكاتبة';
   const body = [

@@ -72,11 +72,11 @@ const POSITIONS: { title: string; honorific: string; rank: number }[] = [
   { title: 'رئيس محكمة مكلف', honorific: 'فضيلة رئيس المحكمة المكلف', rank: 98 },
   { title: 'رئيس تشكيل', honorific: 'فضيلة رئيس التشكيل', rank: 96 },
   { title: 'الرئيس المساعد', honorific: 'فضيلة الرئيس المساعد', rank: 94 },
-  { title: 'أمين المحكمة', honorific: 'سعادة', rank: 92 },
+  { title: 'أمين المحكمة', honorific: 'الأستاذ', rank: 92 },
   { title: 'قاضي', honorific: 'فضيلة القاضي', rank: 90 },
-  { title: 'باحث شرعي', honorific: 'سعادة', rank: 70 },
-  { title: 'باحث قانوني', honorific: 'سعادة', rank: 70 },
-  { title: 'موظف إداري', honorific: 'سعادة', rank: 40 },
+  { title: 'باحث شرعي', honorific: 'الأستاذ', rank: 70 },
+  { title: 'باحث قانوني', honorific: 'الأستاذ', rank: 70 },
+  { title: 'موظف إداري', honorific: 'الأستاذ', rank: 40 },
 ];
 
 const DOC_TEMPLATES = [

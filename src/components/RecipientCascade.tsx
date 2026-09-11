@@ -7,6 +7,8 @@ type OrgUnit = { id: string; name: string };
 type Employee = {
   id: string;
   name: string;
+  gender?: string | null;
+  notes?: string | null;
   orgUnitId?: string | null;
   orgUnit?: { id: string; name: string } | null;
   position?: { title?: string | null; honorific?: string | null } | null;
@@ -22,8 +24,9 @@ export default function RecipientCascade({
   const [orgUnits, setOrgUnits] = useState<OrgUnit[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [orgUnitId, setOrgUnitId] = useState('');
-  const [selectedDeptIds, setSelectedDeptIds] = useState<Set<string>>(new Set());
-  const [selectedEmpIds, setSelectedEmpIds] = useState<Set<string>>(new Set());
+  const [selectedDeptIds, setSelectedDeptIds] = useState<string[]>([]);
+  const [selectedEmpIds, setSelectedEmpIds] = useState<string[]>([]);
+  const [empSearch, setEmpSearch] = useState('');
   const [manual, setManual] = useState(false);
   const [loading, setLoading] = useState(true);
   const [multiDept, setMultiDept] = useState(false);
@@ -41,82 +44,75 @@ export default function RecipientCascade({
   }, []);
 
   const filtered = useMemo(() => {
-    if (multiDept && selectedDeptIds.size > 0) {
-      return employees.filter(
-        (e) => selectedDeptIds.has(e.orgUnitId || '') || selectedDeptIds.has(e.orgUnit?.id || ''),
+    let list = employees;
+    if (multiDept && selectedDeptIds.length > 0) {
+      const set = new Set(selectedDeptIds);
+      list = list.filter((e) => set.has(e.orgUnitId || '') || set.has(e.orgUnit?.id || ''));
+    } else if (orgUnitId) {
+      list = list.filter((e) => e.orgUnitId === orgUnitId || e.orgUnit?.id === orgUnitId);
+    }
+    const q = empSearch.trim();
+    if (q) {
+      list = list.filter(
+        (e) =>
+          e.name.includes(q) ||
+          (e.position?.title || '').includes(q) ||
+          (e.orgUnit?.name || '').includes(q),
       );
     }
-    if (orgUnitId) {
-      return employees.filter((e) => e.orgUnitId === orgUnitId || e.orgUnit?.id === orgUnitId);
-    }
-    return employees;
-  }, [employees, orgUnitId, multiDept, selectedDeptIds]);
+    return list;
+  }, [employees, orgUnitId, multiDept, selectedDeptIds, empSearch]);
 
-  function emitSelection(nextEmpIds: Set<string>, nextDeptIds?: Set<string>) {
-    const emps = employees.filter((e) => nextEmpIds.has(e.id));
+  function emitSelection(nextEmpIds: string[], nextDeptIds?: string[]) {
+    const idSet = new Set(nextEmpIds);
+    const emps = employees.filter((e) => idSet.has(e.id));
     const line = addressEmployees(
       emps.map((e) => ({
         name: e.name,
+        gender: e.gender,
+        notes: e.notes,
         position: e.position,
       })),
     );
-    const deptIds = nextDeptIds
-      ? Array.from(nextDeptIds)
-      : Array.from(
-          new Set(
-            emps
-              .map((e) => e.orgUnitId || e.orgUnit?.id || '')
-              .filter(Boolean) as string[],
-          ),
-        );
-    onChange(line, { employeeIds: Array.from(nextEmpIds), orgUnitIds: deptIds });
+    const deptIds =
+      nextDeptIds ??
+      Array.from(
+        new Set(
+          emps
+            .map((e) => e.orgUnitId || e.orgUnit?.id || '')
+            .filter(Boolean) as string[],
+        ),
+      );
+    onChange(line, { employeeIds: nextEmpIds, orgUnitIds: deptIds });
   }
 
-  function toggleEmp(id: string) {
-    setSelectedEmpIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      emitSelection(next);
-      return next;
-    });
+  function onEmpMultiChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    const ids = Array.from(e.target.selectedOptions).map((o) => o.value);
+    setSelectedEmpIds(ids);
+    emitSelection(ids);
   }
 
-  function selectAllEmployees() {
-    const next = new Set(filtered.map((e) => e.id));
-    setSelectedEmpIds(next);
-    emitSelection(next);
+  function selectAllVisible() {
+    const ids = filtered.map((x) => x.id);
+    setSelectedEmpIds(ids);
+    emitSelection(ids);
   }
 
-  function deselectAllEmployees() {
-    const next = new Set<string>();
-    setSelectedEmpIds(next);
-    emitSelection(next);
+  function clearEmployees() {
+    setSelectedEmpIds([]);
+    emitSelection([]);
   }
 
-  function toggleDept(id: string) {
-    setSelectedDeptIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }
-
-  function selectAllDepartments() {
-    setSelectedDeptIds(new Set(orgUnits.map((u) => u.id)));
-  }
-
-  function deselectAllDepartments() {
-    setSelectedDeptIds(new Set());
+  function onDeptMultiChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    const ids = Array.from(e.target.selectedOptions).map((o) => o.value);
+    setSelectedDeptIds(ids);
+    setSelectedEmpIds([]);
+    onChange('');
   }
 
   if (loading) {
     return <div className="text-xs text-gray-500">جاري تحميل الدليل…</div>;
   }
-
-  const allEmpSelected = filtered.length > 0 && filtered.every((e) => selectedEmpIds.has(e.id));
-  const allDeptSelected = orgUnits.length > 0 && orgUnits.every((u) => selectedDeptIds.has(u.id));
 
   return (
     <div className="space-y-2">
@@ -142,7 +138,13 @@ export default function RecipientCascade({
             <button
               type="button"
               className={multiDept ? 'text-moj-green font-semibold underline' : 'text-gray-500'}
-              onClick={() => setMultiDept((v) => !v)}
+              onClick={() => {
+                setMultiDept((v) => !v);
+                setSelectedEmpIds([]);
+                setSelectedDeptIds([]);
+                setOrgUnitId('');
+                onChange('');
+              }}
             >
               {multiDept ? 'قسم واحد' : 'أقسام متعددة'}
             </button>
@@ -154,13 +156,13 @@ export default function RecipientCascade({
         <div className="space-y-3">
           {!multiDept ? (
             <div>
-              <label className="label">الوحدة / القسم</label>
+              <label className="label">الوحدة / القسم (منسدلة)</label>
               <select
                 className="input"
                 value={orgUnitId}
                 onChange={(e) => {
                   setOrgUnitId(e.target.value);
-                  setSelectedEmpIds(new Set());
+                  setSelectedEmpIds([]);
                   onChange('');
                 }}
               >
@@ -173,83 +175,73 @@ export default function RecipientCascade({
               </select>
             </div>
           ) : (
-            <div className="rounded-xl border border-moj-green/20 p-2 space-y-2">
-              <div className="flex flex-wrap gap-2 items-center">
-                <span className="text-xs font-semibold text-moj-green">الأقسام</span>
-                <button type="button" className="btn-outline text-[11px] px-2 py-1" onClick={selectAllDepartments}>
-                  {allDeptSelected ? '✓ ' : ''}تحديد الكل
-                </button>
-                <button type="button" className="btn-outline text-[11px] px-2 py-1" onClick={deselectAllDepartments}>
-                  إلغاء تحديد الكل
-                </button>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 max-h-36 overflow-auto">
+            <div>
+              <label className="label">الأقسام (منسدلة متعددة — Ctrl/⌘ للاختيار)</label>
+              <select
+                className="input min-h-[7rem]"
+                multiple
+                value={selectedDeptIds}
+                onChange={onDeptMultiChange}
+                size={Math.min(8, Math.max(4, orgUnits.length))}
+              >
                 {orgUnits.map((u) => (
-                  <label key={u.id} className="flex items-center gap-2 text-xs px-2 py-1 rounded hover:bg-moj-light/50">
-                    <input
-                      type="checkbox"
-                      checked={selectedDeptIds.has(u.id)}
-                      onChange={() => toggleDept(u.id)}
-                    />
-                    <span>{u.name}</span>
-                  </label>
+                  <option key={u.id} value={u.id}>
+                    {u.name}
+                  </option>
                 ))}
-              </div>
+              </select>
+              <div className="text-[11px] text-gray-500 mt-1">{selectedDeptIds.length} قسم محدد</div>
             </div>
           )}
 
-          <div className="rounded-xl border border-moj-green/20 p-2 space-y-2">
-            <div className="flex flex-wrap gap-2 items-center">
-              <span className="text-xs font-semibold text-moj-green">
-                الموظفون {orgUnitId || selectedDeptIds.size ? '(القسم)' : ''}
-              </span>
+          <div className="space-y-2">
+            <label className="label">الموظفون (منسدلة متعددة / بحث)</label>
+            <input
+              className="input"
+              value={empSearch}
+              onChange={(e) => setEmpSearch(e.target.value)}
+              placeholder="ابحث بالاسم أو المسمى…"
+            />
+            <div className="flex flex-wrap gap-2">
               <button
                 type="button"
                 className="btn-outline text-[11px] px-2 py-1"
-                onClick={selectAllEmployees}
+                onClick={selectAllVisible}
                 disabled={!filtered.length}
               >
-                {allEmpSelected ? '✓ ' : ''}تحديد الكل
+                تحديد الظاهر ({filtered.length})
               </button>
-              <button
-                type="button"
-                className="btn-outline text-[11px] px-2 py-1"
-                onClick={deselectAllEmployees}
-              >
-                إلغاء تحديد الكل
+              <button type="button" className="btn-outline text-[11px] px-2 py-1" onClick={clearEmployees}>
+                إلغاء التحديد
               </button>
-              <span className="text-[11px] text-gray-500">{selectedEmpIds.size} محدد</span>
+              <span className="text-[11px] text-gray-500 self-center">{selectedEmpIds.length} محدد</span>
             </div>
-            <div className="grid grid-cols-1 gap-1 max-h-48 overflow-auto">
+            <select
+              className="input min-h-[10rem] font-arabic"
+              multiple
+              value={selectedEmpIds}
+              onChange={onEmpMultiChange}
+              size={Math.min(12, Math.max(6, filtered.length || 6))}
+            >
               {filtered.map((e) => {
-                const checked = selectedEmpIds.has(e.id);
-                const line = addressEmployee(e);
+                const line = addressEmployee({
+                  name: e.name,
+                  gender: e.gender,
+                  notes: e.notes,
+                  position: e.position,
+                });
+                const title = e.position?.title ? ` — ${e.position.title}` : '';
                 return (
-                  <label
-                    key={e.id}
-                    className={`flex items-start gap-2 text-xs px-2 py-1.5 rounded cursor-pointer ${
-                      checked ? 'bg-moj-light/70 ring-1 ring-moj-green/30' : 'hover:bg-moj-light/40'
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      className="mt-0.5"
-                      checked={checked}
-                      onChange={() => toggleEmp(e.id)}
-                    />
-                    <span className="min-w-0">
-                      <span className="font-medium text-moj-green">{line}</span>
-                      {e.position?.title && (
-                        <span className="block text-[10px] text-gray-500">{e.position.title}</span>
-                      )}
-                    </span>
-                  </label>
+                  <option key={e.id} value={e.id}>
+                    {line}
+                    {title}
+                  </option>
                 );
               })}
-              {filtered.length === 0 && (
-                <div className="text-xs text-gray-500 px-2 py-2">لا يوجد موظفون في التصفية الحالية.</div>
-              )}
-            </div>
+            </select>
+            {filtered.length === 0 && (
+              <div className="text-xs text-gray-500">لا يوجد موظفون في التصفية الحالية.</div>
+            )}
           </div>
         </div>
       ) : (
