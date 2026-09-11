@@ -8,6 +8,7 @@ import {
   type PaperLayoutId,
 } from '@/lib/paper-layouts';
 import { MOJ_EMBLEM_PNG_DATA_URL } from '@/lib/brand-emblem-data';
+import { researcherRoleLabel } from '@/lib/honorific';
 
 export type OfficialLetterDoc = {
   number?: string | null;
@@ -63,7 +64,7 @@ function studyHtml(s: StudySections) {
       ${kv('المدعى عليه/ا', s.defendant)}
       ${kv('الاختصاص النوعي', s.jurisdiction)}
       ${kv('مقدار المطالبة', s.claimAmount)}
-      ${kv('دارس القضية', s.researcher)}
+      ${kv(researcherRoleLabel(s.researcher), s.researcher)}
     </div>
   </div>
   ${

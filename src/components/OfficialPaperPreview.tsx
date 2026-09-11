@@ -1,6 +1,7 @@
 'use client';
 
 import type { StudySections } from '@/lib/parse-study';
+import { researcherRoleLabel } from '@/lib/honorific';
 import type { DocStyle } from '@/components/StyleToolbar';
 import {
   DEFAULT_PAPER_LAYOUT,
@@ -170,7 +171,7 @@ function StudyFormView({ s }: { s: StudySections }) {
           <Kv label="المطالبة" value={s.claimType} />
           <Kv label="مقدارها" value={s.claimAmount} />
           <Kv label="التمثيل" value={s.representation} />
-          <Kv label="دارس القضية" value={s.researcher} />
+          <Kv label={researcherRoleLabel(s.researcher)} value={s.researcher} />
         </div>
       </div>
 

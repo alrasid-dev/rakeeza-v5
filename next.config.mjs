@@ -11,14 +11,20 @@ const nextConfig = {
       'puppeteer-core',
       'docx',
       'exceljs',
-      'arabic-persian-reshaper',
-      'bidi-js',
       'qrcode',
       'jspdf',
     ],
     outputFileTracingIncludes: {
-      '/api/**/*': ['./data/seed-rakeeza.db'],
+      '/api/**/*': ['./data/seed-rakeeza.db', './public/fonts/**'],
       '/*': ['./data/seed-rakeeza.db'],
+      '/api/export/pdf': [
+        './node_modules/@sparticuz/chromium/**',
+        './public/fonts/**',
+      ],
+      '/api/export/pdf/route': [
+        './node_modules/@sparticuz/chromium/**',
+        './public/fonts/**',
+      ],
     },
   },
 };

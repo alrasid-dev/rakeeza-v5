@@ -60,7 +60,7 @@ const LABEL_DEFS: { key: FieldKey; labels: string[] }[] = [
   { key: 'repStatus', labels: ['حالة التمثيل'] },
   { key: 'repReason', labels: ['السبب'] },
   { key: 'representation', labels: ['التمثيل'] },
-  { key: 'researcher', labels: ['دارس القضية'] },
+  { key: 'researcher', labels: ['دارس القضية', 'الباحث', 'الباحثة', 'باحث', 'باحثة', 'معد الدراسة (باحث)'] },
   {
     key: 'priorSettlement',
     labels: ['سبق رفع الدعوى إلى التسوية الودية', 'التسوية الودية'],
@@ -90,7 +90,7 @@ const LABEL_DEFS: { key: FieldKey; labels: string[] }[] = [
   { key: 'problem', labels: ['المشكلة'] },
   { key: 'legalOpinion', labels: ['الرأي القانوني'] },
   { key: 'recommendation', labels: ['التوصية'] },
-  { key: 'preparer', labels: ['اسم معد الدراسة', 'معد الدراسة'] },
+  { key: 'preparer', labels: ['اسم معد الدراسة', 'معد الدراسة', 'اسم الباحث', 'اسم الباحثة'] },
   { key: 'supervisor', labels: ['تصديق المشرف', 'المشرف'] },
   { key: 'prepDate', labels: ['تاريخ اعداد الدراسة', 'تاريخ إعداد الدراسة', 'تاريخ الإعداد', 'تاريخ التصديق'] },
 ];
@@ -519,8 +519,8 @@ export function studyToFormFields(s: StudySections) {
 
   const studyFields = [
     s.recommendation ? `التوصية: ${s.recommendation}` : '',
-    s.preparer ? `معد الدراسة: ${s.preparer}` : '',
-    s.researcher && s.researcher !== s.preparer ? `دارس القضية: ${s.researcher}` : '',
+    (s.preparer || s.researcher) ? `معد الدراسة: ${s.preparer || s.researcher}` : '',
+    s.researcher && s.preparer && s.researcher !== s.preparer ? `الباحث: ${s.researcher}` : '',
   ]
     .filter(Boolean)
     .join('\n');

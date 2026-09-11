@@ -1,30 +1,16 @@
-/** Shape + bidi-reorder Arabic for jsPDF (LTR glyph painter) */
-import { ArabicShaper } from 'arabic-persian-reshaper';
-import bidiFactory from 'bidi-js';
-
-const bidi = bidiFactory();
-
 /**
- * Prepare Arabic for jsPDF canvas painting (LTR).
- * Returns visual-order presentation forms. Do NOT use this for Chromium/HTML PDF.
+ * Arabic helpers for PDF export.
+ *
+ * Chromium/HTML PDF: pass logical Unicode Arabic with dir=rtl — never reshape/bidi.
+ * jsPDF + Noto Naskh: also pass logical Arabic as-is. Modern PDF viewers (and
+ * poppler) apply OpenType shaping. Feeding presentation-forms from
+ * arabic-reshaper+bidi causes DOUBLE bidi → letter-spaced reversed glyphs
+ * (بسم الله → م ي ح ر ل ا …) which is the production bug.
  */
+
+/** Identity for logical Arabic — do NOT reshape/bidi for Noto Naskh / Chromium */
 export function prepareArabicForPdf(text: string): string {
-  const raw = String(text ?? '');
-  if (!raw) return '';
-  if (!/[\u0600-\u06FF]/.test(raw)) return raw;
-  try {
-    const shaped = ArabicShaper.convertArabic(raw);
-    const levels = bidi.getEmbeddingLevels(shaped, 'rtl');
-    const visual = bidi.getReorderedString(shaped, levels);
-    // Guard: if reshape somehow no-op'd, fall back to simple reverse of logical
-    if (visual === raw || !visual) {
-      return raw.split('').reverse().join('');
-    }
-    return visual;
-  } catch {
-    // Crude fallback so letters aren't drawn logical-LTR (looks fully reversed)
-    return raw.split('').reverse().join('');
-  }
+  return String(text ?? '');
 }
 
 export function wrapArabicLines(text: string, maxChars = 70): string[] {

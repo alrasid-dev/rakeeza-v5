@@ -7,7 +7,7 @@ import { buildOfficialLetterHtml } from '@/lib/official-letter-html';
 import { hasOfficialOutgoingNumber } from '@/lib/honorific';
 import { attachmentDisposition } from '@/lib/download-headers';
 import { officialDateDisplay } from '@/lib/hijri';
-import { prepareArabicForPdf, wrapArabicLines } from '@/lib/arabic-pdf-text';
+import { wrapArabicLines } from '@/lib/arabic-pdf-text';
 import { loadEmblemPng } from '@/lib/brand-assets';
 import { jsPDF } from 'jspdf';
 import QRCode from 'qrcode';
@@ -20,50 +20,104 @@ function jsonError(message: string, status: number) {
   return NextResponse.json({ error: message }, { status });
 }
 
+function localChromePath(): string | null {
+  const envPath =
+    process.env.PUPPETEER_EXECUTABLE_PATH ||
+    process.env.CHROME_PATH ||
+    process.env.CHROMIUM_PATH ||
+    '';
+  if (envPath && fs.existsSync(envPath)) return envPath;
+  const candidates = [
+    '/usr/bin/chromium-browser',
+    '/usr/bin/chromium',
+    '/usr/bin/google-chrome',
+    '/usr/bin/google-chrome-stable',
+    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+  ];
+  for (const c of candidates) {
+    if (fs.existsSync(c)) return c;
+  }
+  return null;
+}
+
+async function launchChromium(executablePath: string, args: string[]) {
+  const puppeteer = await import('puppeteer-core');
+  return puppeteer.default.launch({
+    args: [
+      ...args,
+      '--font-render-hinting=none',
+      '--force-color-profile=srgb',
+      '--disable-dev-shm-usage',
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+    ],
+    defaultViewport: { width: 794, height: 1123, deviceScaleFactor: 1 },
+    executablePath,
+    headless: true,
+  });
+}
+
+async function renderHtmlToPdf(browser: { newPage: () => Promise<any>; close: () => Promise<void> }, html: string) {
+  try {
+    const page = await browser.newPage();
+    await page.setContent(html, { waitUntil: 'load', timeout: 45000 });
+    await page.evaluate(async () => {
+      const fonts = (globalThis as unknown as { document?: { fonts?: { ready?: Promise<unknown> } } }).document
+        ?.fonts;
+      if (fonts?.ready) await fonts.ready;
+    });
+    await new Promise((r) => setTimeout(r, 400));
+    const pdf = await page.pdf({
+      format: 'A4',
+      printBackground: true,
+      preferCSSPageSize: true,
+      margin: { top: '10mm', bottom: '10mm', left: '10mm', right: '10mm' },
+    });
+    return Buffer.from(pdf);
+  } finally {
+    await browser.close().catch(() => undefined);
+  }
+}
+
+/**
+ * Prefer Chromium HTML→PDF with dir=rtl + logical Arabic (NO reshape/bidi).
+ * Falls back to system Chrome, then null (caller uses jsPDF logical path).
+ */
 async function pdfViaChromium(html: string): Promise<Buffer | null> {
+  // 1) @sparticuz/chromium (Vercel / serverless)
   try {
     const chromium = (await import('@sparticuz/chromium')).default;
-    const puppeteer = await import('puppeteer-core');
     try {
-      // @sparticuz/chromium — disable WebGL when available
       const anyCr = chromium as unknown as { setGraphicsMode?: ((v: boolean) => void) | boolean };
       if (typeof anyCr.setGraphicsMode === 'function') anyCr.setGraphicsMode(false);
-    } catch { /* ignore */ }
-    const executablePath = await chromium.executablePath();
-    if (!executablePath) {
-      console.error('chromium executablePath empty');
-      return null;
+    } catch {
+      /* ignore */
     }
-
-    const browser = await puppeteer.default.launch({
-      args: [...chromium.args, '--font-render-hinting=none', '--force-color-profile=srgb', '--disable-dev-shm-usage'],
-      defaultViewport: { width: 794, height: 1123, deviceScaleFactor: 1 },
-      executablePath,
-      headless: true,
-    });
-    try {
-      const page = await browser.newPage();
-      await page.setContent(html, { waitUntil: 'load', timeout: 45000 });
-      await page.evaluate(async () => {
-        const fonts = (globalThis as unknown as { document?: { fonts?: { ready?: Promise<unknown> } } }).document
-          ?.fonts;
-        if (fonts?.ready) await fonts.ready;
-      });
-      await new Promise((r) => setTimeout(r, 400));
-      const pdf = await page.pdf({
-        format: 'A4',
-        printBackground: true,
-        preferCSSPageSize: true,
-        margin: { top: '10mm', bottom: '10mm', left: '10mm', right: '10mm' },
-      });
-      return Buffer.from(pdf);
-    } finally {
-      await browser.close().catch(() => undefined);
+    const executablePath = await chromium.executablePath();
+    if (executablePath) {
+      const browser = await launchChromium(executablePath, [...chromium.args]);
+      const buf = await renderHtmlToPdf(browser, html);
+      if (buf && buf.length > 100) return buf;
+    } else {
+      console.error('chromium executablePath empty');
     }
   } catch (e) {
-    console.error('chromium pdf failed', e);
-    return null;
+    console.error('sparticuz chromium pdf failed', e);
   }
+
+  // 2) Local / system Chrome
+  try {
+    const local = localChromePath();
+    if (local) {
+      const browser = await launchChromium(local, ['--disable-gpu']);
+      const buf = await renderHtmlToPdf(browser, html);
+      if (buf && buf.length > 100) return buf;
+    }
+  } catch (e) {
+    console.error('local chrome pdf failed', e);
+  }
+
+  return null;
 }
 
 function loadArabicFontBase64(): string {
@@ -74,7 +128,11 @@ function loadArabicFontBase64(): string {
   return fs.readFileSync(fontPath).toString('base64');
 }
 
-/** jsPDF fallback — reshape ONCE for LTR painter; do not use for Chromium HTML */
+/**
+ * jsPDF fallback — logical Arabic ONLY (no reshape/bidi).
+ * Reshape+bidi + Noto Naskh caused letter-spaced reversed glyphs in production
+ * because viewers re-apply bidi on presentation forms.
+ */
 function pdfViaJsPdf(doc: {
   number: string | null;
   subject: string;
@@ -100,12 +158,17 @@ function pdfViaJsPdf(doc: {
   const xRight = pageW - marginR;
   let y = 16;
 
-  const writeAr = (line: string, size = 12, color: [number, number, number] = [0, 0, 0], align: 'right' | 'center' = 'right') => {
+  const writeAr = (
+    line: string,
+    size = 12,
+    color: [number, number, number] = [0, 0, 0],
+    align: 'right' | 'center' = 'right',
+  ) => {
     pdf.setFont('NotoNaskhArabic', 'normal');
     pdf.setFontSize(size);
     pdf.setTextColor(...color);
-    const prepared = prepareArabicForPdf(line);
-    const chunk = prepared.slice(0, 120) || ' ';
+    // Logical Unicode Arabic — never reverse / reshape / bidi
+    const chunk = String(line ?? '').slice(0, 120) || ' ';
     const x = align === 'center' ? pageW / 2 : xRight;
     pdf.text(chunk, x, y, { align });
     y += size * 0.45 + 2.2;
@@ -125,7 +188,6 @@ function pdfViaJsPdf(doc: {
   writeAr('بسم الله الرحمن الرحيم', 13, [255, 255, 255], 'center');
   y = 26;
 
-  // Header band: QR left / kingdom center / emblem right (physical coords)
   try {
     const emblem = loadEmblemPng();
     pdf.addImage(emblem.toString('base64'), 'PNG', 168, 24, 18, 18);
@@ -235,7 +297,7 @@ export async function GET(req: NextRequest) {
   font-display: block;
 }`;
 
-    // Chromium HTML path: logical Arabic + dir=rtl — NO prepareArabicForPdf reshape
+    // Chromium HTML path: logical Arabic + dir=rtl — NO reshape/bidi
     const html = buildOfficialLetterHtml(
       {
         number: doc.number,
@@ -262,7 +324,7 @@ export async function GET(req: NextRequest) {
     let buffer = await pdfViaChromium(html);
     let engine = 'chromium';
     if (!buffer || buffer.length < 100) {
-      engine = 'jspdf';
+      engine = 'jspdf-logical';
       buffer = pdfViaJsPdf({
         number: doc.number,
         subject: doc.subject,
