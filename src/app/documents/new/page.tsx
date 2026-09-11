@@ -5,8 +5,12 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import AppShell from '@/components/AppShell';
 import PageHeader from '@/components/PageHeader';
 import OfficialPaperPreview from '@/components/OfficialPaperPreview';
+import RecipientCascade from '@/components/RecipientCascade';
+import StyleToolbar, { type DocStyle } from '@/components/StyleToolbar';
 import { parsePaste, type TableRow } from '@/lib/parse-paste';
+import type { StudySections } from '@/lib/parse-study';
 import { clearDraft, loadDraft, saveDraft } from '@/lib/draft-store';
+import { suggestFont } from '@/lib/font-suggest';
 
 type Template = { id: string; name: string; category: string };
 type User = { name: string; role: string };
@@ -15,7 +19,6 @@ const EMPTY_FORM = {
   subject: '',
   recipients: '',
   parties: '',
-  facts: '',
   reasons: '',
   studyFields: '',
   body: '',
@@ -37,16 +40,24 @@ function NewDocumentInner() {
   const [paste, setPaste] = useState('');
   const [form, setForm] = useState({ ...EMPTY_FORM });
   const [tableRows, setTableRows] = useState<TableRow[]>([]);
+  const [studySections, setStudySections] = useState<StudySections | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [draftRestored, setDraftRestored] = useState(false);
-  const hydratedSlug = useRef<string | null>(null);
+  const [detectedKind, setDetectedKind] = useState<string>('');
+  const [fontCorrections, setFontCorrections] = useState<
+    { location: string; issue: string; suggestion: string }[]
+  >([]);
+  const [style, setStyle] = useState<DocStyle>({
+    fontFamily: 'Traditional Arabic',
+    fontSizePt: 16,
+    align: 'right',
+  });
+  const fieldRefs = useRef<Record<string, HTMLElement | null>>({});
   const skipSave = useRef(true);
 
-  // Restore draft / set docType when form slug or name changes
   useEffect(() => {
     skipSave.current = true;
-    hydratedSlug.current = formSlug || '__default__';
 
     const draft = formSlug ? loadDraft(formSlug) : null;
     if (draft) {
@@ -62,6 +73,10 @@ function NewDocumentInner() {
       try {
         const tr = (draft.form as { tableRowsJson?: string }).tableRowsJson;
         if (tr) setTableRows(JSON.parse(tr));
+        const ss = (draft.form as { studySectionsJson?: string }).studySectionsJson;
+        if (ss) setStudySections(JSON.parse(ss));
+        const st = (draft.form as { styleJson?: string }).styleJson;
+        if (st) setStyle(JSON.parse(st));
       } catch {
         /* ignore */
       }
@@ -73,10 +88,17 @@ function NewDocumentInner() {
         docType: formName || 'مكاتبة',
       });
       setPaste('');
-      setStep(1);
+      setStep(formSlug || templateIdParam ? 2 : 1);
       setTemplateId(templateIdParam || '');
       setTableRows([]);
+      setStudySections(null);
       setDraftRestored(false);
+      const hint = suggestFont(formName || 'مكاتبة');
+      setStyle({
+        fontFamily: hint.suggestion.family,
+        fontSizePt: hint.suggestion.sizePt,
+        align: hint.suggestion.align,
+      });
     }
 
     const t = window.setTimeout(() => {
@@ -121,28 +143,68 @@ function NewDocumentInner() {
         templateId,
         paste,
         step,
-        form: { ...form, tableRowsJson: JSON.stringify(tableRows) },
+        form: {
+          ...form,
+          tableRowsJson: JSON.stringify(tableRows),
+          studySectionsJson: JSON.stringify(studySections),
+          styleJson: JSON.stringify(style),
+        },
       });
       setDraftRestored(true);
     }, 300);
     return () => window.clearTimeout(handle);
-  }, [formSlug, templateId, paste, step, form, tableRows]);
+  }, [formSlug, templateId, paste, step, form, tableRows, studySections, style]);
 
   function applyPaste() {
     const parsed = parsePaste(paste);
     setTableRows(parsed.tableRows || []);
+    setStudySections(parsed.studySections || null);
+    setDetectedKind(parsed.detectedKind || '');
+    if (parsed.fontHint) {
+      setStyle((s) => ({
+        ...s,
+        fontFamily: parsed.fontHint!.family,
+        fontSizePt: parsed.fontHint!.sizePt,
+      }));
+    }
+    const { corrections } = suggestFont(form.docType || formName, parsed.body);
+    setFontCorrections(corrections);
     setForm((f) => ({
       ...f,
       subject: parsed.subject || f.subject,
       recipients: parsed.recipients || f.recipients,
       parties: parsed.parties || f.parties,
-      facts: parsed.facts || f.facts,
       reasons: parsed.reasons || f.reasons,
       studyFields: parsed.studyFields || f.studyFields,
       body: parsed.body || f.body,
       dateGregorian: parsed.date || f.dateGregorian,
+      docType:
+        parsed.detectedKind === 'study'
+          ? formName || 'نموذج تحليل حكم (شكوى)'
+          : f.docType,
     }));
     setStep(3);
+  }
+
+  function adoptFontSuggestion() {
+    const { suggestion, corrections } = suggestFont(form.docType || formName, form.body);
+    setStyle({
+      fontFamily: suggestion.family,
+      fontSizePt: suggestion.sizePt,
+      align: suggestion.align,
+    });
+    setFontCorrections(corrections);
+  }
+
+  function focusField(field: string) {
+    setStep(3);
+    window.setTimeout(() => {
+      const el = fieldRefs.current[field];
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        if ('focus' in el) (el as HTMLInputElement).focus();
+      }
+    }, 50);
   }
 
   async function save(issue: boolean) {
@@ -154,10 +216,11 @@ function NewDocumentInner() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...form,
+          facts: '', // removed from UX
           templateId: templateId || null,
           issue,
           assignNumber: issue,
-          fields: { tableRows },
+          fields: { tableRows, studySections, style },
         }),
       });
       const data = await res.json();
@@ -206,7 +269,7 @@ function NewDocumentInner() {
 
       {step === 1 && (
         <div className="bg-white dark:bg-[var(--surface)] rounded-xl border dark:border-white/10 p-3 sm:p-4 space-y-3">
-          <label className="label">اختر قالباً (اختياري)</label>
+          <label className="label">اختر قالباً (اختياري) — يمكن تخطي واللصق مباشرة للكشف التلقائي</label>
           <select className="input" value={templateId} onChange={(e) => setTemplateId(e.target.value)}>
             <option value="">— بدون قالب / حر —</option>
             {templates.map((t) => (
@@ -215,24 +278,31 @@ function NewDocumentInner() {
               </option>
             ))}
           </select>
-          <button className="btn-primary w-full sm:w-auto" onClick={() => setStep(2)}>
-            التالي
-          </button>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <button className="btn-primary w-full sm:w-auto" onClick={() => setStep(2)}>
+              التالي — اللصق الذكي
+            </button>
+            <button className="btn-outline w-full sm:w-auto" onClick={() => setStep(3)}>
+              تخطي إلى الحقول
+            </button>
+          </div>
         </div>
       )}
 
       {step === 2 && (
         <div className="bg-white dark:bg-[var(--surface)] rounded-xl border dark:border-white/10 p-3 sm:p-4 space-y-3">
-          <label className="label">الصق نص المكاتبة بالكامل — سيتم توزيع الحقول تلقائياً</label>
+          <label className="label">
+            الصق نص المكاتبة أو نموذج الدراسة من Excel — يُكتشف النوع تلقائياً دون اختيار مسبق
+          </label>
           <textarea
             className="input min-h-[220px] font-arabic"
             value={paste}
             onChange={(e) => setPaste(e.target.value)}
-            placeholder={`مثال:\nالرقم: ...\nالتاريخ: ...\nالموضوع: بشأن ...\nإلى: فضيلة القاضي / ...\nالسلام عليكم ورحمة الله وبركاته وبعد:-\n...`}
+            placeholder={`مثال خطاب:\nالرقم: ...\nإلى: ...\nالموضوع: ...\n\nأو الصق صفوف نموذج تحليل حكم (شكوى) من Excel مباشرة.`}
           />
           <div className="flex flex-col sm:flex-row gap-2">
             <button className="btn-primary w-full sm:w-auto" onClick={applyPaste}>
-              توزيع الحقول
+              توزيع الحقول (كشف تلقائي)
             </button>
             <button className="btn-outline w-full sm:w-auto" onClick={() => setStep(3)}>
               تخطي
@@ -242,108 +312,164 @@ function NewDocumentInner() {
       )}
 
       {step === 3 && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div className="bg-white dark:bg-[var(--surface)] rounded-xl border dark:border-white/10 p-3 sm:p-4 space-y-3 min-w-0">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div>
-                <label className="label">الموضوع</label>
-                <input
-                  className="input"
-                  value={form.subject}
-                  onChange={(e) => setForm({ ...form, subject: e.target.value })}
-                />
+        <div className="space-y-3">
+          <StyleToolbar value={style} onChange={setStyle} />
+          {(fontCorrections.length > 0 || detectedKind) && (
+            <div className="rounded-xl border border-moj-gold/40 bg-moj-gold/10 p-3 text-sm space-y-2">
+              {detectedKind && (
+                <div>
+                  نوع مكتشف: <b>{detectedKind === 'study' ? 'نموذج دراسة / شكوى' : detectedKind}</b>
+                </div>
+              )}
+              {fontCorrections.length > 0 && (
+                <ul className="list-disc pr-5 text-xs space-y-1">
+                  {fontCorrections.map((c, i) => (
+                    <li key={i}>
+                      <b>{c.location}</b>: {c.issue} — {c.suggestion}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <button type="button" className="btn-gold text-xs" onClick={adoptFontSuggestion}>
+                اعتمد المقترح
+              </button>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="bg-white dark:bg-[var(--surface)] rounded-xl border dark:border-white/10 p-3 sm:p-4 space-y-3 min-w-0">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="label">الموضوع</label>
+                  <input
+                    ref={(el) => {
+                      fieldRefs.current.subject = el;
+                    }}
+                    className="input"
+                    value={form.subject}
+                    onChange={(e) => setForm({ ...form, subject: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="label">التاريخ</label>
+                  <input
+                    ref={(el) => {
+                      fieldRefs.current.dateGregorian = el;
+                    }}
+                    className="input"
+                    type="date"
+                    value={form.dateGregorian}
+                    onChange={(e) => setForm({ ...form, dateGregorian: e.target.value })}
+                  />
+                </div>
               </div>
+
               <div>
-                <label className="label">التاريخ</label>
-                <input
-                  className="input"
-                  type="date"
-                  value={form.dateGregorian}
-                  onChange={(e) => setForm({ ...form, dateGregorian: e.target.value })}
-                />
+                <label className="label">إلى</label>
+                <div
+                  ref={(el) => {
+                    fieldRefs.current.recipients = el;
+                  }}
+                >
+                  <RecipientCascade
+                    value={form.recipients}
+                    onChange={(line) => setForm({ ...form, recipients: line })}
+                  />
+                </div>
               </div>
-              <div>
-                <label className="label">إلى / المستلمون</label>
-                <input
-                  className="input"
-                  value={form.recipients}
-                  onChange={(e) => setForm({ ...form, recipients: e.target.value })}
-                />
-              </div>
+
               <div>
                 <label className="label">الأطراف</label>
-                <input
-                  className="input"
+                <textarea
+                  ref={(el) => {
+                    fieldRefs.current.parties = el;
+                  }}
+                  className="input min-h-[60px]"
                   value={form.parties}
                   onChange={(e) => setForm({ ...form, parties: e.target.value })}
                 />
               </div>
-            </div>
-            <div>
-              <label className="label">الوقائع</label>
-              <textarea
-                className="input min-h-[80px]"
-                value={form.facts}
-                onChange={(e) => setForm({ ...form, facts: e.target.value })}
-              />
-            </div>
-            <div>
-              <label className="label">الأسباب / الحيثيات</label>
-              <textarea
-                className="input min-h-[80px]"
-                value={form.reasons}
-                onChange={(e) => setForm({ ...form, reasons: e.target.value })}
-              />
-            </div>
-            <div>
-              <label className="label">حقول الدراسة</label>
-              <textarea
-                className="input min-h-[60px]"
-                value={form.studyFields}
-                onChange={(e) => setForm({ ...form, studyFields: e.target.value })}
-              />
-            </div>
-            <div>
-              <label className="label">نص المكاتبة</label>
-              <textarea
-                className="input min-h-[140px]"
-                value={form.body}
-                onChange={(e) => setForm({ ...form, body: e.target.value })}
-              />
-            </div>
-            {tableRows.length > 0 && (
-              <div className="text-xs text-moj-green bg-moj-light rounded-lg p-2">
-                تم استخراج {tableRows.length} صف/صفوف من جدول الأسماء والهويات — تظهر في المعاينة.
-              </div>
-            )}
-            {error && <div className="text-red-600 text-sm">{error}</div>}
-            <div className="flex flex-col sm:flex-row gap-2 flex-wrap">
-              <button className="btn-outline w-full sm:w-auto" disabled={saving} onClick={() => save(false)}>
-                حفظ مسودة
-              </button>
-              <button className="btn-primary w-full sm:w-auto" disabled={saving} onClick={() => save(true)}>
-                إصدار برقم صادر
-              </button>
-            </div>
-          </div>
 
-          <div className="min-w-0">
-            <div className="text-sm font-medium text-gray-500 dark:text-white/50 mb-2">معاينة ورقية رسمية</div>
-            <OfficialPaperPreview
-              doc={{
-                number: null,
-                subject: form.subject,
-                dateGregorian: form.dateGregorian,
-                recipients: form.recipients,
-                parties: form.parties,
-                facts: form.facts,
-                reasons: form.reasons,
-                studyFields: form.studyFields,
-                body: form.body,
-                docType: form.docType,
-                tableRows,
-              }}
-            />
+              <div>
+                <label className="label">الأسباب / الحيثيات</label>
+                <textarea
+                  ref={(el) => {
+                    fieldRefs.current.reasons = el;
+                  }}
+                  className="input min-h-[80px]"
+                  value={form.reasons}
+                  onChange={(e) => setForm({ ...form, reasons: e.target.value })}
+                />
+              </div>
+
+              <div>
+                <label className="label">حقول الدراسة / التوصية</label>
+                <textarea
+                  ref={(el) => {
+                    fieldRefs.current.studyFields = el;
+                  }}
+                  className="input min-h-[60px]"
+                  value={form.studyFields}
+                  onChange={(e) => setForm({ ...form, studyFields: e.target.value })}
+                  placeholder="التوصية: ..."
+                />
+              </div>
+
+              <div>
+                <label className="label">نص المكاتبة</label>
+                <textarea
+                  ref={(el) => {
+                    fieldRefs.current.body = el;
+                  }}
+                  className="input min-h-[140px]"
+                  value={form.body}
+                  onChange={(e) => setForm({ ...form, body: e.target.value })}
+                />
+              </div>
+
+              {tableRows.length > 0 && !studySections && (
+                <div className="text-xs text-moj-green bg-moj-light rounded-lg p-2">
+                  تم استخراج {tableRows.length} صف/صفوف من جدول الأسماء والهويات — تظهر في المعاينة.
+                </div>
+              )}
+              {studySections && (
+                <div className="text-xs text-moj-green bg-moj-light rounded-lg p-2">
+                  تم تحليل نموذج الدراسة إلى أقسام (قضية / ملخص / توصية) — المعاينة تعرض نموذجاً مقسماً وليس جدولاً واحداً.
+                </div>
+              )}
+              {error && <div className="text-red-600 text-sm">{error}</div>}
+              <div className="flex flex-col sm:flex-row gap-2 flex-wrap">
+                <button className="btn-outline w-full sm:w-auto" disabled={saving} onClick={() => save(false)}>
+                  حفظ مسودة
+                </button>
+                <button className="btn-primary w-full sm:w-auto" disabled={saving} onClick={() => save(true)}>
+                  إصدار برقم صادر
+                </button>
+              </div>
+            </div>
+
+            <div className="min-w-0">
+              <div className="text-sm font-medium text-gray-500 dark:text-white/50 mb-2">
+                معاينة ورقية رسمية — انقر قسماً للتحرير
+              </div>
+              <OfficialPaperPreview
+                style={style}
+                onFieldClick={focusField}
+                doc={{
+                  number: null,
+                  subject: form.subject,
+                  dateGregorian: form.dateGregorian,
+                  recipients: form.recipients,
+                  parties: form.parties,
+                  reasons: form.reasons,
+                  studyFields: form.studyFields,
+                  body: form.body,
+                  docType: form.docType,
+                  tableRows,
+                  studySections,
+                }}
+              />
+            </div>
           </div>
         </div>
       )}

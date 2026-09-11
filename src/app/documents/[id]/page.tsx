@@ -5,7 +5,9 @@ import { useParams } from 'next/navigation';
 import AppShell from '@/components/AppShell';
 import PageHeader from '@/components/PageHeader';
 import OfficialPaperPreview from '@/components/OfficialPaperPreview';
-import { buildLetterHtml, copyOutlookHtml } from '@/lib/outlook-clipboard';
+import ExportToolbar from '@/components/ExportToolbar';
+import type { StudySections } from '@/lib/parse-study';
+import type { DocStyle } from '@/components/StyleToolbar';
 
 type Doc = {
   id: string;
@@ -69,13 +71,6 @@ export default function DocumentDetailPage() {
     }
   }
 
-  async function copyOutlook() {
-    if (!doc) return;
-    const html = buildLetterHtml(doc);
-    const ok = await copyOutlookHtml(html);
-    setMsg(ok ? 'تم النسخ لـ Outlook' : 'فشل النسخ');
-  }
-
   if (!doc) {
     return (
       <AppShell user={user}>
@@ -87,6 +82,8 @@ export default function DocumentDetailPage() {
   const fields = JSON.parse(doc.fieldsJson || '{}') as {
     qrDataUrl?: string;
     tableRows?: { name: string; id?: string; extra?: string }[];
+    studySections?: StudySections;
+    style?: DocStyle;
   };
 
   return (
@@ -97,12 +94,13 @@ export default function DocumentDetailPage() {
         actions={
           <>
             {!doc.number && (
-              <button className="btn-primary" onClick={issue}>إصدار برقم</button>
+              <button className="btn-primary" onClick={issue}>
+                إصدار برقم
+              </button>
             )}
-            <button className="btn-outline" onClick={archive}>أرشفة</button>
-            <a className="btn-outline" href={`/api/export/docx?id=${doc.id}`}>DOCX</a>
-            <a className="btn-outline" href={`/api/export/pdf?id=${doc.id}`}>PDF</a>
-            <button className="btn-gold" onClick={copyOutlook}>نسخ Outlook HTML</button>
+            <button className="btn-outline" onClick={archive}>
+              أرشفة
+            </button>
             {doc.number && (
               <a className="btn-outline" href={`/verify/${encodeURIComponent(doc.number)}`} target="_blank">
                 التحقق العام
@@ -111,23 +109,40 @@ export default function DocumentDetailPage() {
           </>
         }
       />
+      <div className="mb-3 rounded-xl border border-moj-green/20 bg-white dark:bg-[var(--surface)] p-3">
+        <div className="text-xs font-semibold text-moj-green mb-2">تصدير ونسخ</div>
+        <ExportToolbar
+          doc={{
+            id: doc.id,
+            number: doc.number,
+            subject: doc.subject,
+            dateGregorian: doc.dateGregorian,
+            recipients: doc.recipients,
+            parties: doc.parties,
+            reasons: doc.reasons,
+            studyFields: doc.studyFields,
+            body: doc.body,
+          }}
+        />
+      </div>
       {msg && <div className="mb-3 text-sm text-moj-green bg-white border rounded p-2">{msg}</div>}
       <div className="grid lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2">
           <OfficialPaperPreview
+            style={fields.style}
             doc={{
               number: doc.number,
               subject: doc.subject,
               dateGregorian: doc.dateGregorian,
               recipients: doc.recipients,
               parties: doc.parties,
-              facts: doc.facts,
               reasons: doc.reasons,
               studyFields: doc.studyFields,
               body: doc.body,
               docType: doc.docType,
               qrDataUrl: fields.qrDataUrl,
               tableRows: fields.tableRows,
+              studySections: fields.studySections,
             }}
           />
         </div>

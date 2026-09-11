@@ -100,9 +100,17 @@ export async function GET(req: NextRequest) {
 
     const letterhead = await prisma.letterhead.findFirst({ where: { name: 'default' } }).catch(() => null);
     let qrDataUrl: string | null = null;
+    let studySections: import('@/lib/parse-study').StudySections | null = null;
+    let style: { fontFamily?: string; fontSizePt?: number } | null = null;
     try {
-      const fields = JSON.parse(doc.fieldsJson || '{}') as { qrDataUrl?: string };
+      const fields = JSON.parse(doc.fieldsJson || '{}') as {
+        qrDataUrl?: string;
+        studySections?: import('@/lib/parse-study').StudySections;
+        style?: { fontFamily?: string; fontSizePt?: number };
+      };
       qrDataUrl = fields.qrDataUrl || null;
+      studySections = fields.studySections || null;
+      style = fields.style || null;
     } catch {
       qrDataUrl = null;
     }
@@ -120,7 +128,6 @@ export async function GET(req: NextRequest) {
         dateHijri: doc.dateHijri,
         recipients: doc.recipients,
         parties: doc.parties,
-        facts: doc.facts,
         reasons: doc.reasons,
         studyFields: doc.studyFields,
         body: doc.body,
@@ -128,6 +135,9 @@ export async function GET(req: NextRequest) {
         footer: letterhead?.footer || 'للاستخدام الداخلي فقط',
         qrDataUrl,
         headerLines,
+        studySections,
+        fontFamily: style?.fontFamily,
+        fontSizePt: style?.fontSizePt,
       },
       { forPdf: true },
     );

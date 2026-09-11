@@ -272,11 +272,7 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  if (doc.facts && doc.facts.trim()) {
-    children.push(new Paragraph({ children: [], spacing: { after: 160 } }));
-    children.push(banner('الوقائع', GOLD));
-    children.push(...bodyLines(doc.facts));
-  }
+  // الوقائع removed from UX — skip deed-centric facts banner
 
   if (doc.reasons && doc.reasons.trim()) {
     children.push(new Paragraph({ children: [], spacing: { after: 160 } }));

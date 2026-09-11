@@ -1,5 +1,8 @@
 /** Distribute a pasted official letter / circular / table into structured fields */
 
+import { isStudyPaste, parseStudyPaste, studyToFormFields } from '@/lib/parse-study';
+import { suggestFont } from '@/lib/font-suggest';
+
 export type TableRow = { name: string; id?: string; extra?: string };
 
 export type ParsedPaste = {
@@ -8,11 +11,15 @@ export type ParsedPaste = {
   subject: string;
   recipients: string;
   parties: string;
+  /** @deprecated deed-centric — prefer reasons/body */
   facts: string;
   reasons: string;
   studyFields: string;
   body: string;
   tableRows: TableRow[];
+  studySections?: import('@/lib/parse-study').StudySections;
+  detectedKind?: 'study' | 'letter' | 'table' | 'unknown';
+  fontHint?: { family: string; sizePt: number };
 };
 
 const RECIPIENT_LINE =
@@ -127,6 +134,29 @@ export function parsePaste(raw: string): ParsedPaste {
   const text = normalize(raw);
   const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
 
+  // Auto-detect study Excel layout — no need to choose type first
+  if (isStudyPaste(text)) {
+    const study = parseStudyPaste(text);
+    const mapped = studyToFormFields(study);
+    const font = suggestFont('نموذج تحليل حكم (شكوى)', mapped.body);
+    return {
+      number: study.caseNumber || '',
+      date: '',
+      subject: mapped.subject,
+      recipients: '',
+      parties: mapped.parties,
+      facts: '',
+      reasons: mapped.reasons,
+      studyFields: mapped.studyFields,
+      body: mapped.body,
+      tableRows: [],
+      studySections: study,
+      detectedKind: 'study',
+      fontHint: { family: font.suggestion.family, sizePt: font.suggestion.sizePt },
+    };
+  }
+
+
   let number =
     pick(text, /(?:الرقم|رقم(?:\s*الخطاب)?|رقم(?:\s*الصادر)?)\s*[:：]\s*([^\n]+)/i) ||
     pick(text, /(صادر[-\s]?\d{4}[-\s]?\d+)/i) ||
@@ -238,17 +268,25 @@ export function parsePaste(raw: string): ParsedPaste {
     date,
   });
 
+  // Merge legacy «الوقائع» into reasons/body — field removed from UX
+  const reasonsOut = [reasons, facts].filter(Boolean).join('\n\n').trim();
+  const kind: ParsedPaste['detectedKind'] =
+    tableRows.length >= 2 ? 'table' : subject || recipients ? 'letter' : 'unknown';
+  const font = suggestFont(kind === 'table' ? 'كشف أسماء' : 'خطاب صادر', body || text);
+
   return {
     number,
     date,
     subject,
     recipients,
     parties: partiesOut,
-    facts,
-    reasons,
+    facts: '',
+    reasons: reasonsOut,
     studyFields: study,
     body: body || text,
     tableRows,
+    detectedKind: kind,
+    fontHint: { family: font.suggestion.family, sizePt: font.suggestion.sizePt },
   };
 }
 

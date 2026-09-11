@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-label="شعار تجريدي لوزارة العدل">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#006C35"/>
+      <stop offset="100%" stop-color="#004d26"/>
+    </linearGradient>
+  </defs>
+  <!-- circular frame -->
+  <circle cx="48" cy="48" r="44" fill="#fff" stroke="#C5A059" stroke-width="3"/>
+  <circle cx="48" cy="48" r="38" fill="none" stroke="#006C35" stroke-width="1.5" opacity="0.35"/>
+  <!-- pillar -->
+  <rect x="42" y="28" width="12" height="36" rx="2" fill="url(#g)"/>
+  <rect x="36" y="24" width="24" height="6" rx="1.5" fill="#C5A059"/>
+  <rect x="34" y="64" width="28" height="6" rx="1.5" fill="#C5A059"/>
+  <!-- scales beam -->
+  <rect x="18" y="34" width="60" height="3" rx="1.5" fill="#C5A059"/>
+  <!-- left pan -->
+  <line x1="26" y1="35.5" x2="26" y2="48" stroke="#006C35" stroke-width="1.5"/>
+  <path d="M18 48 Q26 56 34 48 Z" fill="#006C35" opacity="0.85"/>
+  <!-- right pan -->
+  <line x1="70" y1="35.5" x2="70" y2="48" stroke="#006C35" stroke-width="1.5"/>
+  <path d="M62 48 Q70 56 78 48 Z" fill="#006C35" opacity="0.85"/>
+  <!-- finial -->
+  <circle cx="48" cy="32" r="3.5" fill="#C5A059"/>
+</svg>

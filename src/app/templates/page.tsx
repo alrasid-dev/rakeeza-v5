@@ -3,11 +3,10 @@ import PageHeader from '@/components/PageHeader';
 import { currentUser } from '@/lib/server-user';
 import { prisma } from '@/lib/db';
 import { ensureTemplates } from '@/lib/ensure-templates';
-import Link from 'next/link';
+import TemplatesClient from './TemplatesClient';
 
 export const dynamic = 'force-dynamic';
 
-/** Match template display name → form slug used by /documents/new */
 const NAME_TO_FORM: Record<string, string> = {
   'خطاب صادر': 'khitab-sadir',
   'مذكرة داخلية': 'muthakkira-dakhiliya',
@@ -52,7 +51,6 @@ const GROUP_META: { key: GroupKey; title: string; subtitle: string }[] = [
   { key: 'excel', title: 'نماذج Excel', subtitle: 'كشوف وأسماء وهويات' },
 ];
 
-/** Map DB category (legacy + new) → UI group */
 function resolveGroup(category: string, name: string): GroupKey {
   if (category === 'pdf-official') return 'pdf-official';
   if (category === 'pdf-identity' || ['study', 'signature', 'cover'].includes(category)) {
@@ -61,7 +59,6 @@ function resolveGroup(category: string, name: string): GroupKey {
   if (category === 'letter-identity' || category === 'freeform') return 'letter-identity';
   if (category === 'excel' || /excel|كشف|xlsx/i.test(name)) return 'excel';
   if (category === 'letter-official' || category === 'document') return 'letter-official';
-  // Fallback heuristics
   if (/دراسة|توقيع|غلاف/.test(name)) return 'pdf-identity';
   if (/حر/.test(name)) return 'letter-identity';
   return 'letter-official';
@@ -73,50 +70,6 @@ function templateHref(t: { id: string; name: string }) {
     return `/documents/new?form=${encodeURIComponent(slug)}&name=${encodeURIComponent(t.name)}`;
   }
   return `/documents/new?templateId=${encodeURIComponent(t.id)}&name=${encodeURIComponent(t.name)}`;
-}
-
-function TemplateCard({ t }: { t: { id: string; name: string; description?: string | null } }) {
-  return (
-    <div className="card-surface rounded-2xl p-4 sm:p-6 min-h-[7.5rem] flex flex-col justify-between shadow-sm hover:shadow-md transition border border-moj-green/15 dark:border-white/10 bg-white dark:bg-[var(--surface)] min-w-0">
-      <div className="min-w-0">
-        <div className="text-base sm:text-lg font-semibold text-moj-green dark:text-moj-gold leading-snug break-words">{t.name}</div>
-        {t.description && (
-          <p className="mt-1 text-xs text-gray-500 dark:text-white/45 line-clamp-2">{t.description}</p>
-        )}
-      </div>
-      <Link
-        href={templateHref(t)}
-        className="mt-4 w-full inline-flex items-center justify-center rounded-xl bg-moj-green text-white dark:bg-[#2d4a3e] px-4 py-2.5 text-sm font-medium hover:opacity-90 transition"
-      >
-        استخدام
-      </Link>
-    </div>
-  );
-}
-
-function Section({
-  title,
-  subtitle,
-  items,
-}: {
-  title: string;
-  subtitle?: string;
-  items: { id: string; name: string; description?: string | null }[];
-}) {
-  if (!items.length) return null;
-  return (
-    <section className="mb-10">
-      <div className="mb-3 border-r-4 border-moj-gold pr-3">
-        <h2 className="text-base font-bold text-moj-green dark:text-moj-gold">{title}</h2>
-        {subtitle && <p className="text-xs text-gray-500 dark:text-white/45 mt-0.5">{subtitle}</p>}
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-        {items.map((t) => (
-          <TemplateCard key={t.id} t={t} />
-        ))}
-      </div>
-    </section>
-  );
 }
 
 export default async function TemplatesPage() {
@@ -136,15 +89,25 @@ export default async function TemplatesPage() {
     grouped[resolveGroup(t.category, t.name)].push(t);
   }
 
+  const groups = GROUP_META.map((g) => ({
+    ...g,
+    items: grouped[g.key].map((t) => ({
+      id: t.id,
+      name: t.name,
+      description: t.description,
+      category: t.category,
+      href: templateHref(t),
+      group: g.key,
+    })),
+  }));
+
   return (
     <AppShell user={user}>
       <PageHeader
         title="القوالب"
-        subtitle="مجموعات واضحة: PDF وخطاب (رسمي / من الهوية) وExcel"
+        subtitle="اختر قالباً لمعاينة الورق الرسمي بجانب القائمة قبل فتح المحرر"
       />
-      {GROUP_META.map((g) => (
-        <Section key={g.key} title={g.title} subtitle={g.subtitle} items={grouped[g.key]} />
-      ))}
+      <TemplatesClient groups={groups} />
     </AppShell>
   );
 }
