@@ -87,3 +87,14 @@ npm run build && npm start
 - Prisma 5.22 + SQLite (better-sqlite3 skipped — native build tools unavailable)
 - No paid services required
 - Optional: `OPENAI_API_KEY`, `PUBLIC_API_KEY`, `AUTH_SECRET`
+
+## Alternate access (2026-09-11)
+
+- Ministry/ISP blocks `*.vercel.app` → use Cloudflare Workers proxy:
+  - https://rakeza-moj-access.decorous-bramble-251.workers.dev
+- `/api/auth/ping` → `{"ok":true,"db":"turso"}`
+- Login default mode: `pin` (redeployed)
+- Proxy source: `cf-access-proxy/` — claim CF preview account so URL persists:
+  https://dash.cloudflare.com/claim-preview?claimToken=hg4HQhliIEvH_RqCcMPfS9baZ5thSzwQoHQxOQqLS94
+- Netlify/OpenNext full alternate host: blocked (no Netlify auth; OpenNext+libsql bundle failed). Proxy keeps same Vercel+Turso app reachable.
+
