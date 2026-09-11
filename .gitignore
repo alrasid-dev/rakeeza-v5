@@ -17,3 +17,6 @@ data/pins-moj.csv
 reference-models/
 .vercel
 .env*
+.env.deploy
+.env.secrets*
+.env.vercel*
