@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getSession } from '@/lib/auth';
 import { hasOfficialOutgoingNumber } from '@/lib/honorific';
+import { attachmentDisposition } from '@/lib/download-headers';
+import { officialDateDisplay } from '@/lib/hijri';
 import ExcelJS from 'exceljs';
 
 const GREEN = '006C35';
@@ -40,7 +42,7 @@ export async function GET(req: NextRequest) {
 
     addBanner(doc.subject || doc.docType || 'مكاتبة');
     addKv('الرقم', doc.number);
-    addKv('التاريخ', doc.dateGregorian);
+    addKv('التاريخ', officialDateDisplay(doc.dateHijri, doc.dateGregorian));
     addKv('إلى', doc.recipients);
     addKv('الموضوع', doc.subject);
     addKv('الأطراف', doc.parties);
@@ -81,7 +83,7 @@ export async function GET(req: NextRequest) {
     return new NextResponse(Buffer.from(buffer), {
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'Content-Disposition': `attachment; filename="rakeeza-${doc.number || doc.id}.xlsx"`,
+        'Content-Disposition': attachmentDisposition(`rakeeza-${doc.number || doc.id}`, 'xlsx'),
       },
     });
   }
@@ -104,7 +106,7 @@ export async function GET(req: NextRequest) {
       docType: d.docType,
       subject: d.subject,
       status: d.status,
-      dateGregorian: d.dateGregorian || '',
+      dateGregorian: officialDateDisplay(d.dateHijri, d.dateGregorian),
       recipients: d.recipients,
     });
   }

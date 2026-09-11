@@ -161,7 +161,8 @@ async function main() {
     await prisma.position.create({ data: p });
   }
 
-  const year = new Date().getFullYear();
+  const { hijriYear } = await import('../src/lib/hijri');
+  const year = hijriYear();
   await prisma.numberingRule.create({
     data: {
       name: 'default',

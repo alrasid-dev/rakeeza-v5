@@ -16,6 +16,7 @@ type Doc = {
   subject: string;
   status: string;
   dateGregorian: string | null;
+  dateHijri: string | null;
   recipients: string;
   parties: string;
   facts: string;
@@ -121,6 +122,7 @@ export default function DocumentDetailPage() {
             number: doc.number,
             subject: doc.subject,
             dateGregorian: doc.dateGregorian,
+            dateHijri: doc.dateHijri,
             recipients: doc.recipients,
             parties: doc.parties,
             reasons: doc.reasons,
@@ -146,6 +148,7 @@ export default function DocumentDetailPage() {
               number: doc.number,
               subject: doc.subject,
               dateGregorian: doc.dateGregorian,
+              dateHijri: doc.dateHijri,
               recipients: doc.recipients,
               parties: doc.parties,
               reasons: doc.reasons,

@@ -9,6 +9,8 @@ const nextConfig = {
       'bcryptjs',
       '@sparticuz/chromium',
       'puppeteer-core',
+      'docx',
+      'exceljs',
     ],
     outputFileTracingIncludes: {
       '/api/**/*': ['./data/seed-rakeeza.db'],

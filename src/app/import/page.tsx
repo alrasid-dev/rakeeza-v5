@@ -6,6 +6,7 @@ import PageHeader from '@/components/PageHeader';
 import OfficialPaperPreview from '@/components/OfficialPaperPreview';
 import { parsePaste } from '@/lib/parse-paste';
 import { saveDraft } from '@/lib/draft-store';
+import { formatHijri, looksLikeHijri, normalizeHijriDisplay, todayGregorianISO, todayHijri } from '@/lib/hijri';
 
 export default function ImportPage() {
   const [user, setUser] = useState<{ name: string; role: string } | null>(null);
@@ -84,7 +85,8 @@ export default function ImportPage() {
                         reasons: parsed.reasons,
                         studyFields: parsed.studyFields,
                         body: parsed.body,
-                        dateGregorian: parsed.date || new Date().toISOString().slice(0, 10),
+                        dateGregorian: parsed.date && !looksLikeHijri(parsed.date) && /^\d{4}-\d{2}-\d{2}/.test(parsed.date) ? parsed.date : todayGregorianISO(),
+                        dateHijri: parsed.date && looksLikeHijri(parsed.date) ? normalizeHijriDisplay(parsed.date) : (parsed.date && /^\d{4}-\d{2}-\d{2}/.test(parsed.date) ? formatHijri(parsed.date) : todayHijri()),
                         docType: 'مستورد',
                         tableRowsJson: JSON.stringify(parsed.tableRows),
                       },
@@ -107,7 +109,8 @@ export default function ImportPage() {
             doc={{
               number: parsed.number || null,
               subject: parsed.subject,
-              dateGregorian: parsed.date || null,
+              dateGregorian: parsed.date && !looksLikeHijri(parsed.date) ? parsed.date : todayGregorianISO(),
+              dateHijri: parsed.date && looksLikeHijri(parsed.date) ? normalizeHijriDisplay(parsed.date) : (parsed.date ? formatHijri(parsed.date) : todayHijri()),
               recipients: parsed.recipients,
               parties: parsed.parties,
               facts: parsed.facts,

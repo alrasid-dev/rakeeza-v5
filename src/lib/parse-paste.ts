@@ -188,23 +188,26 @@ export function parsePaste(raw: string): ParsedPaste {
     pick(text, /بتاريخ\s*[:：]\s*([^\n]+)/i) ||
     '';
 
-  // Normalize gregorian date if dd-mm-yyyy or dd/mm/yyyy
-  const g = date.match(/(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/);
-  if (g) {
-    const y = g[3].length === 2 ? `20${g[3]}` : g[3];
-    date = `${y}-${g[2].padStart(2, '0')}-${g[1].padStart(2, '0')}`;
-  } else if (/^\d{4}-\d{2}-\d{2}$/.test(date.trim())) {
-    date = date.trim();
+  // Prefer Hijri as-is for official docs; normalize Gregorian to ISO when clearly Gregorian (year >= 1900)
+  const rawDate = date.trim();
+  if (/هـ|هجر/.test(rawDate)) {
+    date = rawDate; // keep Hijri string (subject lines / paste)
   } else {
-    // keep hijri/other as-is for display; wizard date field prefers ISO — leave empty if not gregorian
-    if (/هـ|هجر/.test(date) || !g) {
-      // try find a gregorian elsewhere
-      const g2 = text.match(/(\d{1,2})[\/\-.](\d{1,2})[\/\-.](20\d{2})/);
-      if (g2) {
-        date = `${g2[3]}-${g2[2].padStart(2, '0')}-${g2[1].padStart(2, '0')}`;
+    const g = rawDate.match(/(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/);
+    if (g) {
+      const yNum = Number(g[3].length === 2 ? `20${g[3]}` : g[3]);
+      if (yNum >= 1300 && yNum <= 1600) {
+        // Hijri without هـ marker — keep slash form
+        date = `${yNum}/${g[2].padStart(2, '0')}/${g[1].padStart(2, '0')}هـ`;
+      } else if (yNum >= 1900) {
+        date = `${yNum}-${g[2].padStart(2, '0')}-${g[1].padStart(2, '0')}`;
       } else {
-        date = '';
+        date = rawDate;
       }
+    } else if (/^\d{4}-\d{2}-\d{2}$/.test(rawDate)) {
+      date = rawDate;
+    } else {
+      date = rawDate;
     }
   }
 

@@ -49,7 +49,7 @@ export default async function DocumentsPage() {
                 <td>{d.subject || '—'}</td>
                 <td>{d.docType}</td>
                 <td>{d.status === 'issued' ? 'صادرة' : d.status === 'draft' ? 'مسودة' : d.status}</td>
-                <td>{d.dateGregorian || '—'}</td>
+                <td>{d.dateHijri || d.dateGregorian || '—'}</td>
                 <td>
                   <Link className="text-moj-green underline" href={`/documents/${d.id}`}>عرض</Link>
                 </td>

@@ -1,7 +1,8 @@
 import { prisma } from './db';
+import { hijriYear } from './hijri';
 
 export async function nextDocumentNumber(): Promise<string> {
-  const year = new Date().getFullYear();
+  const year = hijriYear();
   let rule = await prisma.numberingRule.findFirst({ where: { name: 'default' } });
   if (!rule) {
     rule = await prisma.numberingRule.create({

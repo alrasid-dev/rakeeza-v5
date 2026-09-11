@@ -14,6 +14,14 @@ import type { StudySections } from '@/lib/parse-study';
 import { clearDraft, clearAllDrafts, loadDraft, saveDraft } from '@/lib/draft-store';
 import { suggestFont } from '@/lib/font-suggest';
 import { DEFAULT_PAPER_LAYOUT, normalizePaperLayout, type PaperLayoutId } from '@/lib/paper-layouts';
+import {
+  formatHijri,
+  looksLikeHijri,
+  normalizeHijriDisplay,
+  syncDatesFromGregorian,
+  todayGregorianISO,
+  todayHijri,
+} from '@/lib/hijri';
 
 type Template = { id: string; name: string; category: string };
 type User = { name: string; role: string };
@@ -25,7 +33,8 @@ const EMPTY_FORM = {
   reasons: '',
   studyFields: '',
   body: '',
-  dateGregorian: new Date().toISOString().slice(0, 10),
+  dateGregorian: todayGregorianISO(),
+  dateHijri: todayHijri(),
   docType: 'مكاتبة',
 };
 
@@ -73,6 +82,11 @@ function NewDocumentInner() {
         ...draft.form,
         body: restoredBody,
         dateGregorian: draft.form.dateGregorian || EMPTY_FORM.dateGregorian,
+        dateHijri:
+          draft.form.dateHijri ||
+          (draft.form.dateGregorian
+            ? formatHijri(draft.form.dateGregorian)
+            : EMPTY_FORM.dateHijri),
         docType: formName || draft.form.docType || EMPTY_FORM.docType,
       });
       if (draft.templateId) setTemplateId(draft.templateId);
@@ -94,7 +108,8 @@ function NewDocumentInner() {
     } else {
       setForm({
         ...EMPTY_FORM,
-        dateGregorian: new Date().toISOString().slice(0, 10),
+        dateGregorian: todayGregorianISO(),
+        dateHijri: todayHijri(),
         docType: formName || 'مكاتبة',
       });
       setPaste('');
@@ -198,7 +213,18 @@ function NewDocumentInner() {
       reasons: parsed.reasons || '',
       studyFields: parsed.studyFields || '',
       body: nextBody,
-      dateGregorian: parsed.date || new Date().toISOString().slice(0, 10),
+      dateGregorian: (() => {
+        const raw = parsed.date || '';
+        if (raw && looksLikeHijri(raw)) return todayGregorianISO();
+        if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+        return todayGregorianISO();
+      })(),
+      dateHijri: (() => {
+        const raw = parsed.date || '';
+        if (raw && looksLikeHijri(raw)) return normalizeHijriDisplay(raw);
+        if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return formatHijri(raw);
+        return todayHijri();
+      })(),
       docType:
         parsed.detectedKind === 'study'
           ? formName || 'نموذج تحليل حكم (شكوى)'
@@ -213,7 +239,8 @@ function NewDocumentInner() {
     else clearAllDrafts();
     setForm({
       ...EMPTY_FORM,
-      dateGregorian: new Date().toISOString().slice(0, 10),
+      dateGregorian: todayGregorianISO(),
+      dateHijri: todayHijri(),
       docType: formName || 'مكاتبة',
     });
     setPaste('');
@@ -312,6 +339,7 @@ function NewDocumentInner() {
     number: null as string | null,
     subject: form.subject,
     dateGregorian: form.dateGregorian,
+    dateHijri: form.dateHijri,
     recipients: form.recipients,
     parties: form.parties,
     reasons: form.reasons,
@@ -455,16 +483,43 @@ function NewDocumentInner() {
                   />
                 </div>
                 <div>
-                  <label className="label">التاريخ</label>
-                  <input
-                    ref={(el) => {
-                      fieldRefs.current.dateGregorian = el;
-                    }}
-                    className="input"
-                    type="date"
-                    value={form.dateGregorian}
-                    onChange={(e) => setForm({ ...form, dateGregorian: e.target.value })}
-                  />
+                  <label className="label">التاريخ (هجري)</label>
+                  <div className="flex flex-col gap-1">
+                    <input
+                      ref={(el) => {
+                        fieldRefs.current.dateGregorian = el;
+                      }}
+                      className="input font-medium tracking-wide"
+                      dir="ltr"
+                      inputMode="text"
+                      placeholder="1448/03/28هـ"
+                      value={form.dateHijri}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setForm({ ...form, dateHijri: v });
+                      }}
+                      onBlur={() => {
+                        if (form.dateHijri?.trim()) {
+                          setForm({
+                            ...form,
+                            dateHijri: normalizeHijriDisplay(form.dateHijri),
+                          });
+                        }
+                      }}
+                    />
+                    <label className="text-[11px] text-gray-500 dark:text-white/40">
+                      اختيار من التقويم الميلادي (يُحوَّل تلقائياً للهجري)
+                    </label>
+                    <input
+                      className="input text-sm"
+                      type="date"
+                      value={form.dateGregorian}
+                      onChange={(e) => {
+                        const synced = syncDatesFromGregorian(e.target.value);
+                        setForm({ ...form, ...synced });
+                      }}
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -566,6 +621,7 @@ function NewDocumentInner() {
                   number: null,
                   subject: form.subject,
                   dateGregorian: form.dateGregorian,
+                  dateHijri: form.dateHijri,
                   recipients: form.recipients,
                   parties: form.parties,
                   reasons: form.reasons,

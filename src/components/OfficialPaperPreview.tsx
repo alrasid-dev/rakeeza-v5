@@ -7,6 +7,7 @@ import {
   normalizePaperLayout,
   type PaperLayoutId,
 } from '@/lib/paper-layouts';
+import { officialDateDisplay } from '@/lib/hijri';
 
 export type OfficialPaperFields = {
   number?: string | null;
@@ -499,7 +500,7 @@ export default function OfficialPaperPreview({
           </Clickable>
           <Clickable field="dateGregorian" onFieldClick={onFieldClick}>
             <span className="text-moj-green font-bold">التاريخ: </span>
-            {doc.dateGregorian || doc.dateHijri || '—'}
+            {officialDateDisplay(doc.dateHijri, doc.dateGregorian)}
           </Clickable>
           <Clickable field="recipients" onFieldClick={onFieldClick} className="sm:col-span-2">
             <span className="text-moj-green font-bold">إلى: </span>

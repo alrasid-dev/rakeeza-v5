@@ -5,6 +5,8 @@ import { prisma } from '@/lib/db';
 import { getSession } from '@/lib/auth';
 import { buildOfficialLetterHtml } from '@/lib/official-letter-html';
 import { hasOfficialOutgoingNumber } from '@/lib/honorific';
+import { attachmentDisposition } from '@/lib/download-headers';
+import { officialDateDisplay } from '@/lib/hijri';
 import { prepareArabicForPdf, wrapArabicLines } from '@/lib/arabic-pdf-text';
 import { jsPDF } from 'jspdf';
 
@@ -117,7 +119,7 @@ function pdfViaJsPdf(doc: {
   y += 2;
 
   writeAr(`الرقم: ${doc.number || '—'}`, 11);
-  writeAr(`التاريخ: ${doc.dateGregorian || doc.dateHijri || '—'}`, 11);
+  writeAr(`التاريخ: ${officialDateDisplay(doc.dateHijri, doc.dateGregorian)}`, 11);
   writeAr(`إلى: ${doc.recipients || '—'}`, 11);
   writeAr(`الموضوع: ${doc.subject || '—'}`, 11);
   y += 3;
@@ -235,10 +237,11 @@ export async function GET(req: NextRequest) {
       });
     }
 
+    const base = `rakeeza-${doc.number || doc.id}`;
     return new NextResponse(new Uint8Array(buffer), {
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="rakeeza-${doc.number || doc.id}.pdf"`,
+        'Content-Disposition': attachmentDisposition(base, 'pdf'),
         'Cache-Control': 'no-store',
       },
     });

@@ -31,7 +31,7 @@ export default async function ArchivePage() {
               <tr key={d.id}>
                 <td dir="ltr">{d.number || '—'}</td>
                 <td>{d.subject}</td>
-                <td>{d.dateGregorian}</td>
+                <td>{d.dateHijri || d.dateGregorian || '—'}</td>
                 <td>
                   <Link href={`/documents/${d.id}`} className="text-moj-green underline">عرض</Link>
                 </td>

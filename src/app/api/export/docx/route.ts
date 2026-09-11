@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getSession } from '@/lib/auth';
 import { hasOfficialOutgoingNumber } from '@/lib/honorific';
+import { attachmentDisposition } from '@/lib/download-headers';
+import { officialDateDisplay } from '@/lib/hijri';
 import {
   Document,
   Packer,
@@ -112,7 +114,11 @@ function bodyLines(text: string) {
     );
 }
 
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: NextRequest) {
+  try {
   const s = await getSession();
   if (!s) return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
   const id = req.nextUrl.searchParams.get('id');
@@ -197,7 +203,7 @@ export async function GET(req: NextRequest) {
         new TableRow({
           children: [
             cell(`الرقم: ${doc.number || '—'}`, { fill: LIGHT, bold: true, width: 3120, center: true }),
-            cell(`التاريخ: ${doc.dateGregorian || doc.dateHijri || '—'}`, {
+            cell(`التاريخ: ${officialDateDisplay(doc.dateHijri, doc.dateGregorian)}`, {
               fill: LIGHT,
               bold: true,
               width: 3120,
@@ -398,10 +404,19 @@ export async function GET(req: NextRequest) {
   });
 
   const buffer = await Packer.toBuffer(document);
+  const base = `rakeeza-${doc.number || doc.id}`;
   return new NextResponse(new Uint8Array(buffer), {
     headers: {
       'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'Content-Disposition': `attachment; filename="rakeeza-${doc.number || doc.id}.docx"`,
+      'Content-Disposition': attachmentDisposition(base, 'docx'),
+      'Cache-Control': 'no-store',
     },
   });
+  } catch (e) {
+    console.error('docx export failed', e);
+    return NextResponse.json(
+      { error: 'تعذر إنشاء ملف DOCX. جرب تصدير PDF حالياً.' },
+      { status: 500 },
+    );
+  }
 }

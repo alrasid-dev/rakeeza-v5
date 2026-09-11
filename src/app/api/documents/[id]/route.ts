@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db';
 import { getSession, audit } from '@/lib/auth';
 import { nextDocumentNumber } from '@/lib/numbering';
 import QRCode from 'qrcode';
+import { formatHijri, looksLikeHijri, normalizeHijriDisplay } from '@/lib/hijri';
 
 type Ctx = { params: { id: string } };
 
@@ -43,7 +44,15 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
       docType: body.docType ?? existing.docType,
       status: body.issue ? 'issued' : body.status ?? existing.status,
       subject: body.subject ?? existing.subject,
-      dateHijri: body.dateHijri ?? existing.dateHijri,
+      dateHijri: (() => {
+        if (body.dateHijri != null) return body.dateHijri;
+        if (body.dateGregorian) {
+          const g = String(body.dateGregorian);
+          if (looksLikeHijri(g)) return normalizeHijriDisplay(g);
+          return formatHijri(g);
+        }
+        return existing.dateHijri;
+      })(),
       dateGregorian: body.dateGregorian ?? existing.dateGregorian,
       recipients: body.recipients ?? existing.recipients,
       parties: body.parties ?? existing.parties,

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getSession } from '@/lib/auth';
 import { hasOfficialOutgoingNumber } from '@/lib/honorific';
+import { attachmentDisposition } from '@/lib/download-headers';
+import { officialDateDisplay } from '@/lib/hijri';
 import JSZip from 'jszip';
 
 /** Minimal PPTX (one title slide + one content slide) — no extra deps beyond jszip */
@@ -65,7 +67,7 @@ export async function GET(req: NextRequest) {
   const title = doc.subject || doc.docType || 'مكاتبة';
   const body = [
     `الرقم: ${doc.number || '—'}`,
-    `التاريخ: ${doc.dateGregorian || '—'}`,
+    `التاريخ: ${officialDateDisplay(doc.dateHijri, doc.dateGregorian)}`,
     `إلى: ${doc.recipients || '—'}`,
     '',
     doc.parties,
@@ -116,7 +118,7 @@ export async function GET(req: NextRequest) {
   return new NextResponse(new Uint8Array(buf), {
     headers: {
       'Content-Type': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-      'Content-Disposition': `attachment; filename="rakeeza-${doc.number || doc.id}.pptx"`,
+      'Content-Disposition': attachmentDisposition(`rakeeza-${doc.number || doc.id}`, 'pptx'),
     },
   });
 }

@@ -5,6 +5,7 @@ import { buildLetterHtml, copyOutlookHtml } from '@/lib/outlook-clipboard';
 import { buildOfficialLetterHtml } from '@/lib/official-letter-html';
 import { normalizeBodyText } from '@/components/OfficialPaperPreview';
 import { hasOfficialOutgoingNumber } from '@/lib/honorific';
+import { officialDateDisplay } from '@/lib/hijri';
 import type { PaperLayoutId } from '@/lib/paper-layouts';
 import type { StudySections } from '@/lib/parse-study';
 
@@ -48,6 +49,7 @@ function contentFingerprint(doc: ExportDoc) {
     doc.studyFields || '',
     normalizeBodyText(doc.body),
     doc.dateGregorian || '',
+    doc.dateHijri || '',
     doc.paperLayout || '',
     doc.number || '',
   ].join('\u0001');
@@ -63,7 +65,7 @@ function buildPlainLetter(doc: ExportDoc) {
     doc.courtName || 'المحكمة العمالية بالرياض',
     '',
     `الرقم: ${doc.number || '—'}`,
-    `التاريخ: ${doc.dateGregorian || doc.dateHijri || '—'}`,
+    `التاريخ: ${officialDateDisplay(doc.dateHijri, doc.dateGregorian)}`,
     `إلى: ${doc.recipients || '—'}`,
     `الموضوع: ${doc.subject || '—'}`,
     '',
@@ -144,6 +146,7 @@ export default function ExportToolbar({
           number: doc.number ?? undefined,
           subject: doc.subject || '',
           dateGregorian: doc.dateGregorian ?? undefined,
+          dateHijri: doc.dateHijri ?? undefined,
           recipients: doc.recipients || '',
           body: normalizeBodyText(doc.body),
           footer: doc.footer ?? undefined,
@@ -172,21 +175,56 @@ export default function ExportToolbar({
               ? `/api/export/pdf?id=${encodeURIComponent(id)}`
               : `/api/export/pptx?id=${encodeURIComponent(id)}`;
 
+      const res = await fetch(path, { credentials: 'same-origin' });
+      const ctype = res.headers.get('content-type') || '';
+      if (!res.ok || ctype.includes('application/json')) {
+        let err = 'فشل التصدير';
+        try {
+          const j = await res.json();
+          if (j?.error) err = String(j.error);
+        } catch {
+          /* ignore */
+        }
+        setMsg(err);
+        return;
+      }
+      const blob = await res.blob();
+      const cd = res.headers.get('content-disposition') || '';
+      const m = cd.match(/filename\*?=(?:UTF-8''|")?([^";]+)/i);
+      const fallback =
+        format === 'docx'
+          ? 'rakeeza.docx'
+          : format === 'xlsx'
+            ? 'rakeeza.xlsx'
+            : format === 'pdf'
+              ? 'rakeeza.pdf'
+              : 'rakeeza.pptx';
+      let filename = fallback;
+      if (m?.[1]) {
+        try {
+          filename = decodeURIComponent(m[1].replace(/"/g, '').trim());
+        } catch {
+          filename = m[1].replace(/"/g, '').trim() || fallback;
+        }
+      }
+      const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = path;
+      a.href = url;
+      a.download = filename;
       a.rel = 'noopener';
       document.body.appendChild(a);
       a.click();
       a.remove();
+      URL.revokeObjectURL(url);
       markExported();
       setMsg(
         format === 'docx'
-          ? 'جاري تنزيل Word…'
+          ? 'تم تنزيل Word'
           : format === 'xlsx'
-            ? 'جاري تنزيل Excel…'
+            ? 'تم تنزيل Excel'
             : format === 'pdf'
-              ? 'جاري تنزيل PDF…'
-              : 'جاري تنزيل PowerPoint…',
+              ? 'تم تنزيل PDF'
+              : 'تم تنزيل PowerPoint',
       );
     } finally {
       setBusy(false);

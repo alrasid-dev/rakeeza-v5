@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/db';
+import { officialDateDisplay } from '@/lib/hijri';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,6 +12,7 @@ export default async function VerifyPage({ params }: { params: { number: string 
       subject: true,
       status: true,
       dateGregorian: true,
+      dateHijri: true,
       docType: true,
       createdAt: true,
     },
@@ -30,7 +32,7 @@ export default async function VerifyPage({ params }: { params: { number: string 
             <div><span className="text-gray-500">الموضوع:</span> {doc.subject || '—'}</div>
             <div><span className="text-gray-500">النوع:</span> {doc.docType}</div>
             <div><span className="text-gray-500">الحالة:</span> {doc.status}</div>
-            <div><span className="text-gray-500">التاريخ:</span> {doc.dateGregorian || '—'}</div>
+            <div><span className="text-gray-500">التاريخ:</span> {officialDateDisplay(doc.dateHijri, doc.dateGregorian)}</div>
             <div className="text-xs text-gray-400 pt-3 border-t">عرض عام للقراءة فقط — للاستخدام الداخلي فقط</div>
           </div>
         )}

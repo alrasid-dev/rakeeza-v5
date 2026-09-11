@@ -1,3 +1,4 @@
+import { officialDateDisplay } from '@/lib/hijri';
 /** Client helper: copy Outlook-friendly HTML */
 
 const GREEN = '#006C35';
@@ -31,6 +32,7 @@ export function buildLetterHtml(doc: {
   number?: string | null;
   subject?: string;
   dateGregorian?: string | null;
+  dateHijri?: string | null;
   recipients?: string;
   body?: string;
   footer?: string;
@@ -53,7 +55,7 @@ ${qr}
 </div>
 <div style="margin:16px;background:#E6F2EB;border:1px solid ${GREEN};border-radius:8px;padding:10px">
 <div>الرقم: ${doc.number || '—'}</div>
-<div>التاريخ: ${doc.dateGregorian || '—'}</div>
+<div>التاريخ: ${officialDateDisplay(doc.dateHijri, doc.dateGregorian)}</div>
 <div>إلى: ${doc.recipients || ''}</div>
 <div>الموضوع: ${doc.subject || ''}</div>
 </div>

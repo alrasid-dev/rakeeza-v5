@@ -1,6 +1,7 @@
 /** Shared official MOJ letter HTML — used by PDF export and previews */
 
 import type { StudySections } from '@/lib/parse-study';
+import { officialDateDisplay } from '@/lib/hijri';
 import {
   IDENTITY_COLORS,
   normalizePaperLayout,
@@ -310,7 +311,7 @@ body {
   ${brandRow}
   <div class="meta">
     <div><span class="label">الرقم:</span> <span dir="ltr">${esc(doc.number || '—')}</span></div>
-    <div><span class="label">التاريخ:</span> ${esc(doc.dateGregorian || doc.dateHijri || '—')}</div>
+    <div><span class="label">التاريخ:</span> ${esc(officialDateDisplay(doc.dateHijri, doc.dateGregorian))}</div>
     <div style="grid-column:1/-1"><span class="label">إلى:</span> ${esc(doc.recipients || '—')}</div>
     <div style="grid-column:1/-1"><span class="label">الموضوع:</span> ${esc(doc.subject || '—')}</div>
   </div>
