@@ -157,13 +157,14 @@ export default function ExportToolbar({
           courtName: doc.courtName || undefined,
           qrDataUrl: doc.qrDataUrl,
           headerLines: doc.headerLines,
+          origin: typeof window !== 'undefined' ? window.location.origin : undefined,
         });
         const ok = await copyOutlookHtml(html, buildPlainLetter(doc));
         if (ok) {
           markExported();
-          setMsg('تم تجهيز نسخة Outlook — الصق في البريد');
+          setMsg('تم النسخ، افتح Outlook واضغط Ctrl+V');
         } else {
-          setMsg('فشل نسخ Outlook');
+          setMsg('فشل نسخ Outlook — اسمح بالوصول للحافظة');
         }
         return;
       }
@@ -263,15 +264,16 @@ export default function ExportToolbar({
       courtName: doc.courtName || undefined,
       qrDataUrl: doc.qrDataUrl,
       headerLines: doc.headerLines,
+      origin: typeof window !== 'undefined' ? window.location.origin : undefined,
     });
     try {
       const ok = await copyOutlookHtml(html, plain);
       if (ok) {
-        setMsg('تم نسخ الخطاب كامل (ترويسة + شعار + QR)');
+        setMsg('تم النسخ، افتح Outlook واضغط Ctrl+V');
         return;
       }
       await navigator.clipboard.writeText(plain);
-      setMsg('تم نسخ النص فقط — الصق HTML عبر Outlook');
+      setMsg('تم نسخ النص فقط — جرّب تصدير Outlook مرة أخرى');
     } catch {
       setMsg('فشل النسخ');
     }
