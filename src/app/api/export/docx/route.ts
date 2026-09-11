@@ -241,13 +241,13 @@ export async function GET(req: NextRequest) {
       }),
     );
 
-    // Official header: physical LTR columns in Word table — col0=QR(left), col1=center, col2=emblem(right)
+    // Official header: physical LTR — col0=QR(left), col1=emblem(center), col2=kingdom(right)
     // Word RTL docs still lay table columns left→right in OOXML.
-    const centerParas = [
+    const kingdomParas = [
       ...headerLines.map(
         (line, i) =>
           new Paragraph({
-            alignment: AlignmentType.CENTER,
+            alignment: AlignmentType.RIGHT,
             children: [
               new TextRun({
                 text: line,
@@ -261,7 +261,7 @@ export async function GET(req: NextRequest) {
           }),
       ),
       new Paragraph({
-        alignment: AlignmentType.CENTER,
+        alignment: AlignmentType.RIGHT,
         spacing: { after: 80 },
         children: [
           new TextRun({
@@ -278,13 +278,14 @@ export async function GET(req: NextRequest) {
     children.push(
       new Table({
         width: { size: PAGE_W, type: WidthType.DXA },
-        columnWidths: [1400, 6560, 1400],
+        columnWidths: [3120, 3120, 3120],
         rows: [
           new TableRow({
             children: [
-              imageCell(qrBuf, 'QR', 1400),
+              imageCell(qrBuf, 'QR', 3120),
+              imageCell(emblemBuf, 'شعار', 3120),
               new TableCell({
-                width: { size: 6560, type: WidthType.DXA },
+                width: { size: 3120, type: WidthType.DXA },
                 verticalAlign: VerticalAlign.CENTER,
                 borders: {
                   top: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
@@ -292,9 +293,8 @@ export async function GET(req: NextRequest) {
                   left: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
                   right: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
                 },
-                children: centerParas,
+                children: kingdomParas,
               }),
-              imageCell(emblemBuf, 'شعار', 1400),
             ],
           }),
         ],
@@ -355,39 +355,29 @@ export async function GET(req: NextRequest) {
     if (doc.parties && doc.parties.trim()) {
       children.push(new Paragraph({ children: [], spacing: { after: 120 } }));
       children.push(banner('أطراف القضية', GREEN));
-      children.push(
-        new Table({
-          width: { size: PAGE_W, type: WidthType.DXA },
-          columnWidths: [2808, 1872, 1872, 1404, 1404],
-          rows: [
-            new TableRow({
-              children: [
-                cell('الاسم', { bold: true, fill: GREEN, color: 'FFFFFF', width: 2808, center: true }),
-                cell('نوع الهوية', { bold: true, fill: GREEN, color: 'FFFFFF', width: 1872, center: true }),
-                cell('رقم الهوية', { bold: true, fill: GREEN, color: 'FFFFFF', width: 1872, center: true }),
-                cell('الجنسية', { bold: true, fill: GREEN, color: 'FFFFFF', width: 1404, center: true }),
-                cell('الصفة', { bold: true, fill: GREEN, color: 'FFFFFF', width: 1404, center: true }),
-              ],
-            }),
-            ...String(doc.parties)
-              .split(/\n|;/)
-              .filter(Boolean)
-              .slice(0, 12)
-              .map(
-                (p) =>
-                  new TableRow({
-                    children: [
-                      cell(p.trim(), { width: 2808, center: true }),
-                      cell('', { width: 1872 }),
-                      cell('', { width: 1872 }),
-                      cell('', { width: 1404 }),
-                      cell('', { width: 1404 }),
-                    ],
-                  }),
-              ),
-          ],
-        }),
-      );
+      const partyLines = String(doc.parties)
+        .split(/\n|;/)
+        .map((l) => l.trim())
+        .filter(Boolean)
+        .slice(0, 12);
+      // Stack vertically — colored strips for المدعي / المدعى عليه
+      for (const line of partyLines) {
+        const isPlaintiff = /المدعي/.test(line) && !/المدعى عليه/.test(line);
+        const isDefendant = /المدعى عليه/.test(line);
+        const fill = isPlaintiff ? 'E6F2EB' : isDefendant ? 'FFF8E8' : LIGHT;
+        children.push(
+          new Table({
+            width: { size: PAGE_W, type: WidthType.DXA },
+            columnWidths: [PAGE_W],
+            rows: [
+              new TableRow({
+                children: [cell(line, { fill, bold: isPlaintiff || isDefendant, width: PAGE_W })],
+              }),
+            ],
+          }),
+        );
+        children.push(new Paragraph({ children: [], spacing: { after: 60 } }));
+      }
     }
 
     if (doc.reasons && doc.reasons.trim()) {

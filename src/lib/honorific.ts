@@ -248,16 +248,21 @@ export function hasOfficialOutgoingNumber(number?: string | null): boolean {
 }
 
 /**
- * Official study role label: معد الدراسة = الباحث / الباحثة (NOT «دارس القضية»).
- * Excel may still paste «دارس القضية» — map that field, but display as الباحث/ة.
+ * Excel «دارس القضية» = ناظر القضية (case overseer). Never label as الباحث.
  */
-export function researcherRoleLabel(name?: string | null): string {
-  if (name && inferGender({ name }) === 'female') return 'الباحثة';
-  return 'الباحث';
+export function researcherRoleLabel(_name?: string | null): string {
+  return 'دارس القضية (الناظر)';
 }
 
-export function preparerRoleLabel(name?: string | null): string {
-  // User terminology: معد الدراسة هو الباحث — keep معد الدراسة as section label,
-  // but when we need a person role next to the name use الباحث/ة.
-  return researcherRoleLabel(name);
+/** Alias for UI that prefers the shorter ناظر label */
+export function caseOverseerRoleLabel(_name?: string | null): string {
+  return 'ناظر القضية';
+}
+
+/**
+ * معد الدراسة = study author (footer). Separate from دارس/ناظر.
+ * Do NOT merge with الباحث.
+ */
+export function preparerRoleLabel(_name?: string | null): string {
+  return 'معد الدراسة';
 }

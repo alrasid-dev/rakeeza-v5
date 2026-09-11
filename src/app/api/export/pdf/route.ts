@@ -188,12 +188,7 @@ function pdfViaJsPdf(doc: {
   writeAr('بسم الله الرحمن الرحيم', 13, [255, 255, 255], 'center');
   y = 26;
 
-  try {
-    const emblem = loadEmblemPng();
-    pdf.addImage(emblem.toString('base64'), 'PNG', 168, 24, 18, 18);
-  } catch {
-    /* ignore */
-  }
+  // LEFT=QR, CENTER=emblem, RIGHT=kingdom text (official letterhead)
   if (doc.qrDataUrl) {
     try {
       const m = doc.qrDataUrl.match(/^data:image\/\w+;base64,(.+)$/);
@@ -202,12 +197,18 @@ function pdfViaJsPdf(doc: {
       /* ignore */
     }
   }
+  try {
+    const emblem = loadEmblemPng();
+    pdf.addImage(emblem.toString('base64'), 'PNG', 96, 24, 18, 18);
+  } catch {
+    /* ignore */
+  }
 
   y = 28;
   for (const h of doc.headerLines.slice(0, 3)) {
-    writeAr(h, h.includes('محكمة') || h.includes('المحكمة') ? 13 : 11, [0, 108, 53], 'center');
+    writeAr(h, h.includes('محكمة') || h.includes('المحكمة') ? 13 : 11, [0, 108, 53], 'right');
   }
-  writeAr('منصة ركيزة الذكية', 9, [197, 160, 89], 'center');
+  writeAr('منصة ركيزة الذكية', 9, [197, 160, 89], 'right');
   y = Math.max(y, 48);
 
   writeAr(`الرقم: ${doc.number || '—'}`, 11);

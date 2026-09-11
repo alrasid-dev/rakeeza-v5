@@ -165,7 +165,7 @@ export async function GET(req: NextRequest) {
         ['legalOpinion', 'الرأي القانوني'],
         ['recommendation', 'التوصية'],
         ['preparer', 'معد الدراسة'],
-        ['researcher', 'الباحث'],
+        ['researcher', 'ناظر القضية'],
       ] as const) {
         addKv(label, ss[k] as string | undefined, true);
       }

@@ -78,7 +78,7 @@ export type OutlookLetterDoc = {
 
 /**
  * Full official template for Outlook paste — table-based inline CSS.
- * Physical columns: LEFT=QR, CENTER=kingdom, RIGHT=emblem.
+ * Physical columns: LEFT=QR, CENTER=emblem, RIGHT=kingdom/ministry/court.
  * Prefers absolute https image URLs (Outlook desktop strips many data-URIs).
  */
 export function buildLetterHtml(doc: OutlookLetterDoc) {
@@ -111,7 +111,7 @@ export function buildLetterHtml(doc: OutlookLetterDoc) {
   const headerCenter = header
     .map(
       (h, i) =>
-        `<div style="color:${GREEN};font-weight:bold;font-size:${i === header.length - 1 ? 16 : 13}pt;font-family:Tahoma,Arial,sans-serif;line-height:1.45">${esc(h)}</div>`,
+        `<div style="color:${GREEN};font-weight:bold;font-size:${i === header.length - 1 ? 16 : 13}pt;font-family:Tahoma,Arial,sans-serif;line-height:1.45;text-align:right">${esc(h)}</div>`,
     )
     .join('');
 
@@ -141,12 +141,12 @@ export function buildLetterHtml(doc: OutlookLetterDoc) {
     <td style="padding:0;border-bottom:2px solid ${GOLD};background:#ffffff">
       <table dir="ltr" width="100%" cellpadding="0" cellspacing="0" role="presentation" style="width:100%;border-collapse:collapse">
         <tr>
-          <td width="90" valign="middle" align="left" style="padding:12px;width:90px">${qrInner}</td>
-          <td valign="middle" align="center" style="padding:12px 8px" dir="rtl">
+          <td width="33%" valign="middle" align="left" style="padding:12px;width:33%">${qrInner}</td>
+          <td width="34%" valign="middle" align="center" style="padding:12px;width:34%">${emblem}</td>
+          <td width="33%" valign="middle" align="right" style="padding:12px 8px;width:33%" dir="rtl">
             ${headerCenter}
-            <div style="color:${GOLD};font-size:11pt;margin-top:4px;font-family:Tahoma,Arial,sans-serif">منصة ركيزة الذكية</div>
+            <div style="color:${GOLD};font-size:11pt;margin-top:4px;font-family:Tahoma,Arial,sans-serif;text-align:right">منصة ركيزة الذكية</div>
           </td>
-          <td width="90" valign="middle" align="right" style="padding:12px;width:90px">${emblem}</td>
         </tr>
       </table>
     </td>

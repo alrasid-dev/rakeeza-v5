@@ -8,7 +8,8 @@ import {
   type PaperLayoutId,
 } from '@/lib/paper-layouts';
 import { MOJ_EMBLEM_PNG_DATA_URL } from '@/lib/brand-emblem-data';
-import { researcherRoleLabel } from '@/lib/honorific';
+import { researcherRoleLabel, preparerRoleLabel } from '@/lib/honorific';
+import { formatClaimAmount, normalizeFormationOrdinal } from '@/lib/arabic-normalize';
 
 export type OfficialLetterDoc = {
   number?: string | null;
@@ -52,28 +53,44 @@ function kv(label: string, value?: string) {
   return `<div style="display:flex;gap:8px;padding:4px 0;border-bottom:1px solid ${GREEN}22"><b style="color:${GREEN};min-width:7rem">${esc(label)}</b><span>${esc(value)}</span></div>`;
 }
 
+function partyBar(label: string, value: string | undefined, tone: 'plaintiff' | 'defendant') {
+  if (!value) return '';
+  const bg = tone === 'plaintiff' ? '#E6F2EB' : '#FFF8E8';
+  const bd = tone === 'plaintiff' ? GREEN : GOLD;
+  const fg = tone === 'plaintiff' ? GREEN : '#8a6b2e';
+  return `<div style="background:${bg};border:2px solid ${bd};border-radius:6px;padding:8px 10px;margin:6px 0;display:flex;gap:10px;align-items:flex-start">
+    <b style="color:${fg};min-width:6.5rem;font-size:12px">${esc(label)}</b>
+    <span style="flex:1;font-weight:600">${esc(value)}</span>
+  </div>`;
+}
+
 function studyHtml(s: StudySections) {
+  const formation = normalizeFormationOrdinal(s.formation) || s.formation;
+  const amount = formatClaimAmount(s.claimAmount) || s.claimAmount;
+  const amountHtml = amount
+    ? `<div style="display:flex;gap:8px;padding:4px 0;border-bottom:1px solid ${GREEN}22"><b style="color:${GREEN};min-width:7rem">مقدار المطالبة</b><span dir="ltr" style="unicode-bidi:embed;font-weight:600">${esc(amount)}</span></div>`
+    : '';
   return `
   <div style="border:1px solid ${GREEN};border-radius:8px;overflow:hidden;margin:8px 0">
     <div style="background:${GREEN};color:#fff;text-align:center;font-weight:700;padding:6px;font-size:12px">بيانات القضية</div>
     <div style="padding:8px">
       ${kv('رقم القضية', s.caseNumber)}
       ${kv('رقم الصك', s.deedNumber)}
-      ${kv('التشكيل', s.formation)}
-      ${kv('المدعي/ة', s.plaintiff)}
-      ${kv('المدعى عليه/ا', s.defendant)}
+      ${kv('التشكيل', formation)}
       ${kv('الاختصاص النوعي', s.jurisdiction)}
-      ${kv('مقدار المطالبة', s.claimAmount)}
+      ${amountHtml}
       ${kv(researcherRoleLabel(s.researcher), s.researcher)}
+      ${partyBar('المدعي/ة', s.plaintiff, 'plaintiff')}
+      ${partyBar('المدعى عليه/ا', s.defendant, 'defendant')}
     </div>
   </div>
   ${
     s.summaryPlaintiff || s.summaryDefendant
       ? `<div style="border:1px solid ${GREEN};border-radius:8px;overflow:hidden;margin:8px 0">
     <div style="background:${GREEN};color:#fff;text-align:center;font-weight:700;padding:6px;font-size:12px">ملخص الدعوى</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0">
-      <div style="padding:8px;border-left:1px solid ${GREEN}33"><div style="color:${GOLD};font-weight:700;font-size:11px;margin-bottom:4px">دعوى المدعي</div>${pre(s.summaryPlaintiff || '—')}</div>
-      <div style="padding:8px"><div style="color:${GOLD};font-weight:700;font-size:11px;margin-bottom:4px">إجابة المدعى عليه</div>${pre(s.summaryDefendant || '—')}</div>
+    <div style="padding:8px">
+      <div style="margin-bottom:8px;padding:8px;border:1px solid ${GREEN}44;border-radius:6px;background:#f7faf8"><div style="color:${GOLD};font-weight:700;font-size:11px;margin-bottom:4px">دعوى المدعي</div>${pre(s.summaryPlaintiff || '—')}</div>
+      <div style="padding:8px;border:1px solid ${GOLD}66;border-radius:6px;background:#fffaf0"><div style="color:${GOLD};font-weight:700;font-size:11px;margin-bottom:4px">إجابة المدعى عليه</div>${pre(s.summaryDefendant || '—')}</div>
     </div>
   </div>`
       : ''
@@ -84,7 +101,8 @@ function studyHtml(s: StudySections) {
       ${kv('المشكلة', s.problem)}
       ${kv('الرأي القانوني', s.legalOpinion)}
       ${kv('التوصية', s.recommendation)}
-      ${kv('معد الدراسة', s.preparer || s.researcher)}
+      ${kv(researcherRoleLabel(s.researcher), s.researcher)}
+      ${kv(preparerRoleLabel(s.preparer), s.preparer)}
     </div>
   </div>`;
 }
@@ -219,22 +237,21 @@ export function buildOfficialLetterHtml(doc: OfficialLetterDoc, opts?: { forPdf?
     doc.studySections &&
     (doc.studySections.caseNumber || doc.studySections.plaintiff || doc.studySections.recommendation);
 
-  // Physical LTR columns: LEFT=QR, CENTER=kingdom, RIGHT=emblem (do not rely on RTL flex)
+  // Official Saudi letterhead (physical LTR): LEFT=QR, CENTER=emblem, RIGHT=kingdom/ministry/court
   const brandRow = `
-  <table class="brand-row" dir="ltr" width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse:collapse;border-bottom:2px solid ${GOLD}">
+  <table class="brand-row" dir="ltr" width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse:collapse;border-bottom:2px solid ${GOLD};table-layout:fixed">
     <tr>
-      <td width="88" valign="middle" align="left" style="padding:14px 12px;width:88px">${qr}</td>
-      <td valign="middle" align="center" style="padding:14px 8px" dir="rtl">
+      <td width="33%" valign="middle" align="left" style="padding:14px 12px;width:33%">${qr}</td>
+      <td width="34%" valign="middle" align="center" style="padding:14px 8px;width:34%">${emblem}${layout === 'taameem-circular' ? `<div style="display:inline-block;margin-top:4px;font-size:9px;font-weight:700;color:${GREEN};border:1px solid ${GOLD};border-radius:999px;padding:1px 8px">تعميم</div>` : ''}</td>
+      <td width="33%" valign="middle" align="right" style="padding:14px 12px;width:33%" dir="rtl">
         ${header
           .map(
             (h, i) =>
-              `<div class="court" style="font-size:${h === court || i === header.length - 1 ? 16 : 13}px;color:${GREEN};font-weight:800">${esc(h)}</div>`,
+              `<div class="court" style="font-size:${h === court || i === header.length - 1 ? 16 : 13}px;color:${GREEN};font-weight:800;text-align:right">${esc(h)}</div>`,
           )
           .join('')}
-        <div class="sub" style="color:${GOLD};font-size:12px;margin-top:2px">منصة ركيزة الذكية</div>
-        ${layout === 'taameem-circular' ? `<div style="display:inline-block;margin-top:4px;font-size:9px;font-weight:700;color:${GREEN};border:1px solid ${GOLD};border-radius:999px;padding:1px 8px">تعميم</div>` : ''}
+        <div class="sub" style="color:${GOLD};font-size:12px;margin-top:2px;text-align:right">منصة ركيزة الذكية</div>
       </td>
-      <td width="88" valign="middle" align="right" style="padding:14px 12px;width:88px">${emblem}</td>
     </tr>
   </table>`;
 

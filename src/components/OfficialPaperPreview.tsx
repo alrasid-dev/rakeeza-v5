@@ -1,7 +1,8 @@
 'use client';
 
 import type { StudySections } from '@/lib/parse-study';
-import { researcherRoleLabel } from '@/lib/honorific';
+import { researcherRoleLabel, preparerRoleLabel } from '@/lib/honorific';
+import { formatClaimAmount, normalizeFormationOrdinal } from '@/lib/arabic-normalize';
 import type { DocStyle } from '@/components/StyleToolbar';
 import {
   DEFAULT_PAPER_LAYOUT,
@@ -155,23 +156,58 @@ function bodyWithoutDuplicatedSections(
   return result;
 }
 
+function PartyBar({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value?: string;
+  tone: 'plaintiff' | 'defendant';
+}) {
+  if (!value) return null;
+  const cls =
+    tone === 'plaintiff'
+      ? 'bg-[#E6F2EB] border-moj-green text-moj-green'
+      : 'bg-[#FFF8E8] border-moj-gold text-[#8a6b2e]';
+  return (
+    <div className={`rounded-md border-2 ${cls} px-3 py-2 flex gap-2 items-start`}>
+      <span className="font-extrabold shrink-0 text-xs min-w-[6.5rem]">{label}</span>
+      <span className="flex-1 text-sm text-gray-900 font-semibold leading-6">{value}</span>
+    </div>
+  );
+}
+
 function StudyFormView({ s }: { s: StudySections }) {
+  const formation = normalizeFormationOrdinal(s.formation) || s.formation;
+  const amount = formatClaimAmount(s.claimAmount) || s.claimAmount;
   return (
     <div className="space-y-3 text-sm">
       <div className="rounded-lg overflow-hidden border border-moj-green">
         <div className="bg-moj-green text-white text-center font-bold py-1.5 text-xs">بيانات القضية</div>
-        <div className="p-2 bg-white grid sm:grid-cols-2 gap-x-3">
-          <Kv label="رقم القضية" value={s.caseNumber} />
-          <Kv label="رقم الصك" value={s.deedNumber} />
-          <Kv label="التشكيل" value={s.formation} />
-          <Kv label="المدعي/ة" value={s.plaintiff} />
-          <Kv label="المدعى عليه/ا" value={s.defendant} />
-          <Kv label="الاختصاص النوعي" value={s.jurisdiction} />
-          <Kv label="القبول" value={s.acceptance} />
-          <Kv label="المطالبة" value={s.claimType} />
-          <Kv label="مقدارها" value={s.claimAmount} />
-          <Kv label="التمثيل" value={s.representation} />
-          <Kv label={researcherRoleLabel(s.researcher)} value={s.researcher} />
+        <div className="p-2 bg-white space-y-2">
+          <div className="grid sm:grid-cols-2 gap-x-3">
+            <Kv label="رقم القضية" value={s.caseNumber} />
+            <Kv label="رقم الصك" value={s.deedNumber} />
+            <Kv label="التشكيل" value={formation} />
+            <Kv label="الاختصاص النوعي" value={s.jurisdiction} />
+            <Kv label="القبول" value={s.acceptance} />
+            <Kv label="المطالبة" value={s.claimType} />
+            {amount ? (
+              <div className="flex gap-2 text-sm border-b border-moj-green/10 py-1">
+                <span className="text-moj-green font-bold shrink-0 min-w-[7rem]">مقدارها</span>
+                <span className="flex-1 font-semibold" dir="ltr" style={{ unicodeBidi: 'embed' }}>
+                  {amount}
+                </span>
+              </div>
+            ) : null}
+            <Kv label="التمثيل" value={s.representation} />
+            <Kv label={researcherRoleLabel(s.researcher)} value={s.researcher} />
+          </div>
+          <div className="space-y-2 pt-1">
+            <PartyBar label="المدعي/ة" value={s.plaintiff} tone="plaintiff" />
+            <PartyBar label="المدعى عليه/ا" value={s.defendant} tone="defendant" />
+          </div>
         </div>
       </div>
 
@@ -191,15 +227,19 @@ function StudyFormView({ s }: { s: StudySections }) {
       {(s.summaryPlaintiff || s.summaryDefendant) && (
         <div className="rounded-lg overflow-hidden border border-moj-green">
           <div className="bg-moj-green text-white text-center font-bold py-1.5 text-xs">ملخص الدعوى</div>
-          <div className="grid sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x sm:divide-x-reverse divide-moj-green/20">
-            <div className="p-2">
-              <div className="text-xs font-bold text-moj-gold mb-1">دعوى المدعي</div>
-              <pre className="whitespace-pre-wrap text-sm">{s.summaryPlaintiff || '—'}</pre>
-            </div>
-            <div className="p-2">
-              <div className="text-xs font-bold text-moj-gold mb-1">إجابة المدعى عليه</div>
-              <pre className="whitespace-pre-wrap text-sm">{s.summaryDefendant || '—'}</pre>
-            </div>
+          <div className="p-2 space-y-2">
+            {s.summaryPlaintiff ? (
+              <div className="rounded-md border border-moj-green/40 bg-[#f7faf8] p-2">
+                <div className="text-xs font-bold text-moj-gold mb-1">دعوى المدعي</div>
+                <pre className="whitespace-pre-wrap text-sm">{s.summaryPlaintiff}</pre>
+              </div>
+            ) : null}
+            {s.summaryDefendant ? (
+              <div className="rounded-md border border-moj-gold/50 bg-[#fffaf0] p-2">
+                <div className="text-xs font-bold text-moj-gold mb-1">إجابة المدعى عليه</div>
+                <pre className="whitespace-pre-wrap text-sm">{s.summaryDefendant}</pre>
+              </div>
+            ) : null}
           </div>
         </div>
       )}
@@ -240,9 +280,10 @@ function StudyFormView({ s }: { s: StudySections }) {
       </div>
 
       <div className="grid sm:grid-cols-2 gap-2 text-xs text-gray-600 border-t border-moj-gold pt-2">
-        <div>معد الدراسة: {s.preparer || s.researcher || '—'}</div>
+        <div>{researcherRoleLabel(s.researcher)}: {s.researcher || '—'}</div>
+        <div>{preparerRoleLabel(s.preparer)}: {s.preparer || '—'}</div>
         <div>تصديق المشرف: {s.supervisor || '—'}</div>
-        {s.prepDate && <div className="sm:col-span-2">التاريخ: {s.prepDate}</div>}
+        {s.prepDate && <div>التاريخ: {s.prepDate}</div>}
       </div>
     </div>
   );
@@ -388,13 +429,13 @@ function BrandHeader({
 }) {
   const pad = compact ? 'px-3 py-2' : 'px-4 py-3';
   const box = compact ? 'w-12 h-12' : 'w-16 h-16';
-  // Physical LTR grid: LEFT=QR, CENTER=kingdom, RIGHT=emblem (official MOJ paper)
+  // Official Saudi letterhead (physical LTR): LEFT=QR, CENTER=emblem, RIGHT=kingdom/ministry/court
   return (
     <div
       dir="ltr"
-      className={`grid grid-cols-[auto_1fr_auto] items-center gap-3 ${pad} ${brandBorder}`}
+      className={`grid grid-cols-[1fr_auto_1fr] items-center gap-3 ${pad} ${brandBorder}`}
     >
-      <div className="shrink-0 flex justify-start">
+      <div className="flex justify-start items-center min-w-0">
         {qrDataUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -410,7 +451,15 @@ function BrandHeader({
           </div>
         )}
       </div>
-      <div className="text-center min-w-0" dir="rtl">
+      <div className="flex flex-col items-center justify-center gap-1">
+        <EmblemImg className={compact ? '!w-12 !h-12' : ''} />
+        {showCircularBadge && (
+          <span className="text-[9px] font-bold text-moj-green border border-moj-gold rounded-full px-2 py-0.5">
+            تعميم
+          </span>
+        )}
+      </div>
+      <div className="text-right min-w-0" dir="rtl">
         <div className={`${compact ? 'text-[10px]' : 'text-[11px]'} text-moj-green font-semibold`}>
           المملكة العربية السعودية
         </div>
@@ -423,14 +472,6 @@ function BrandHeader({
           {court}
         </div>
         {!compact && <div className="text-moj-gold text-xs mt-0.5">منصة ركيزة الذكية</div>}
-      </div>
-      <div className="shrink-0 flex flex-col items-center gap-1 justify-self-end">
-        <EmblemImg className={compact ? '!w-12 !h-12' : ''} />
-        {showCircularBadge && (
-          <span className="text-[9px] font-bold text-moj-green border border-moj-gold rounded-full px-2 py-0.5">
-            تعميم
-          </span>
-        )}
       </div>
     </div>
   );

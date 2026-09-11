@@ -1,5 +1,7 @@
 /** Parse Excel-like study-complaint paste into structured sections — label→value once, no mash */
 
+import { normalizeClaimAmount, normalizeFormationOrdinal } from '@/lib/arabic-normalize';
+
 export type StudyRequestRow = {
   request?: string;
   proof?: string;
@@ -48,7 +50,7 @@ type FieldKey =
 const LABEL_DEFS: { key: FieldKey; labels: string[] }[] = [
   { key: 'caseNumber', labels: ['رقم القضية'] },
   { key: 'deedNumber', labels: ['رقم الصك'] },
-  { key: 'formation', labels: ['رقم التشكيل'] },
+  { key: 'formation', labels: ['رقم التشكيل', 'التشكيل', 'رقم الدائرة', 'الدائرة'] },
   { key: 'plaintiff', labels: ['المدعي/ة', 'المدعي'] },
   { key: 'defendant', labels: ['المدعى عليه/ا', 'المدعى عليه'] },
   { key: 'jurisdiction', labels: ['الاختصاص النوعي'] },
@@ -90,7 +92,7 @@ const LABEL_DEFS: { key: FieldKey; labels: string[] }[] = [
   { key: 'problem', labels: ['المشكلة'] },
   { key: 'legalOpinion', labels: ['الرأي القانوني'] },
   { key: 'recommendation', labels: ['التوصية'] },
-  { key: 'preparer', labels: ['اسم معد الدراسة', 'معد الدراسة', 'اسم الباحث', 'اسم الباحثة'] },
+  { key: 'preparer', labels: ['اسم معد الدراسة', 'معد الدراسة'] },
   { key: 'supervisor', labels: ['تصديق المشرف', 'المشرف'] },
   { key: 'prepDate', labels: ['تاريخ اعداد الدراسة', 'تاريخ إعداد الدراسة', 'تاريخ الإعداد', 'تاريخ التصديق'] },
 ];
@@ -396,13 +398,13 @@ export function parseStudyPaste(raw: string): StudySections {
 
   const caseNumber = digitsOnlyId(pick(map, ['caseNumber']));
   const deedNumber = digitsOnlyId(pick(map, ['deedNumber']));
-  const formation = pick(map, ['formation']);
+  const formation = normalizeFormationOrdinal(pick(map, ['formation']));
   const plaintiff = pick(map, ['plaintiff']);
   const defendant = pick(map, ['defendant']);
   const jurisdiction = pick(map, ['jurisdiction']);
   const acceptance = pick(map, ['acceptance']);
   const claimType = pick(map, ['claimType']);
-  const claimAmount = pick(map, ['claimAmount']);
+  const claimAmount = normalizeClaimAmount(pick(map, ['claimAmount']));
 
   const repParts = [
     pick(map, ['repVerify']),
@@ -466,7 +468,8 @@ export function parseStudyPaste(raw: string): StudySections {
   const problem = pick(map, ['problem']);
   const legalOpinion = pick(map, ['legalOpinion']);
   const recommendation = pick(map, ['recommendation']);
-  const preparer = pick(map, ['preparer']) || researcher;
+  // Keep معد الدراسة separate from دارس القضية / ناظر — never merge
+  const preparer = pick(map, ['preparer']);
   const supervisor = pick(map, ['supervisor']);
   const prepDate = pick(map, ['prepDate']);
 
@@ -519,8 +522,8 @@ export function studyToFormFields(s: StudySections) {
 
   const studyFields = [
     s.recommendation ? `التوصية: ${s.recommendation}` : '',
-    (s.preparer || s.researcher) ? `معد الدراسة: ${s.preparer || s.researcher}` : '',
-    s.researcher && s.preparer && s.researcher !== s.preparer ? `الباحث: ${s.researcher}` : '',
+    s.researcher ? `ناظر القضية: ${s.researcher}` : '',
+    s.preparer ? `معد الدراسة: ${s.preparer}` : '',
   ]
     .filter(Boolean)
     .join('\n');
@@ -530,7 +533,7 @@ export function studyToFormFields(s: StudySections) {
     s.representation && `التمثيل: ${s.representation}`,
   ].filter(Boolean);
 
-  const subject = s.caseNumber ? `دراسة شكوى — ${s.caseNumber}` : 'دراسة شكوى';
+  const subject = s.caseNumber ? `دراسة شكوى — ${String(s.caseNumber).replace(/\s+/g, '').trim()}` : 'دراسة شكوى';
 
   return {
     subject,
