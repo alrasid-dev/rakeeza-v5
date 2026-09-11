@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import OfficialPaperPreview from '@/components/OfficialPaperPreview';
+import PaperLayoutPicker from '@/components/PaperLayoutPicker';
+import { DEFAULT_PAPER_LAYOUT, type PaperLayoutId } from '@/lib/paper-layouts';
 
 type Tpl = {
   id: string;
@@ -49,6 +51,7 @@ export default function TemplatesClient({
   groups: { key: string; title: string; subtitle: string; items: Tpl[] }[];
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [paperLayout, setPaperLayout] = useState<PaperLayoutId>(DEFAULT_PAPER_LAYOUT);
   const flat = useMemo(() => groups.flatMap((g) => g.items), [groups]);
   const selected = flat.find((t) => t.id === selectedId) || flat[0] || null;
 
@@ -93,7 +96,7 @@ export default function TemplatesClient({
                         )}
                       </div>
                       <Link
-                        href={t.href}
+                        href={`${t.href}${t.href.includes('?') ? '&' : '?'}layout=${paperLayout}`}
                         onClick={(e) => e.stopPropagation()}
                         className="mt-4 w-full inline-flex items-center justify-center rounded-xl bg-moj-green text-white dark:bg-[#2d4a3e] px-4 py-2.5 text-sm font-medium hover:opacity-90 transition"
                       >
@@ -108,16 +111,19 @@ export default function TemplatesClient({
         )}
       </div>
 
-      <aside className="lg:col-span-2 lg:sticky lg:top-4 self-start">
+      <aside className="lg:col-span-2 lg:sticky lg:top-4 self-start space-y-3">
         <div className="text-sm font-medium text-gray-500 mb-2">معاينة القالب الرسمية</div>
+        <PaperLayoutPicker value={paperLayout} onChange={setPaperLayout} compact />
         {selected ? (
           <>
             <div className="text-xs text-moj-green mb-2 font-semibold">{selected.name}</div>
             <OfficialPaperPreview
+              paperLayout={paperLayout}
               doc={{
                 subject: sample.subject,
                 recipients: sample.recipients,
                 body: sample.body || undefined,
+                paperLayout,
                 studySections: sample.study
                   ? {
                       caseNumber: '٠٠٠٠٠٠٠٠٠٠',
@@ -134,7 +140,7 @@ export default function TemplatesClient({
                   : null,
               }}
             />
-            <Link href={selected.href} className="btn-primary w-full mt-3 inline-flex justify-center">
+            <Link href={`${selected.href}${selected.href.includes('?') ? '&' : '?'}layout=${paperLayout}`} className="btn-primary w-full mt-3 inline-flex justify-center">
               فتح المحرر بهذا القالب
             </Link>
           </>

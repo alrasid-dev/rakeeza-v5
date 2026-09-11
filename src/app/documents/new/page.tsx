@@ -4,13 +4,16 @@ import { Suspense, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import AppShell from '@/components/AppShell';
 import PageHeader from '@/components/PageHeader';
-import OfficialPaperPreview from '@/components/OfficialPaperPreview';
+import OfficialPaperPreview, { normalizeBodyText } from '@/components/OfficialPaperPreview';
 import RecipientCascade from '@/components/RecipientCascade';
 import StyleToolbar, { type DocStyle } from '@/components/StyleToolbar';
+import PaperLayoutPicker from '@/components/PaperLayoutPicker';
+import ExportToolbar from '@/components/ExportToolbar';
 import { parsePaste, type TableRow } from '@/lib/parse-paste';
 import type { StudySections } from '@/lib/parse-study';
-import { clearDraft, loadDraft, saveDraft } from '@/lib/draft-store';
+import { clearDraft, clearAllDrafts, loadDraft, saveDraft } from '@/lib/draft-store';
 import { suggestFont } from '@/lib/font-suggest';
+import { DEFAULT_PAPER_LAYOUT, normalizePaperLayout, type PaperLayoutId } from '@/lib/paper-layouts';
 
 type Template = { id: string; name: string; category: string };
 type User = { name: string; role: string };
@@ -32,6 +35,7 @@ function NewDocumentInner() {
   const formSlug = searchParams.get('form') || '';
   const formName = searchParams.get('name') || '';
   const templateIdParam = searchParams.get('templateId') || '';
+  const layoutParam = searchParams.get('layout') || '';
 
   const [user, setUser] = useState<User | null>(null);
   const [step, setStep] = useState(1);
@@ -53,6 +57,8 @@ function NewDocumentInner() {
     fontSizePt: 16,
     align: 'right',
   });
+  const [paperLayout, setPaperLayout] = useState<PaperLayoutId>(DEFAULT_PAPER_LAYOUT);
+  const [savedDocId, setSavedDocId] = useState<string | null>(null);
   const fieldRefs = useRef<Record<string, HTMLElement | null>>({});
   const skipSave = useRef(true);
 
@@ -61,9 +67,11 @@ function NewDocumentInner() {
 
     const draft = formSlug ? loadDraft(formSlug) : null;
     if (draft) {
+      const restoredBody = normalizeBodyText(draft.form.body || '');
       setForm({
         ...EMPTY_FORM,
         ...draft.form,
+        body: restoredBody,
         dateGregorian: draft.form.dateGregorian || EMPTY_FORM.dateGregorian,
         docType: formName || draft.form.docType || EMPTY_FORM.docType,
       });
@@ -77,6 +85,8 @@ function NewDocumentInner() {
         if (ss) setStudySections(JSON.parse(ss));
         const st = (draft.form as { styleJson?: string }).styleJson;
         if (st) setStyle(JSON.parse(st));
+        const pl = (draft.form as { paperLayout?: string }).paperLayout;
+        if (pl) setPaperLayout(normalizePaperLayout(pl));
       } catch {
         /* ignore */
       }
@@ -92,6 +102,8 @@ function NewDocumentInner() {
       setTemplateId(templateIdParam || '');
       setTableRows([]);
       setStudySections(null);
+      setPaperLayout(normalizePaperLayout(layoutParam || DEFAULT_PAPER_LAYOUT));
+      setSavedDocId(null);
       setDraftRestored(false);
       const hint = suggestFont(formName || 'مكاتبة');
       setStyle({
@@ -145,18 +157,22 @@ function NewDocumentInner() {
         step,
         form: {
           ...form,
+          body: normalizeBodyText(form.body),
           tableRowsJson: JSON.stringify(tableRows),
           studySectionsJson: JSON.stringify(studySections),
           styleJson: JSON.stringify(style),
+          paperLayout,
         },
       });
       setDraftRestored(true);
     }, 300);
     return () => window.clearTimeout(handle);
-  }, [formSlug, templateId, paste, step, form, tableRows, studySections, style]);
+  }, [formSlug, templateId, paste, step, form, tableRows, studySections, style, paperLayout]);
 
+  /** Smart paste REPLACES fields — never merges/appends with previous body */
   function applyPaste() {
     const parsed = parsePaste(paste);
+    const nextBody = normalizeBodyText(parsed.body || '');
     setTableRows(parsed.tableRows || []);
     setStudySections(parsed.studySections || null);
     setDetectedKind(parsed.detectedKind || '');
@@ -167,23 +183,47 @@ function NewDocumentInner() {
         fontSizePt: parsed.fontHint!.sizePt,
       }));
     }
-    const { corrections } = suggestFont(form.docType || formName, parsed.body);
+    if (parsed.detectedKind === 'study') {
+      setPaperLayout('study-report');
+    } else if (parsed.detectedKind === 'letter' && /تعميم/.test(parsed.subject || paste)) {
+      setPaperLayout('taameem-circular');
+    }
+    const { corrections } = suggestFont(form.docType || formName, nextBody);
     setFontCorrections(corrections);
-    setForm((f) => ({
-      ...f,
-      subject: parsed.subject || f.subject,
-      recipients: parsed.recipients || f.recipients,
-      parties: parsed.parties || f.parties,
-      reasons: parsed.reasons || f.reasons,
-      studyFields: parsed.studyFields || f.studyFields,
-      body: parsed.body || f.body,
-      dateGregorian: parsed.date || f.dateGregorian,
+    setForm({
+      ...EMPTY_FORM,
+      subject: parsed.subject || '',
+      recipients: parsed.recipients || '',
+      parties: parsed.parties || '',
+      reasons: parsed.reasons || '',
+      studyFields: parsed.studyFields || '',
+      body: nextBody,
+      dateGregorian: parsed.date || new Date().toISOString().slice(0, 10),
       docType:
         parsed.detectedKind === 'study'
           ? formName || 'نموذج تحليل حكم (شكوى)'
-          : f.docType,
-    }));
+          : formName || form.docType || 'مكاتبة',
+    });
+    setSavedDocId(null);
     setStep(3);
+  }
+
+  function clearLocalDraft() {
+    if (formSlug) clearDraft(formSlug);
+    else clearAllDrafts();
+    setForm({
+      ...EMPTY_FORM,
+      dateGregorian: new Date().toISOString().slice(0, 10),
+      docType: formName || 'مكاتبة',
+    });
+    setPaste('');
+    setTableRows([]);
+    setStudySections(null);
+    setDetectedKind('');
+    setFontCorrections([]);
+    setSavedDocId(null);
+    setDraftRestored(false);
+    setStep(formSlug || templateIdParam ? 2 : 1);
   }
 
   function adoptFontSuggestion() {
@@ -207,29 +247,41 @@ function NewDocumentInner() {
     }, 50);
   }
 
+  function setBodyField(value: string) {
+    setForm((f) => ({ ...f, body: value }));
+  }
+
+  async function persistDocument(issue: boolean): Promise<{ id: string } | null> {
+    const res = await fetch('/api/documents', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...form,
+        body: normalizeBodyText(form.body),
+        facts: '',
+        templateId: templateId || null,
+        issue,
+        assignNumber: issue,
+        fields: { tableRows, studySections, style, paperLayout },
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setError(data.error || 'فشل الحفظ');
+      return null;
+    }
+    setSavedDocId(data.document.id);
+    if (formSlug) clearDraft(formSlug);
+    return { id: data.document.id as string };
+  }
+
   async function save(issue: boolean) {
     setSaving(true);
     setError('');
     try {
-      const res = await fetch('/api/documents', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...form,
-          facts: '', // removed from UX
-          templateId: templateId || null,
-          issue,
-          assignNumber: issue,
-          fields: { tableRows, studySections, style },
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error || 'فشل الحفظ');
-        return;
-      }
-      if (formSlug) clearDraft(formSlug);
-      router.push(`/documents/${data.document.id}`);
+      const saved = await persistDocument(issue);
+      if (!saved) return;
+      router.push(`/documents/${saved.id}`);
     } catch {
       setError('خطأ في الاتصال');
     } finally {
@@ -237,7 +289,40 @@ function NewDocumentInner() {
     }
   }
 
+  async function ensureSavedId(): Promise<string | null> {
+    if (savedDocId) return savedDocId;
+    setSaving(true);
+    setError('');
+    try {
+      const saved = await persistDocument(false);
+      return saved?.id || null;
+    } catch {
+      setError('تعذّر حفظ المسودة قبل التصدير');
+      return null;
+    } finally {
+      setSaving(false);
+    }
+  }
+
   const title = formName || 'مكاتبة جديدة';
+  const previewBody = normalizeBodyText(form.body);
+
+  const exportDoc = {
+    id: savedDocId || undefined,
+    number: null as string | null,
+    subject: form.subject,
+    dateGregorian: form.dateGregorian,
+    recipients: form.recipients,
+    parties: form.parties,
+    reasons: form.reasons,
+    studyFields: form.studyFields,
+    body: previewBody,
+    docType: form.docType,
+    paperLayout,
+    studySections,
+    fontFamily: style.fontFamily,
+    fontSizePt: style.fontSizePt,
+  };
 
   return (
     <AppShell user={user}>
@@ -250,6 +335,9 @@ function NewDocumentInner() {
             <>
               <span className="text-moj-gold">·</span>
               <span className="text-xs text-gray-600">المسودة محفوظة محلياً</span>
+              <button type="button" className="text-xs underline text-red-700" onClick={clearLocalDraft}>
+                مسح المسودة
+              </button>
             </>
           )}
         </div>
@@ -278,6 +366,7 @@ function NewDocumentInner() {
               </option>
             ))}
           </select>
+          <PaperLayoutPicker value={paperLayout} onChange={setPaperLayout} compact />
           <div className="flex flex-col sm:flex-row gap-2">
             <button className="btn-primary w-full sm:w-auto" onClick={() => setStep(2)}>
               التالي — اللصق الذكي
@@ -307,6 +396,18 @@ function NewDocumentInner() {
             <button className="btn-outline w-full sm:w-auto" onClick={() => setStep(3)}>
               تخطي
             </button>
+            <button
+              type="button"
+              className="btn-outline w-full sm:w-auto text-red-700 border-red-300"
+              onClick={() => {
+                setPaste('');
+                setForm((f) => ({ ...f, body: '', parties: '', reasons: '', studyFields: '', subject: f.subject }));
+                setTableRows([]);
+                setStudySections(null);
+              }}
+            >
+              مسح اللصق والحقول
+            </button>
           </div>
         </div>
       )}
@@ -314,6 +415,9 @@ function NewDocumentInner() {
       {step === 3 && (
         <div className="space-y-3">
           <StyleToolbar value={style} onChange={setStyle} />
+          <div className="bg-white dark:bg-[var(--surface)] rounded-xl border dark:border-white/10 p-3">
+            <PaperLayoutPicker value={paperLayout} onChange={setPaperLayout} compact />
+          </div>
           {(fontCorrections.length > 0 || detectedKind) && (
             <div className="rounded-xl border border-moj-gold/40 bg-moj-gold/10 p-3 text-sm space-y-2">
               {detectedKind && (
@@ -423,7 +527,7 @@ function NewDocumentInner() {
                   }}
                   className="input min-h-[140px]"
                   value={form.body}
-                  onChange={(e) => setForm({ ...form, body: e.target.value })}
+                  onChange={(e) => setBodyField(e.target.value)}
                 />
               </div>
 
@@ -448,12 +552,15 @@ function NewDocumentInner() {
               </div>
             </div>
 
-            <div className="min-w-0">
-              <div className="text-sm font-medium text-gray-500 dark:text-white/50 mb-2">
+            <div className="min-w-0 space-y-3">
+              <ExportToolbar doc={exportDoc} ensureSavedId={ensureSavedId} />
+              <div className="text-sm font-medium text-gray-500 dark:text-white/50">
                 معاينة ورقية رسمية — انقر قسماً للتحرير
               </div>
               <OfficialPaperPreview
+                key={`preview-${paperLayout}-${previewBody.length}`}
                 style={style}
+                paperLayout={paperLayout}
                 onFieldClick={focusField}
                 doc={{
                   number: null,
@@ -463,10 +570,11 @@ function NewDocumentInner() {
                   parties: form.parties,
                   reasons: form.reasons,
                   studyFields: form.studyFields,
-                  body: form.body,
+                  body: previewBody,
                   docType: form.docType,
                   tableRows,
                   studySections,
+                  paperLayout,
                 }}
               />
             </div>

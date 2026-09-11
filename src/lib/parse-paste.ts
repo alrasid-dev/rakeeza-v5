@@ -95,7 +95,16 @@ export function detectTableRows(lines: string[]): TableRow[] {
 
 function stripExtractedFromBody(
   lines: string[],
-  opts: { recipients?: string; subject?: string; number?: string; date?: string },
+  opts: {
+    recipients?: string;
+    subject?: string;
+    number?: string;
+    date?: string;
+    parties?: string;
+    reasons?: string;
+    facts?: string;
+    study?: string;
+  },
 ) {
   const skipExact = new Set(
     [opts.recipients, opts.subject, opts.number, opts.date]
@@ -103,31 +112,40 @@ function stripExtractedFromBody(
       .map((s) => String(s).trim()),
   );
 
-  return lines
-    .filter((l) => {
-      const t = l.trim();
-      if (!t) return false;
-      if (skipExact.has(t)) return false;
-      if (NUMBER_LINE.test(t) || DATE_LINE.test(t)) return false;
-      if (SUBJECT_LINE.test(t)) return false;
-      if (/^إلى\s*[:：]/.test(t)) return false;
-      // Drop standalone recipient honorific lines that were extracted
-      if (opts.recipients && t === opts.recipients.trim()) return false;
-      if (
-        opts.recipients &&
-        RECIPIENT_LINE.test(t) &&
-        opts.recipients.includes(t.replace(/^إلى\s*[:：]\s*/, '').trim())
-      ) {
-        return false;
-      }
-      // Drop letterhead noise
-      if (/^(بسم الله|المملكة العربية|وزارة العدل|المحكمة العمالية|للاستخدام الداخلي)/.test(t)) {
-        return false;
-      }
-      return true;
-    })
-    .join('\n')
-    .trim();
+  const sectionBlocks = [opts.parties, opts.reasons, opts.facts, opts.study]
+    .filter(Boolean)
+    .map((s) => String(s).trim())
+    .filter((s) => s.length >= 8);
+
+  let filtered = lines.filter((l) => {
+    const t = l.trim();
+    if (!t) return false;
+    if (skipExact.has(t)) return false;
+    if (NUMBER_LINE.test(t) || DATE_LINE.test(t)) return false;
+    if (SUBJECT_LINE.test(t)) return false;
+    if (/^إلى\s*[:：]/.test(t)) return false;
+    if (/^(الأطراف|الوقائع|الأسباب|الحيثيات|الدراسة|الرأي)\s*[:：]?$/.test(t)) return false;
+    if (opts.recipients && t === opts.recipients.trim()) return false;
+    if (
+      opts.recipients &&
+      RECIPIENT_LINE.test(t) &&
+      opts.recipients.includes(t.replace(/^إلى\s*[:：]\s*/, '').trim())
+    ) {
+      return false;
+    }
+    if (/^(بسم الله|المملكة العربية|وزارة العدل|المحكمة العمالية|للاستخدام الداخلي)/.test(t)) {
+      return false;
+    }
+    return true;
+  });
+
+  let body = filtered.join('\n').trim();
+  for (const block of sectionBlocks) {
+    if (body.includes(block)) {
+      body = body.split(block).join('\n').replace(/\n{3,}/g, '\n\n').trim();
+    }
+  }
+  return body;
 }
 
 export function parsePaste(raw: string): ParsedPaste {
@@ -266,6 +284,10 @@ export function parsePaste(raw: string): ParsedPaste {
     subject,
     number,
     date,
+    parties: partiesOut,
+    reasons,
+    facts,
+    study,
   });
 
   // Merge legacy «الوقائع» into reasons/body — field removed from UX
@@ -283,7 +305,7 @@ export function parsePaste(raw: string): ParsedPaste {
     facts: '',
     reasons: reasonsOut,
     studyFields: study,
-    body: body || text,
+    body: body,
     tableRows,
     detectedKind: kind,
     fontHint: { family: font.suggestion.family, sizePt: font.suggestion.sizePt },

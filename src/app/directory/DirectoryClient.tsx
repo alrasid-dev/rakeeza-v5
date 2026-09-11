@@ -48,6 +48,10 @@ export default function DirectoryClient({
     setSelected(new Set());
   }
 
+  function selectAllDeptsEmployees() {
+    setSelected(new Set(initial.employees.map((e) => e.id)));
+  }
+
   const selectedEmps = initial.employees.filter((e) => selected.has(e.id));
   const addressBlock = addressEmployees(
     selectedEmps.map((e) => ({
@@ -96,11 +100,16 @@ export default function DirectoryClient({
       <div className="lg:col-span-2 space-y-3">
         <div className="flex flex-wrap gap-2 items-center">
           <button type="button" className="btn-outline text-sm" onClick={selectAllDept}>
-            تحديد الكل في القسم
+            تحديد الكل
           </button>
           <button type="button" className="btn-outline text-sm" onClick={clearSel}>
-            مسح التحديد
+            إلغاء تحديد الكل
           </button>
+          {!orgUnitId && (
+            <button type="button" className="btn-outline text-sm" onClick={selectAllDeptsEmployees}>
+              تحديد الكل (كل الأقسام)
+            </button>
+          )}
           <button
             type="button"
             className="btn-primary text-sm"

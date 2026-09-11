@@ -5,6 +5,7 @@ import AppShell from '@/components/AppShell';
 import PageHeader from '@/components/PageHeader';
 import OfficialPaperPreview from '@/components/OfficialPaperPreview';
 import { parsePaste } from '@/lib/parse-paste';
+import { saveDraft } from '@/lib/draft-store';
 
 export default function ImportPage() {
   const [user, setUser] = useState<{ name: string; role: string } | null>(null);
@@ -72,27 +73,22 @@ export default function ImportPage() {
                 href={`/documents/new?form=import-paste&name=${encodeURIComponent('مستورد')}`}
                 onClick={() => {
                   try {
-                    sessionStorage.setItem(
-                      'rakeeza-draft:import-paste',
-                      JSON.stringify({
-                        formSlug: 'import-paste',
-                        step: 3,
-                        paste: result.text,
-                        form: {
-                          subject: parsed.subject,
-                          recipients: parsed.recipients,
-                          parties: parsed.parties,
-                          facts: parsed.facts,
-                          reasons: parsed.reasons,
-                          studyFields: parsed.studyFields,
-                          body: parsed.body,
-                          dateGregorian: parsed.date || new Date().toISOString().slice(0, 10),
-                          docType: 'مستورد',
-                          tableRowsJson: JSON.stringify(parsed.tableRows),
-                        },
-                        updatedAt: Date.now(),
-                      }),
-                    );
+                    saveDraft('import-paste', {
+                      step: 3,
+                      paste: result.text,
+                      form: {
+                        subject: parsed.subject,
+                        recipients: parsed.recipients,
+                        parties: parsed.parties,
+                        facts: parsed.facts || '',
+                        reasons: parsed.reasons,
+                        studyFields: parsed.studyFields,
+                        body: parsed.body,
+                        dateGregorian: parsed.date || new Date().toISOString().slice(0, 10),
+                        docType: 'مستورد',
+                        tableRowsJson: JSON.stringify(parsed.tableRows),
+                      },
+                    });
                   } catch {
                     /* ignore */
                   }

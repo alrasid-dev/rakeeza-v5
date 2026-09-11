@@ -1,6 +1,7 @@
 /** Shared official MOJ letter HTML — used by PDF export and previews */
 
 import type { StudySections } from '@/lib/parse-study';
+import { normalizePaperLayout, type PaperLayoutId } from '@/lib/paper-layouts';
 
 export type OfficialLetterDoc = {
   number?: string | null;
@@ -21,6 +22,7 @@ export type OfficialLetterDoc = {
   studySections?: StudySections | null;
   fontFamily?: string | null;
   fontSizePt?: number | null;
+  paperLayout?: PaperLayoutId | string | null;
 };
 
 const GREEN = '#006C35';
@@ -83,7 +85,49 @@ function studyHtml(s: StudySections) {
 /** Inline abstract emblem (no external fetch needed for PDF) */
 const EMBLEM_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 96 96"><circle cx="48" cy="48" r="44" fill="#fff" stroke="${GOLD}" stroke-width="3"/><rect x="42" y="28" width="12" height="36" rx="2" fill="${GREEN}"/><rect x="36" y="24" width="24" height="6" rx="1.5" fill="${GOLD}"/><rect x="34" y="64" width="28" height="6" rx="1.5" fill="${GOLD}"/><rect x="18" y="34" width="60" height="3" rx="1.5" fill="${GOLD}"/><line x1="26" y1="35.5" x2="26" y2="48" stroke="${GREEN}" stroke-width="1.5"/><path d="M18 48 Q26 56 34 48 Z" fill="${GREEN}" opacity="0.85"/><line x1="70" y1="35.5" x2="70" y2="48" stroke="${GREEN}" stroke-width="1.5"/><path d="M62 48 Q70 56 78 48 Z" fill="${GREEN}" opacity="0.85"/><circle cx="48" cy="32" r="3.5" fill="${GOLD}"/></svg>`;
 
+function layoutTheme(layout: PaperLayoutId) {
+  switch (layout) {
+    case 'formal-gold':
+      return {
+        paperBorder: `2px solid ${GOLD}`,
+        bismillah: `background:linear-gradient(90deg,#8a6b2e,${GOLD},#8a6b2e);border-bottom:3px solid ${GREEN};`,
+        meta: `background:#fffaf0;border:2px solid ${GOLD};border-radius:8px;`,
+        foot: `border-top:2px solid ${GOLD};background:#fff8e8;`,
+      };
+    case 'compact-memo':
+      return {
+        paperBorder: `1px solid ${GREEN}`,
+        bismillah: `background:${GREEN};border-bottom:2px solid ${GOLD};`,
+        meta: `background:#f3f7f4;border:1px solid ${GREEN}66;border-radius:4px;`,
+        foot: `border-top:1px solid ${GOLD};background:#fff;`,
+      };
+    case 'taameem-circular':
+      return {
+        paperBorder: `2px solid ${GREEN}`,
+        bismillah: `background:#004d26;border-bottom:3px solid ${GOLD};`,
+        meta: `background:#E6F2EB;border:1px solid ${GREEN};border-radius:999px;`,
+        foot: `border-top:2px solid ${GOLD};background:#f0f7f3;`,
+      };
+    case 'study-report':
+      return {
+        paperBorder: `2px solid ${GREEN}`,
+        bismillah: `background:${GREEN};border-bottom:3px solid ${GOLD};`,
+        meta: `background:#fff;border-top:2px solid ${GREEN};border-bottom:2px solid ${GREEN};border-radius:0;`,
+        foot: `border-top:4px double ${GOLD};background:#fafcfb;`,
+      };
+    default:
+      return {
+        paperBorder: `2px solid ${GREEN}`,
+        bismillah: `background:${GREEN};border-bottom:3px solid ${GOLD};`,
+        meta: `background:#E6F2EB;border:1px solid ${GREEN};border-radius:8px;`,
+        foot: `border-top:2px solid ${GOLD};background:#fafcfb;`,
+      };
+  }
+}
+
 export function buildOfficialLetterHtml(doc: OfficialLetterDoc, opts?: { forPdf?: boolean }) {
+  const layout = normalizePaperLayout(doc.paperLayout);
+  const theme = layoutTheme(layout);
   const court = doc.courtName || 'المحكمة العمالية بالرياض';
   const header =
     doc.headerLines?.filter(Boolean) ||
@@ -105,6 +149,22 @@ export function buildOfficialLetterHtml(doc: OfficialLetterDoc, opts?: { forPdf?
     doc.studySections &&
     (doc.studySections.caseNumber || doc.studySections.plaintiff || doc.studySections.recommendation);
 
+  // RTL row: first = RIGHT (emblem), center text, last = LEFT (QR)
+  const brandRow = `
+  <div class="brand-row" dir="rtl">
+    <div style="flex-shrink:0">${emblem}${layout === 'taameem-circular' ? `<div style="text-align:center;font-size:9px;font-weight:700;color:${GREEN};border:1px solid ${GOLD};border-radius:999px;margin-top:4px;padding:1px 6px">تعميم</div>` : ''}</div>
+    <div class="brand-center">
+      ${header
+        .map(
+          (h, i) =>
+            `<div class="court" style="font-size:${h === court || i === header.length - 1 ? 16 : 13}px">${esc(h)}</div>`,
+        )
+        .join('')}
+      <div class="sub">منصة ركيزة الذكية</div>
+    </div>
+    <div style="flex-shrink:0">${qr}</div>
+  </div>`;
+
   return `<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -122,19 +182,18 @@ body {
 .paper {
   max-width: 210mm;
   margin: 0 auto;
-  border: 2px solid ${GREEN};
+  border: ${theme.paperBorder};
   border-radius: 4px;
   overflow: hidden;
   background: #fff;
 }
 .bismillah {
-  background: ${GREEN};
   color: #fff;
   text-align: center;
   font-weight: 700;
   padding: 8px 12px;
   font-size: 15px;
-  border-bottom: 3px solid ${GOLD};
+  ${theme.bismillah}
 }
 .brand-row {
   display: flex;
@@ -143,20 +202,19 @@ body {
   gap: 12px;
   padding: 14px 18px 10px;
   border-bottom: 2px solid ${GOLD};
+  direction: rtl;
 }
-.brand-center { text-align: center; flex: 1; }
+.brand-center { text-align: center; flex: 1; min-width: 0; }
 .brand-center .court { color: ${GREEN}; font-weight: 800; font-size: 16px; }
 .brand-center .sub { color: ${GOLD}; font-size: 12px; margin-top: 2px; }
 .meta {
   margin: 14px 18px;
-  background: #E6F2EB;
-  border: 1px solid ${GREEN};
-  border-radius: 8px;
   padding: 10px 14px;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 6px 16px;
   font-size: 13px;
+  ${theme.meta}
 }
 .meta .label { color: ${GREEN}; font-weight: 700; }
 .section { padding: 4px 18px 10px; }
@@ -174,22 +232,14 @@ body {
   text-align: center;
   color: #555;
   font-size: 11px;
-  border-top: 2px solid ${GOLD};
-  background: #fafcfb;
+  ${theme.foot}
 }
 </style>
 </head>
 <body>
-<div class="paper">
+<div class="paper" data-paper-layout="${esc(layout)}">
   <div class="bismillah">بسم الله الرحمن الرحيم</div>
-  <div class="brand-row">
-    ${emblem}
-    <div class="brand-center">
-      ${header.map((h) => `<div class="court" style="font-size:${h === court ? 16 : 13}px">${esc(h)}</div>`).join('')}
-      <div class="sub">منصة ركيزة الذكية</div>
-    </div>
-    ${qr}
-  </div>
+  ${brandRow}
   <div class="meta">
     <div><span class="label">الرقم:</span> <span dir="ltr">${esc(doc.number || '—')}</span></div>
     <div><span class="label">التاريخ:</span> ${esc(doc.dateGregorian || doc.dateHijri || '—')}</div>
@@ -210,7 +260,7 @@ body {
     }
     ${
       !hasStudy && doc.body
-        ? `<h3>النص</h3><div class="body">${pre(doc.body)}</div>`
+        ? `<h3>النص</h3><div class="body">${pre(String(doc.body).trim())}</div>`
         : ''
     }
     ${
