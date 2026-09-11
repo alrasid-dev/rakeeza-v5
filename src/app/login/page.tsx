@@ -41,10 +41,14 @@ export default function LoginPage() {
   const [info, setInfo] = useState('');
   const [loading, setLoading] = useState(false);
   const [showReg, setShowReg] = useState(false);
-  const [mode, setMode] = useState<Mode>('setup');
+  const [mode, setMode] = useState<Mode>('pin');
   const [setupReady, setSetupReady] = useState(false);
   const [setupName, setSetupName] = useState('');
   const statusTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const modeRef = useRef<Mode>('pin');
+  useEffect(() => {
+    modeRef.current = mode;
+  }, [mode]);
   const [regMsg, setRegMsg] = useState('');
   const [reg, setReg] = useState({
     name: '',
@@ -112,12 +116,22 @@ export default function LoginPage() {
         return;
       }
       if (data.exists && !data.needsSetup) {
-        setSetupReady(false);
+        if (modeRef.current !== 'pin') {
+          switchMode('pin');
+        } else {
+          setSetupReady(false);
+          setError('');
+        }
         setSetupName(data.name || '');
-        setInfo('الرمز مضبوط مسبقاً. استخدم «رمز الدخول» للدخول العادي.');
+        setInfo('الرمز مضبوط مسبقاً. استخدم تبويب «رمز الدخول» وأدخل الرمز المكوّن من ٦ أرقام.');
         return;
       }
       if (data.needsSetup) {
+        if (modeRef.current !== 'setup') {
+          switchMode('setup');
+        } else {
+          setError('');
+        }
         setSetupReady(true);
         setSetupName(data.name || '');
         setInfo(data.name ? `مرحباً ${data.name} — برمّج رمز الدخول (٦ أرقام).` : 'برمّج رمز الدخول (٦ أرقام).');
@@ -212,7 +226,9 @@ export default function LoginPage() {
     setError('');
     setInfo('');
     if (!setupReady) {
-      setError('أدخل بريداً يحتاج برمجة الرمز أولاً');
+      setError(
+        'لا يمكن برمجة الرمز الآن. إن كان الرمز مضبوطاً مسبقاً فانتقل إلى تبويب «رمز الدخول». وإلا فأدخل بريداً يحتاج أول برمجة ثم انتظر رسالة التأكيد.',
+      );
       return;
     }
     if (!/^\d{6}$/.test(pin) || !/^\d{6}$/.test(pinConfirm)) {
@@ -232,7 +248,16 @@ export default function LoginPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || 'فشل حفظ الرمز');
+        const msg = data.error || 'فشل حفظ الرمز';
+        if (res.status === 409 || String(msg).includes('مسبقاً')) {
+          switchMode('pin');
+          setEmail(email);
+          setError(
+            'تم ضبط الرمز مسبقاً — استخدم تبويب «رمز الدخول» وسجّل الدخول بالرمز المكوّن من ٦ أرقام (لا تعِد البرمجة).',
+          );
+          return;
+        }
+        setError(msg);
         return;
       }
       router.push('/');
@@ -347,22 +372,8 @@ export default function LoginPage() {
           <button
             type="button"
             className={`px-3 py-1.5 rounded-full border transition ${
-              mode === 'setup'
-                ? 'border-moj-green bg-moj-green text-white dark:border-moj-gold dark:bg-moj-gold dark:text-[#1a2b25]'
-                : 'border-gray-200 dark:border-white/15 text-gray-500 dark:text-white/45 hover:text-moj-gold'
-            }`}
-            onClick={() => {
-              setShowReg(false);
-              switchMode('setup');
-            }}
-          >
-            أول دخول — برمجة الرمز
-          </button>
-          <button
-            type="button"
-            className={`px-3 py-1.5 rounded-full border transition ${
               mode === 'pin'
-                ? 'border-moj-green bg-moj-green/10 text-moj-green dark:border-moj-gold dark:bg-moj-gold/15 dark:text-moj-gold'
+                ? 'border-moj-green bg-moj-green text-white dark:border-moj-gold dark:bg-moj-gold dark:text-[#1a2b25]'
                 : 'border-gray-200 dark:border-white/15 text-gray-500 dark:text-white/45 hover:text-moj-gold'
             }`}
             onClick={() => {
@@ -371,6 +382,20 @@ export default function LoginPage() {
             }}
           >
             رمز الدخول
+          </button>
+          <button
+            type="button"
+            className={`px-3 py-1.5 rounded-full border transition ${
+              mode === 'setup'
+                ? 'border-moj-green bg-moj-green/10 text-moj-green dark:border-moj-gold dark:bg-moj-gold/15 dark:text-moj-gold'
+                : 'border-gray-200 dark:border-white/15 text-gray-500 dark:text-white/45 hover:text-moj-gold'
+            }`}
+            onClick={() => {
+              setShowReg(false);
+              switchMode('setup');
+            }}
+          >
+            أول دخول — برمجة الرمز
           </button>
           <button
             type="button"
@@ -503,10 +528,17 @@ export default function LoginPage() {
                 className="input"
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setEmail(v);
+                  setError('');
+                  schedulePinStatus(v);
+                }}
+                onBlur={() => checkPinStatus(email)}
                 placeholder="name@moj.gov.sa"
                 required
                 dir="ltr"
+                autoComplete="username"
               />
               <p className="text-xs text-gray-400 dark:text-white/35 mt-1">يجب أن ينتهي بـ @moj.gov.sa</p>
             </div>
@@ -525,6 +557,11 @@ export default function LoginPage() {
                 autoComplete="one-time-code"
               />
             </div>
+            {info && (
+              <div className="text-sm text-moj-green dark:text-moj-gold bg-moj-light dark:bg-white/5 rounded-xl p-2">
+                {info}
+              </div>
+            )}
             {error && (
               <div className="text-sm text-red-600 dark:text-red-300 bg-red-50 dark:bg-red-950/40 rounded-xl p-2">
                 {error}
@@ -534,7 +571,7 @@ export default function LoginPage() {
               {loading ? 'جاري الدخول...' : 'تسجيل الدخول'}
             </button>
             <p className="text-center text-xs text-gray-400 dark:text-white/40">
-              أول مرة؟ اختر التبويب الأخضر «أول دخول — برمجة الرمز» أعلاه (ليس طلب تسجيل).
+              أول مرة ولم يُبرمج الرمز؟ اختر «أول دخول — برمجة الرمز» أعلاه (ليس طلب تسجيل).
             </p>
           </form>
         )}
