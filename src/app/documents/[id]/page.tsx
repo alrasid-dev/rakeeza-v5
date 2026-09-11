@@ -99,7 +99,7 @@ export default function DocumentDetailPage() {
           <>
             {!doc.number && (
               <button className="btn-primary" onClick={issue}>
-                إصدار برقم
+                إصدار برقم رسمي
               </button>
             )}
             <button className="btn-outline" onClick={archive}>
