@@ -18,12 +18,12 @@ type Tpl = {
 const SAMPLE: Record<string, { subject: string; recipients: string; body: string; study?: boolean }> = {
   'خطاب صادر': {
     subject: 'بشأن تنسيق الإجراءات',
-    recipients: 'زميلنا الأستاذ / …',
+    recipients: 'الأستاذ / …',
     body: 'السلام عليكم ورحمة الله وبركاته وبعد:-\nنأمل التكرم بالاطلاع واتخاذ ما يلزم.',
   },
   'مذكرة داخلية': {
     subject: 'مذكرة داخلية',
-    recipients: 'زميلنا الأستاذ / رئيس القسم',
+    recipients: 'الأستاذ / رئيس القسم',
     body: 'إشارةً إلى الموضوع أعلاه، نرفع إليكم هذه المذكرة للاطلاع.',
   },
   'نموذج تحليل حكم (شكوى)': {
@@ -41,7 +41,7 @@ const SAMPLE: Record<string, { subject: string; recipients: string; body: string
 
 const DEFAULT_SAMPLE = {
   subject: 'معاينة القالب',
-  recipients: 'زميلنا الأستاذ / …',
+  recipients: 'الأستاذ / …',
   body: 'هذه معاينة توضيحية لهوية الورق الرسمي قبل فتح المحرر.',
 };
 

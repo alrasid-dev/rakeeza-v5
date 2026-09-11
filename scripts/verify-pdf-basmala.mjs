@@ -25,7 +25,7 @@ body{font-family:'Noto Naskh Arabic',serif;direction:rtl;margin:0}
 <div class="court">المملكة العربية السعودية</div>
 <div class="court">وزارة العدل</div>
 <div class="court">المحكمة العمالية بالرياض</div>
-<p style="padding:16px;text-align:right">إلى: زميلتنا الأستاذة / ابتسام العتيبي</p>
+<p style="padding:16px;text-align:right">إلى: الأستاذة / ابتسام العتيبي</p>
 <p style="padding:0 16px;text-align:right">الموضوع: اختبار تصدير PDF</p>
 <p style="padding:16px">الباحث: محمد العتيبي — معد الدراسة هو الباحث</p>
 </body></html>`;

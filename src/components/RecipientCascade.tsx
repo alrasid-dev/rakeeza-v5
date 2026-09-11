@@ -386,7 +386,7 @@ export default function RecipientCascade({
           className="input"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder="مثال: زميلنا الأستاذ / …"
+          placeholder="مثال: الأستاذ / …"
         />
       )}
 

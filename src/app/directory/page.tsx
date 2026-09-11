@@ -33,7 +33,7 @@ export default async function DirectoryPage() {
 
   return (
     <AppShell user={user}>
-      <PageHeader title="الدليل" subtitle="اختر قسماً ثم موظفين — مخاطبة جماعية ببادئة زميلنا الأستاذ" />
+      <PageHeader title="الدليل" subtitle="اختر قسماً ثم موظفين — مخاطبة جماعية ببادئة الأستاذ / الأستاذة" />
       <DirectoryClient initial={payload} />
     </AppShell>
   );

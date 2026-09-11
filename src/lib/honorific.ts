@@ -210,11 +210,11 @@ export function vipHonorificFor(emp: HonorificEmployee, rawHonorific: string): s
   return h;
 }
 
-/** Peer address: زميلنا الأستاذ / زميلتنا الأستاذة — never سعادة for staff */
+/** Peer address: الأستاذ / الأستاذة — never سعادة or زميل for staff */
 export function peerTitleFor(emp: HonorificEmployee): string {
   const gender = inferGender(emp);
-  if (gender === 'female') return 'زميلتنا الأستاذة';
-  return 'زميلنا الأستاذ'; // male or uncertain → أستاذ
+  if (gender === 'female') return 'الأستاذة';
+  return 'الأستاذ'; // male or uncertain → أستاذ
 }
 
 /** Default internal peer address */
