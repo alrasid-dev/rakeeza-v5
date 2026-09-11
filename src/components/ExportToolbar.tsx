@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { buildLetterHtml, copyOutlookHtml } from '@/lib/outlook-clipboard';
-import { buildOfficialLetterHtml } from '@/lib/official-letter-html';
 import { normalizeBodyText } from '@/components/OfficialPaperPreview';
 import { hasOfficialOutgoingNumber } from '@/lib/honorific';
 import { officialDateDisplay } from '@/lib/hijri';
@@ -26,6 +25,8 @@ export type ExportDoc = {
   studySections?: StudySections | null;
   fontFamily?: string | null;
   fontSizePt?: number | null;
+  qrDataUrl?: string | null;
+  headerLines?: string[] | null;
 };
 
 type FormatId = 'docx' | 'xlsx' | 'pdf' | 'pptx' | 'outlook';
@@ -148,10 +149,16 @@ export default function ExportToolbar({
           dateGregorian: doc.dateGregorian ?? undefined,
           dateHijri: doc.dateHijri ?? undefined,
           recipients: doc.recipients || '',
+          parties: doc.parties || '',
+          reasons: doc.reasons || '',
+          studyFields: doc.studyFields || '',
           body: normalizeBodyText(doc.body),
           footer: doc.footer ?? undefined,
+          courtName: doc.courtName || undefined,
+          qrDataUrl: doc.qrDataUrl,
+          headerLines: doc.headerLines,
         });
-        const ok = await copyOutlookHtml(html);
+        const ok = await copyOutlookHtml(html, buildPlainLetter(doc));
         if (ok) {
           markExported();
           setMsg('تم تجهيز نسخة Outlook — الصق في البريد');
@@ -242,36 +249,29 @@ export default function ExportToolbar({
       return;
     }
     const plain = buildPlainLetter(doc);
-    const html = buildOfficialLetterHtml({
+    const html = buildLetterHtml({
       number: doc.number,
-      subject: doc.subject,
+      subject: doc.subject || '',
       dateGregorian: doc.dateGregorian,
       dateHijri: doc.dateHijri,
-      recipients: doc.recipients,
-      parties: doc.parties,
-      reasons: doc.reasons,
-      studyFields: doc.studyFields,
+      recipients: doc.recipients || '',
+      parties: doc.parties || '',
+      reasons: doc.reasons || '',
+      studyFields: doc.studyFields || '',
       body: normalizeBodyText(doc.body),
-      footer: doc.footer,
-      courtName: doc.courtName,
-      paperLayout: doc.paperLayout,
-      studySections: doc.studySections,
-      fontFamily: doc.fontFamily,
-      fontSizePt: doc.fontSizePt ?? undefined,
+      footer: doc.footer ?? undefined,
+      courtName: doc.courtName || undefined,
+      qrDataUrl: doc.qrDataUrl,
+      headerLines: doc.headerLines,
     });
     try {
-      const ok = await copyOutlookHtml(html);
+      const ok = await copyOutlookHtml(html, plain);
       if (ok) {
-        try {
-          await navigator.clipboard.writeText(plain);
-        } catch {
-          /* html already copied */
-        }
-        setMsg('تم نسخ الخطاب كامل');
+        setMsg('تم نسخ الخطاب كامل (ترويسة + شعار + QR)');
         return;
       }
       await navigator.clipboard.writeText(plain);
-      setMsg('تم نسخ الخطاب كامل');
+      setMsg('تم نسخ النص فقط — الصق HTML عبر Outlook');
     } catch {
       setMsg('فشل النسخ');
     }

@@ -33,6 +33,50 @@ function normalize(raw: string) {
   return raw.replace(/\r\n/g, '\n').replace(/\u00a0/g, ' ').trim();
 }
 
+function dedupeGreetingBody(body: string, subject?: string) {
+  let b = String(body || '').replace(/\r\n/g, '\n').trim();
+  if (!b) return '';
+
+  // Strip repeated basmala
+  b = b.replace(/^(?:بسم الله الرحمن الرحيم\s*)+/gm, (m, offset) => (offset === 0 || m.indexOf('\n') >= 0 ? 'بسم الله الرحمن الرحيم\n' : ''));
+  b = b.replace(/(بسم الله الرحمن الرحيم\s*){2,}/g, 'بسم الله الرحمن الرحيم\n');
+
+  // Keep a single salutation
+  const salaRe = /السلام عليكم(?: ورحمة الله وبركاته)?(?:\s+وبعد)?\s*[:-]*/g;
+  let salaCount = 0;
+  b = b.replace(salaRe, (m) => {
+    salaCount += 1;
+    return salaCount === 1 ? 'السلام عليكم ورحمة الله وبركاته وبعد:-' : '';
+  });
+  b = b.replace(/^\s*[-:]\s*$/gm, '');
+
+  // Remove subject echoed into body
+  const sub = String(subject || '').trim();
+  if (sub.length >= 8) {
+    b = b
+      .split('\n')
+      .filter((line) => {
+        const t = line.trim();
+        if (!t) return true;
+        if (t === sub) return false;
+        if (t === `الموضوع: ${sub}` || t === `الموضوع : ${sub}`) return false;
+        if (new RegExp(`^الموضوع\s*[:：]\s*`).test(t) && t.includes(sub.slice(0, Math.min(20, sub.length)))) return false;
+        return true;
+      })
+      .join('\n');
+  }
+
+  // Collapse identical consecutive paragraphs
+  const paras = b.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean);
+  const out: string[] = [];
+  for (const p of paras) {
+    if (out.length && out[out.length - 1] === p) continue;
+    out.push(p);
+  }
+  return out.join('\n\n').replace(/\n{3,}/g, '\n\n').trim();
+}
+
+
 function pick(text: string, re: RegExp) {
   const m = text.match(re);
   return m?.[1]?.trim() || '';
@@ -166,7 +210,7 @@ export function parsePaste(raw: string): ParsedPaste {
       facts: '',
       reasons: mapped.reasons,
       studyFields: mapped.studyFields,
-      body: mapped.body,
+      body: dedupeGreetingBody(mapped.body, mapped.subject),
       tableRows: [],
       studySections: study,
       detectedKind: 'study',
@@ -299,6 +343,8 @@ export function parsePaste(raw: string): ParsedPaste {
     tableRows.length >= 2 ? 'table' : subject || recipients ? 'letter' : 'unknown';
   const font = suggestFont(kind === 'table' ? 'كشف أسماء' : 'خطاب صادر', body || text);
 
+  const bodyClean = dedupeGreetingBody(body, subject);
+
   return {
     number,
     date,
@@ -308,7 +354,7 @@ export function parsePaste(raw: string): ParsedPaste {
     facts: '',
     reasons: reasonsOut,
     studyFields: study,
-    body: body,
+    body: bodyClean,
     tableRows,
     detectedKind: kind,
     fontHint: { family: font.suggestion.family, sizePt: font.suggestion.sizePt },

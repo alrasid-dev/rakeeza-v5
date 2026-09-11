@@ -4,17 +4,26 @@ import bidiFactory from 'bidi-js';
 
 const bidi = bidiFactory();
 
+/**
+ * Prepare Arabic for jsPDF canvas painting (LTR).
+ * Returns visual-order presentation forms. Do NOT use this for Chromium/HTML PDF.
+ */
 export function prepareArabicForPdf(text: string): string {
   const raw = String(text ?? '');
   if (!raw) return '';
-  // Skip pure ASCII/digits/punctuation lines
   if (!/[\u0600-\u06FF]/.test(raw)) return raw;
   try {
     const shaped = ArabicShaper.convertArabic(raw);
     const levels = bidi.getEmbeddingLevels(shaped, 'rtl');
-    return bidi.getReorderedString(shaped, levels);
+    const visual = bidi.getReorderedString(shaped, levels);
+    // Guard: if reshape somehow no-op'd, fall back to simple reverse of logical
+    if (visual === raw || !visual) {
+      return raw.split('').reverse().join('');
+    }
+    return visual;
   } catch {
-    return raw;
+    // Crude fallback so letters aren't drawn logical-LTR (looks fully reversed)
+    return raw.split('').reverse().join('');
   }
 }
 

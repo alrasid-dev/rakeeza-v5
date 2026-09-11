@@ -386,22 +386,30 @@ function BrandHeader({
   brandBorder: string;
 }) {
   const pad = compact ? 'px-3 py-2' : 'px-4 py-3';
+  const box = compact ? 'w-12 h-12' : 'w-16 h-16';
+  // Physical LTR grid: LEFT=QR, CENTER=kingdom, RIGHT=emblem (official MOJ paper)
   return (
     <div
-      dir="rtl"
-      className={`flex items-center justify-between gap-3 ${pad} ${brandBorder}`}
+      dir="ltr"
+      className={`grid grid-cols-[auto_1fr_auto] items-center gap-3 ${pad} ${brandBorder}`}
     >
-      {/* RTL flex: first child = RIGHT → emblem */}
-      <div className="shrink-0 flex flex-col items-center gap-1">
-        <EmblemImg className={compact ? '!w-12 !h-12' : ''} />
-        {showCircularBadge && (
-          <span className="text-[9px] font-bold text-moj-green border border-moj-gold rounded-full px-2 py-0.5">
-            تعميم
-          </span>
+      <div className="shrink-0 flex justify-start">
+        {qrDataUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={qrDataUrl}
+            alt="QR"
+            className={`${box} rounded-lg border border-moj-gold bg-white`}
+          />
+        ) : (
+          <div
+            className={`${box} text-[9px] rounded-xl border-2 border-dashed border-moj-gold bg-white flex items-center justify-center text-moj-green`}
+          >
+            QR
+          </div>
         )}
       </div>
-      {/* CENTER: kingdom / ministry / court — always beside emblem, never alone */}
-      <div className="flex-1 text-center min-w-0">
+      <div className="text-center min-w-0" dir="rtl">
         <div className={`${compact ? 'text-[10px]' : 'text-[11px]'} text-moj-green font-semibold`}>
           المملكة العربية السعودية
         </div>
@@ -415,21 +423,14 @@ function BrandHeader({
         </div>
         {!compact && <div className="text-moj-gold text-xs mt-0.5">منصة ركيزة الذكية</div>}
       </div>
-      {/* LEFT in RTL: QR */}
-      {qrDataUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={qrDataUrl}
-          alt="QR"
-          className={`${compact ? 'w-12 h-12' : 'w-16 h-16'} rounded-lg border border-moj-gold bg-white shrink-0`}
-        />
-      ) : (
-        <div
-          className={`${compact ? 'w-12 h-12 text-[8px]' : 'w-16 h-16 text-[9px]'} shrink-0 rounded-xl border-2 border-dashed border-moj-gold bg-white flex items-center justify-center text-moj-green`}
-        >
-          QR
-        </div>
-      )}
+      <div className="shrink-0 flex flex-col items-center gap-1 justify-self-end">
+        <EmblemImg className={compact ? '!w-12 !h-12' : ''} />
+        {showCircularBadge && (
+          <span className="text-[9px] font-bold text-moj-green border border-moj-gold rounded-full px-2 py-0.5">
+            تعميم
+          </span>
+        )}
+      </div>
     </div>
   );
 }

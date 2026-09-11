@@ -132,6 +132,7 @@ export default function DocumentDetailPage() {
             studySections: fields.studySections,
             fontFamily: fields.style?.fontFamily,
             fontSizePt: fields.style?.fontSizePt,
+            qrDataUrl: fields.qrDataUrl,
           }}
           onRequestIssue={issue}
         />

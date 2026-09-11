@@ -8,7 +8,9 @@ import { hasOfficialOutgoingNumber } from '@/lib/honorific';
 import { attachmentDisposition } from '@/lib/download-headers';
 import { officialDateDisplay } from '@/lib/hijri';
 import { prepareArabicForPdf, wrapArabicLines } from '@/lib/arabic-pdf-text';
+import { loadEmblemPng } from '@/lib/brand-assets';
 import { jsPDF } from 'jspdf';
+import QRCode from 'qrcode';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -22,27 +24,36 @@ async function pdfViaChromium(html: string): Promise<Buffer | null> {
   try {
     const chromium = (await import('@sparticuz/chromium')).default;
     const puppeteer = await import('puppeteer-core');
+    try {
+      // @sparticuz/chromium — disable WebGL when available
+      const anyCr = chromium as unknown as { setGraphicsMode?: ((v: boolean) => void) | boolean };
+      if (typeof anyCr.setGraphicsMode === 'function') anyCr.setGraphicsMode(false);
+    } catch { /* ignore */ }
     const executablePath = await chromium.executablePath();
-    if (!executablePath) return null;
+    if (!executablePath) {
+      console.error('chromium executablePath empty');
+      return null;
+    }
 
     const browser = await puppeteer.default.launch({
-      args: [...chromium.args, '--font-render-hinting=none', '--force-color-profile=srgb'],
+      args: [...chromium.args, '--font-render-hinting=none', '--force-color-profile=srgb', '--disable-dev-shm-usage'],
       defaultViewport: { width: 794, height: 1123, deviceScaleFactor: 1 },
       executablePath,
       headless: true,
     });
     try {
       const page = await browser.newPage();
-      await page.setContent(html, { waitUntil: 'load', timeout: 35000 });
-      // Ensure embedded @font-face is ready before print
+      await page.setContent(html, { waitUntil: 'load', timeout: 45000 });
       await page.evaluate(async () => {
-        const fonts = (globalThis as unknown as { document?: { fonts?: { ready?: Promise<unknown> } } }).document?.fonts;
+        const fonts = (globalThis as unknown as { document?: { fonts?: { ready?: Promise<unknown> } } }).document
+          ?.fonts;
         if (fonts?.ready) await fonts.ready;
       });
-      await new Promise((r) => setTimeout(r, 250));
+      await new Promise((r) => setTimeout(r, 400));
       const pdf = await page.pdf({
         format: 'A4',
         printBackground: true,
+        preferCSSPageSize: true,
         margin: { top: '10mm', bottom: '10mm', left: '10mm', right: '10mm' },
       });
       return Buffer.from(pdf);
@@ -63,7 +74,7 @@ function loadArabicFontBase64(): string {
   return fs.readFileSync(fontPath).toString('base64');
 }
 
-/** jsPDF fallback with embedded Noto Naskh Arabic — real Arabic strings, no English stubs */
+/** jsPDF fallback — reshape ONCE for LTR painter; do not use for Chromium HTML */
 function pdfViaJsPdf(doc: {
   number: string | null;
   subject: string;
@@ -76,6 +87,7 @@ function pdfViaJsPdf(doc: {
   studyFields: string;
   footer: string;
   headerLines: string[];
+  qrDataUrl?: string | null;
 }): Buffer {
   const pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
   const fontB64 = loadArabicFontBase64();
@@ -88,13 +100,14 @@ function pdfViaJsPdf(doc: {
   const xRight = pageW - marginR;
   let y = 16;
 
-  const writeAr = (line: string, size = 12, color: [number, number, number] = [0, 0, 0]) => {
+  const writeAr = (line: string, size = 12, color: [number, number, number] = [0, 0, 0], align: 'right' | 'center' = 'right') => {
     pdf.setFont('NotoNaskhArabic', 'normal');
     pdf.setFontSize(size);
     pdf.setTextColor(...color);
     const prepared = prepareArabicForPdf(line);
     const chunk = prepared.slice(0, 120) || ' ';
-    pdf.text(chunk, xRight, y, { align: 'right' });
+    const x = align === 'center' ? pageW / 2 : xRight;
+    pdf.text(chunk, x, y, { align });
     y += size * 0.45 + 2.2;
     if (y > 280) {
       pdf.addPage();
@@ -103,20 +116,37 @@ function pdfViaJsPdf(doc: {
     }
   };
 
-  // Green header bar
+  // Green basmala bar
   pdf.setFillColor(0, 108, 53);
   pdf.rect(10, 8, 190, 12, 'F');
-  pdf.setTextColor(255, 255, 255);
+  pdf.setFillColor(197, 160, 89);
+  pdf.rect(10, 20, 190, 1.2, 'F');
   y = 16;
-  writeAr('بسم الله الرحمن الرحيم', 13, [255, 255, 255]);
-  pdf.setTextColor(0, 0, 0);
-  y = 28;
+  writeAr('بسم الله الرحمن الرحيم', 13, [255, 255, 255], 'center');
+  y = 26;
 
-  for (const h of doc.headerLines.slice(0, 3)) {
-    writeAr(h, h.includes('محكمة') || h.includes('المحكمة') ? 13 : 11, [0, 108, 53]);
+  // Header band: QR left / kingdom center / emblem right (physical coords)
+  try {
+    const emblem = loadEmblemPng();
+    pdf.addImage(emblem.toString('base64'), 'PNG', 168, 24, 18, 18);
+  } catch {
+    /* ignore */
   }
-  writeAr('منصة ركيزة الذكية', 9, [197, 160, 89]);
-  y += 2;
+  if (doc.qrDataUrl) {
+    try {
+      const m = doc.qrDataUrl.match(/^data:image\/\w+;base64,(.+)$/);
+      if (m) pdf.addImage(m[1], 'PNG', 14, 24, 18, 18);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  y = 28;
+  for (const h of doc.headerLines.slice(0, 3)) {
+    writeAr(h, h.includes('محكمة') || h.includes('المحكمة') ? 13 : 11, [0, 108, 53], 'center');
+  }
+  writeAr('منصة ركيزة الذكية', 9, [197, 160, 89], 'center');
+  y = Math.max(y, 48);
 
   writeAr(`الرقم: ${doc.number || '—'}`, 11);
   writeAr(`التاريخ: ${officialDateDisplay(doc.dateHijri, doc.dateGregorian)}`, 11);
@@ -145,7 +175,7 @@ function pdfViaJsPdf(doc: {
   }
 
   y += 4;
-  writeAr(doc.footer || 'للاستخدام الداخلي فقط', 9, [80, 80, 80]);
+  writeAr(doc.footer || 'للاستخدام الداخلي فقط', 9, [80, 80, 80], 'center');
   return Buffer.from(pdf.output('arraybuffer'));
 }
 
@@ -183,6 +213,14 @@ export async function GET(req: NextRequest) {
       qrDataUrl = null;
     }
 
+    if (!qrDataUrl && (doc.qrPayload || doc.number)) {
+      try {
+        qrDataUrl = await QRCode.toDataURL(String(doc.qrPayload || doc.number), { margin: 1, width: 160 });
+      } catch {
+        qrDataUrl = null;
+      }
+    }
+
     const headerLines = (letterhead?.header || 'المملكة العربية السعودية\nوزارة العدل\nالمحكمة العمالية بالرياض')
       .split('\n')
       .map((l) => l.trim())
@@ -197,6 +235,7 @@ export async function GET(req: NextRequest) {
   font-display: block;
 }`;
 
+    // Chromium HTML path: logical Arabic + dir=rtl — NO prepareArabicForPdf reshape
     const html = buildOfficialLetterHtml(
       {
         number: doc.number,
@@ -221,7 +260,9 @@ export async function GET(req: NextRequest) {
     );
 
     let buffer = await pdfViaChromium(html);
+    let engine = 'chromium';
     if (!buffer || buffer.length < 100) {
+      engine = 'jspdf';
       buffer = pdfViaJsPdf({
         number: doc.number,
         subject: doc.subject,
@@ -234,7 +275,12 @@ export async function GET(req: NextRequest) {
         studyFields: doc.studyFields,
         footer: letterhead?.footer || 'للاستخدام الداخلي فقط',
         headerLines,
+        qrDataUrl,
       });
+    }
+
+    if (!buffer || buffer.length < 50) {
+      return jsonError('تعذر إنشاء ملف PDF حالياً. جرّب تصدير DOCX.', 500);
     }
 
     const base = `rakeeza-${doc.number || doc.id}`;
@@ -243,6 +289,7 @@ export async function GET(req: NextRequest) {
         'Content-Type': 'application/pdf',
         'Content-Disposition': attachmentDisposition(base, 'pdf'),
         'Cache-Control': 'no-store',
+        'X-Rakeeza-Pdf-Engine': engine,
       },
     });
   } catch (e) {

@@ -7,6 +7,7 @@ import {
   normalizePaperLayout,
   type PaperLayoutId,
 } from '@/lib/paper-layouts';
+import { MOJ_EMBLEM_PNG_DATA_URL } from '@/lib/brand-emblem-data';
 
 export type OfficialLetterDoc = {
   number?: string | null;
@@ -87,8 +88,8 @@ function studyHtml(s: StudySections) {
   </div>`;
 }
 
-/** Inline abstract emblem (no external fetch needed for PDF) */
-const EMBLEM_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 96 96"><circle cx="48" cy="48" r="44" fill="#fff" stroke="${GOLD}" stroke-width="3"/><rect x="42" y="28" width="12" height="36" rx="2" fill="${GREEN}"/><rect x="36" y="24" width="24" height="6" rx="1.5" fill="${GOLD}"/><rect x="34" y="64" width="28" height="6" rx="1.5" fill="${GOLD}"/><rect x="18" y="34" width="60" height="3" rx="1.5" fill="${GOLD}"/><line x1="26" y1="35.5" x2="26" y2="48" stroke="${GREEN}" stroke-width="1.5"/><path d="M18 48 Q26 56 34 48 Z" fill="${GREEN}" opacity="0.85"/><line x1="70" y1="35.5" x2="70" y2="48" stroke="${GREEN}" stroke-width="1.5"/><path d="M62 48 Q70 56 78 48 Z" fill="${GREEN}" opacity="0.85"/><circle cx="48" cy="32" r="3.5" fill="${GOLD}"/></svg>`;
+/** Raster emblem (stable in Chromium PDF / Outlook) — SVG kept as tiny fallback */
+const EMBLEM_IMG = `<img src="${MOJ_EMBLEM_PNG_DATA_URL}" alt="شعار" width="64" height="64" style="width:64px;height:64px;object-fit:contain;display:block" />`;
 
 function geometricFooterSvg(variant: 'a' | 'b') {
   const g = IDENTITY_COLORS.green;
@@ -208,30 +209,33 @@ export function buildOfficialLetterHtml(doc: OfficialLetterDoc, opts?: { forPdf?
       : `@import url('https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;700&display=swap');`);
 
   const qr = doc.qrDataUrl
-    ? `<img src="${esc(doc.qrDataUrl)}" alt="QR" style="width:72px;height:72px;border:1px solid ${GOLD};border-radius:6px;background:#fff" />`
+    ? `<img src="${esc(doc.qrDataUrl)}" alt="QR" style="width:72px;height:72px;border:1px solid ${GOLD};border-radius:6px;background:#fff;display:block" />`
     : `<div style="width:72px;height:72px;border:1px dashed ${GOLD};border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;color:${GREEN};background:#fff">QR</div>`;
 
-  const emblem = `<div style="width:64px;height:64px;border:1.5px solid ${GOLD};border-radius:12px;background:#fff;overflow:hidden;display:flex;align-items:center;justify-content:center">${EMBLEM_SVG}</div>`;
+  const emblem = `<div style="width:64px;height:64px;border:1.5px solid ${GOLD};border-radius:12px;background:#fff;overflow:hidden;display:flex;align-items:center;justify-content:center">${EMBLEM_IMG}</div>`;
 
   const hasStudy =
     doc.studySections &&
     (doc.studySections.caseNumber || doc.studySections.plaintiff || doc.studySections.recommendation);
 
-  // RTL row: first = RIGHT (emblem), center text, last = LEFT (QR)
+  // Physical LTR columns: LEFT=QR, CENTER=kingdom, RIGHT=emblem (do not rely on RTL flex)
   const brandRow = `
-  <div class="brand-row" dir="rtl">
-    <div style="flex-shrink:0">${emblem}${layout === 'taameem-circular' ? `<div style="text-align:center;font-size:9px;font-weight:700;color:${GREEN};border:1px solid ${GOLD};border-radius:999px;margin-top:4px;padding:1px 6px">تعميم</div>` : ''}</div>
-    <div class="brand-center">
-      ${header
-        .map(
-          (h, i) =>
-            `<div class="court" style="font-size:${h === court || i === header.length - 1 ? 16 : 13}px">${esc(h)}</div>`,
-        )
-        .join('')}
-      <div class="sub">منصة ركيزة الذكية</div>
-    </div>
-    <div style="flex-shrink:0">${qr}</div>
-  </div>`;
+  <table class="brand-row" dir="ltr" width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse:collapse;border-bottom:2px solid ${GOLD}">
+    <tr>
+      <td width="88" valign="middle" align="left" style="padding:14px 12px;width:88px">${qr}</td>
+      <td valign="middle" align="center" style="padding:14px 8px" dir="rtl">
+        ${header
+          .map(
+            (h, i) =>
+              `<div class="court" style="font-size:${h === court || i === header.length - 1 ? 16 : 13}px;color:${GREEN};font-weight:800">${esc(h)}</div>`,
+          )
+          .join('')}
+        <div class="sub" style="color:${GOLD};font-size:12px;margin-top:2px">منصة ركيزة الذكية</div>
+        ${layout === 'taameem-circular' ? `<div style="display:inline-block;margin-top:4px;font-size:9px;font-weight:700;color:${GREEN};border:1px solid ${GOLD};border-radius:999px;padding:1px 8px">تعميم</div>` : ''}
+      </td>
+      <td width="88" valign="middle" align="right" style="padding:14px 12px;width:88px">${emblem}</td>
+    </tr>
+  </table>`;
 
   return `<!DOCTYPE html>
 <html lang="ar" dir="rtl">
@@ -264,18 +268,9 @@ body {
   font-size: 15px;
   ${theme.bismillah}
 }
-.brand-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 14px 18px 10px;
-  border-bottom: 2px solid ${GOLD};
-  direction: rtl;
-}
-.brand-center { text-align: center; flex: 1; min-width: 0; }
-.brand-center .court { color: ${GREEN}; font-weight: 800; font-size: 16px; }
-.brand-center .sub { color: ${GOLD}; font-size: 12px; margin-top: 2px; }
+.brand-row { width: 100%; }
+.brand-row .court { color: ${GREEN}; font-weight: 800; }
+.brand-row .sub { color: ${GOLD}; font-size: 12px; margin-top: 2px; }
 .meta {
   margin: 14px 18px;
   padding: 10px 14px;

@@ -11,6 +11,10 @@ const nextConfig = {
       'puppeteer-core',
       'docx',
       'exceljs',
+      'arabic-persian-reshaper',
+      'bidi-js',
+      'qrcode',
+      'jspdf',
     ],
     outputFileTracingIncludes: {
       '/api/**/*': ['./data/seed-rakeeza.db'],
