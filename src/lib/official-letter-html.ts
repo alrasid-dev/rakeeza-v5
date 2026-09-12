@@ -10,6 +10,7 @@ import {
 import { MOJ_EMBLEM_PNG_DATA_URL } from '@/lib/brand-emblem-data';
 import { researcherRoleLabel, preparerRoleLabel } from '@/lib/honorific';
 import { formatClaimAmount, normalizeFormationOrdinal } from '@/lib/arabic-normalize';
+import { enrichStudySections, hasStudyContent, studyDisplayMeta } from '@/lib/study-display';
 
 export type OfficialLetterDoc = {
   number?: string | null;
@@ -233,9 +234,22 @@ export function buildOfficialLetterHtml(doc: OfficialLetterDoc, opts?: { forPdf?
 
   const emblem = `<div style="width:64px;height:64px;border:1.5px solid ${GOLD};border-radius:12px;background:#fff;overflow:hidden;display:flex;align-items:center;justify-content:center">${EMBLEM_IMG}</div>`;
 
-  const hasStudy =
-    doc.studySections &&
-    (doc.studySections.caseNumber || doc.studySections.plaintiff || doc.studySections.recommendation);
+  const study = doc.studySections
+    ? enrichStudySections(doc.studySections, {
+        subject: doc.subject,
+        parties: doc.parties,
+        reasons: doc.reasons,
+        studyFields: doc.studyFields,
+        body: doc.body,
+        recipients: doc.recipients,
+      })
+    : null;
+  const hasStudy = hasStudyContent(study);
+  const meta = studyDisplayMeta(study, { subject: doc.subject, recipients: doc.recipients });
+  const previewSubject =
+    (doc.subject && doc.subject.trim() && doc.subject.trim() !== '—')
+      ? doc.subject
+      : meta.subject || (study?.caseNumber ? `دراسة شكوى — ${study.caseNumber}` : '') || '—';
 
   // Official Saudi letterhead (physical LTR): LEFT=QR, CENTER=emblem, RIGHT=kingdom/ministry/court
   const brandRow = `
@@ -326,27 +340,27 @@ body {
     <div><span class="label">الرقم:</span> <span dir="ltr">${esc(doc.number || '—')}</span></div>
     <div><span class="label">التاريخ:</span> ${esc(officialDateDisplay(doc.dateHijri, doc.dateGregorian))}</div>
     <div style="grid-column:1/-1"><span class="label">إلى:</span> ${esc(doc.recipients || '—')}</div>
-    <div style="grid-column:1/-1"><span class="label">الموضوع:</span> ${esc(doc.subject || '—')}</div>
+    <div style="grid-column:1/-1"><span class="label">الموضوع:</span> ${esc(previewSubject)}</div>
   </div>
   <div class="section">
-    ${hasStudy && doc.studySections ? studyHtml(doc.studySections) : ''}
+    ${hasStudy && study ? studyHtml(study) : ''}
     ${
-      !hasStudy && doc.parties
+      doc.parties && (!hasStudy || !study?.plaintiff)
         ? `<h3>الأطراف</h3><div class="body">${pre(doc.parties)}</div>`
         : ''
     }
     ${
-      !hasStudy && doc.reasons
+      doc.reasons && (!hasStudy || !(study?.recommendation || study?.problem || study?.summaryPlaintiff))
         ? `<h3>الأسباب</h3><div class="body">${pre(doc.reasons)}</div>`
         : ''
     }
     ${
-      !hasStudy && doc.body
+      doc.body && (!hasStudy || !(study?.recommendation || study?.claimAmount || study?.problem))
         ? `<h3>النص</h3><div class="body">${pre(String(doc.body).trim())}</div>`
         : ''
     }
     ${
-      !hasStudy && doc.studyFields
+      doc.studyFields && (!hasStudy || !study?.recommendation)
         ? `<h3>الدراسة</h3><div class="body">${pre(doc.studyFields)}</div>`
         : ''
     }

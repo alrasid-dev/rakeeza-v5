@@ -10,6 +10,7 @@ import {
   type PaperLayoutId,
 } from '@/lib/paper-layouts';
 import { officialDateDisplay } from '@/lib/hijri';
+import { enrichStudySections, hasStudyContent, studyDisplayMeta } from '@/lib/study-display';
 
 export type OfficialPaperFields = {
   number?: string | null;
@@ -156,6 +157,38 @@ function bodyWithoutDuplicatedSections(
   return result;
 }
 
+/** Drop pieces already rendered in StudyFormView so fallback blocks stay useful. */
+function leftoverBlock(
+  raw: string | null | undefined,
+  already: Array<string | null | undefined>,
+): string {
+  let result = String(raw || '')
+    .replace(/\r\n/g, '\n')
+    .replace(/\u00a0/g, ' ')
+    .trim();
+  if (!result) return '';
+  for (const block of already) {
+    const b = String(block || '').trim();
+    if (b.length >= 8 && result.includes(b)) {
+      result = result.split(b).join('\n');
+    }
+  }
+  return result
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((t) => {
+      if (!t) return false;
+      if (/^(الأطراف|الوقائع|الأسباب|الحيثيات|الدراسة|النص|الموضوع)\s*[:：]?$/.test(t)) return false;
+      const labeled = t.match(/^[\u0600-\u06FF\s/()]+[:：]\s*(.+)$/);
+      if (labeled?.[1] && already.some((a) => a && labeled[1].trim() === String(a).trim())) return false;
+      if (already.some((a) => a && t === String(a).trim())) return false;
+      return true;
+    })
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
 function PartyBar({
   label,
   value,
@@ -203,6 +236,7 @@ function StudyFormView({ s }: { s: StudySections }) {
             ) : null}
             <Kv label="التمثيل" value={s.representation} />
             <Kv label={researcherRoleLabel(s.researcher)} value={s.researcher} />
+            <Kv label={preparerRoleLabel(s.preparer)} value={s.preparer} />
           </div>
           <div className="space-y-2 pt-1">
             <PartyBar label="المدعي/ة" value={s.plaintiff} tone="plaintiff" />
@@ -270,21 +304,25 @@ function StudyFormView({ s }: { s: StudySections }) {
         </div>
       )}
 
-      <div className="rounded-lg overflow-hidden border border-moj-gold">
-        <div className="bg-[#C5A059] text-white text-center font-bold py-1.5 text-xs">الخلاصة</div>
-        <div className="p-2 space-y-1">
-          <Kv label="المشكلة" value={s.problem} />
-          <Kv label="الرأي القانوني" value={s.legalOpinion} />
-          <Kv label="التوصية" value={s.recommendation} />
+      {(s.problem || s.legalOpinion || s.recommendation) && (
+        <div className="rounded-lg overflow-hidden border border-moj-gold">
+          <div className="bg-[#C5A059] text-white text-center font-bold py-1.5 text-xs">الخلاصة</div>
+          <div className="p-2 space-y-1">
+            <Kv label="المشكلة" value={s.problem} />
+            <Kv label="الرأي القانوني" value={s.legalOpinion} />
+            <Kv label="التوصية" value={s.recommendation} />
+          </div>
         </div>
-      </div>
+      )}
 
-      <div className="grid sm:grid-cols-2 gap-2 text-xs text-gray-600 border-t border-moj-gold pt-2">
-        <div>{researcherRoleLabel(s.researcher)}: {s.researcher || '—'}</div>
-        <div>{preparerRoleLabel(s.preparer)}: {s.preparer || '—'}</div>
-        <div>تصديق المشرف: {s.supervisor || '—'}</div>
-        {s.prepDate && <div>التاريخ: {s.prepDate}</div>}
-      </div>
+      {(s.researcher || s.preparer || s.supervisor || s.prepDate) && (
+        <div className="grid sm:grid-cols-2 gap-2 text-xs text-gray-600 border-t border-moj-gold pt-2">
+          {s.researcher && <div>{researcherRoleLabel(s.researcher)}: {s.researcher}</div>}
+          {s.preparer && <div>{preparerRoleLabel(s.preparer)}: {s.preparer}</div>}
+          {s.supervisor && <div>تصديق المشرف: {s.supervisor}</div>}
+          {s.prepDate && <div>التاريخ: {s.prepDate}</div>}
+        </div>
+      )}
     </div>
   );
 }
@@ -497,9 +535,25 @@ export default function OfficialPaperPreview({
   const fontFamily = style?.fontFamily || 'Noto Naskh Arabic, Traditional Arabic, serif';
   const fontSize = style?.fontSizePt ? `${style.fontSizePt}pt` : undefined;
   const textAlign = style?.align || 'right';
-  const hasStudy =
-    doc.studySections &&
-    (doc.studySections.caseNumber || doc.studySections.plaintiff || doc.studySections.recommendation);
+  const study = doc.studySections
+    ? enrichStudySections(doc.studySections, {
+        subject: doc.subject,
+        parties: doc.parties,
+        reasons: doc.reasons,
+        studyFields: doc.studyFields,
+        body: doc.body,
+        recipients: doc.recipients,
+      })
+    : null;
+  const hasStudy = hasStudyContent(study);
+  const meta = studyDisplayMeta(study, {
+    subject: doc.subject,
+    recipients: doc.recipients,
+  });
+  const previewSubject =
+    (doc.subject && doc.subject.trim() && doc.subject.trim() !== '—')
+      ? doc.subject
+      : meta.subject || (study?.caseNumber ? `دراسة شكوى — ${study.caseNumber}` : '') || '—';
   const showTable =
     !hasStudy &&
     doc.tableRows &&
@@ -508,10 +562,32 @@ export default function OfficialPaperPreview({
 
   // Single canonical body string — never stack old+new
   const bodyOnce = normalizeBodyText(doc.body);
-  const bodyForPreview =
-    !hasStudy && bodyOnce
-      ? bodyWithoutDuplicatedSections(bodyOnce, doc.parties, doc.reasons)
-      : '';
+  const already = [
+    study?.plaintiff,
+    study?.defendant,
+    study?.caseNumber,
+    study?.deedNumber,
+    study?.claimAmount,
+    study?.representation,
+    study?.recommendation,
+    study?.problem,
+    study?.legalOpinion,
+    study?.summaryPlaintiff,
+    study?.summaryDefendant,
+    study?.jurisdiction,
+    study?.researcher,
+    study?.preparer,
+  ];
+  const partiesLeftover = leftoverBlock(doc.parties, already);
+  const reasonsLeftover = leftoverBlock(doc.reasons, already);
+  const studyFieldsLeftover = leftoverBlock(doc.studyFields, already);
+  const bodyForPreview = leftoverBlock(
+    bodyOnce ? bodyWithoutDuplicatedSections(bodyOnce, doc.parties, doc.reasons) : '',
+    already,
+  );
+  const showParties = Boolean(partiesLeftover);
+  const showReasons = Boolean(reasonsLeftover);
+  const showStudyFields = Boolean(studyFieldsLeftover);
 
   return (
     <div className="w-full max-w-full overflow-x-auto">
@@ -551,14 +627,14 @@ export default function OfficialPaperPreview({
           </Clickable>
           <Clickable field="subject" onFieldClick={onFieldClick} className="sm:col-span-2">
             <span className="text-moj-green font-bold">الموضوع: </span>
-            {doc.subject || '—'}
+            {previewSubject}
           </Clickable>
         </div>
 
         <div className={chrome.sectionPad}>
-          {hasStudy && doc.studySections && (
+          {hasStudy && study && (
             <Clickable field="studyFields" onFieldClick={onFieldClick}>
-              <StudyFormView s={doc.studySections} />
+              <StudyFormView s={study} />
             </Clickable>
           )}
 
@@ -592,16 +668,16 @@ export default function OfficialPaperPreview({
             </div>
           )}
 
-          {doc.parties && !hasStudy && (
+          {showParties && (
             <Clickable field="parties" onFieldClick={onFieldClick}>
               <SectionTitle accent={chrome.titleAccent}>الأطراف</SectionTitle>
-              <pre className="whitespace-pre-wrap text-sm">{doc.parties}</pre>
+              <pre className="whitespace-pre-wrap text-sm">{partiesLeftover}</pre>
             </Clickable>
           )}
-          {doc.reasons && !hasStudy && (
+          {showReasons && (
             <Clickable field="reasons" onFieldClick={onFieldClick}>
               <SectionTitle accent={chrome.titleAccent}>الأسباب</SectionTitle>
-              <pre className="whitespace-pre-wrap text-sm">{doc.reasons}</pre>
+              <pre className="whitespace-pre-wrap text-sm">{reasonsLeftover}</pre>
             </Clickable>
           )}
           {bodyForPreview && (
@@ -616,10 +692,10 @@ export default function OfficialPaperPreview({
               </pre>
             </Clickable>
           )}
-          {doc.studyFields && !hasStudy && (
+          {showStudyFields && (
             <Clickable field="studyFields" onFieldClick={onFieldClick}>
               <SectionTitle accent={chrome.titleAccent}>الدراسة</SectionTitle>
-              <pre className="whitespace-pre-wrap text-sm">{doc.studyFields}</pre>
+              <pre className="whitespace-pre-wrap text-sm">{studyFieldsLeftover}</pre>
             </Clickable>
           )}
         </div>

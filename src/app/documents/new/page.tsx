@@ -11,6 +11,7 @@ import PaperLayoutPicker from '@/components/PaperLayoutPicker';
 import ExportToolbar from '@/components/ExportToolbar';
 import { parsePaste, type TableRow } from '@/lib/parse-paste';
 import type { StudySections } from '@/lib/parse-study';
+import { enrichStudySections } from '@/lib/study-display';
 import { clearDraft, clearAllDrafts, loadDraft, saveDraft } from '@/lib/draft-store';
 import { suggestFont } from '@/lib/font-suggest';
 import { DEFAULT_PAPER_LAYOUT, normalizePaperLayout, type PaperLayoutId } from '@/lib/paper-layouts';
@@ -188,8 +189,22 @@ function NewDocumentInner() {
   function applyPaste() {
     const parsed = parsePaste(paste);
     const nextBody = normalizeBodyText(parsed.body || '');
+    const enrichedStudy = parsed.studySections
+      ? enrichStudySections(parsed.studySections, {
+          subject: parsed.subject,
+          parties: parsed.parties,
+          reasons: parsed.reasons,
+          studyFields: parsed.studyFields,
+          body: nextBody,
+          recipients: parsed.recipients,
+        })
+      : null;
+    const caseNumber = (enrichedStudy?.caseNumber || parsed.studySections?.caseNumber || '').replace(/\s+/g, '');
+    const nextSubject =
+      (parsed.subject && parsed.subject.trim()) ||
+      (caseNumber ? `دراسة شكوى — ${caseNumber}` : '');
     setTableRows(parsed.tableRows || []);
-    setStudySections(parsed.studySections || null);
+    setStudySections(enrichedStudy || parsed.studySections || null);
     setDetectedKind(parsed.detectedKind || '');
     if (parsed.fontHint) {
       setStyle((s) => ({
@@ -207,7 +222,7 @@ function NewDocumentInner() {
     setFontCorrections(corrections);
     setForm({
       ...EMPTY_FORM,
-      subject: parsed.subject || '',
+      subject: nextSubject,
       recipients: parsed.recipients || '',
       parties: parsed.parties || '',
       reasons: parsed.reasons || '',

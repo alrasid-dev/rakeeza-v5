@@ -249,6 +249,26 @@ function extractFieldMap(lines: string[]): Map<string, string> {
     const labelCount = labelFlags.filter(Boolean).length;
     const valueCount = valueFlags.filter(Boolean).length;
 
+    // Pattern D: single label row → next row is pure value(s)
+    // Critical for الاختصاص النوعي / دارس القضية / توصية when Excel stacks them vertically
+    if (labelCount === 1 && valueCount === 0 && r + 1 < rows.length) {
+      const lab = matchExactLabel(nonEmpty[0]);
+      if (lab) {
+        const next = rows[r + 1].map((c) => c.trim());
+        const nextHasLabel = next.some((c) => c && matchExactLabel(c));
+        const nextVals = next.filter((c) => c && !isPureLabel(c) && !isSectionHeader(c));
+        if (!nextHasLabel && nextVals.length >= 1) {
+          const keys = labelToKeys(lab).filter(
+            (k) => k !== 'priorResult' && k !== 'priorExempt',
+          );
+          const val =
+            nextVals.length === 1 ? nextVals[0] : nextVals.join(' ').replace(/\s+/g, ' ').trim();
+          for (const key of keys) setOnce(map, key, val);
+          continue;
+        }
+      }
+    }
+
     // Pattern B: mostly labels on this row, next row has values in same columns
     if (labelCount >= 2 && valueCount === 0 && r + 1 < rows.length) {
       const next = rows[r + 1].map((c) => c.trim());
@@ -335,10 +355,14 @@ function extractFieldMap(lines: string[]): Map<string, string> {
         val = c;
         break;
       }
-      // Same-cell "label: value"
+      // Same-cell "label: value" or "label value" (no colon — Excel sometimes omits it)
       if (!val) {
         const inline = cells[i].match(new RegExp(`^${escapeRe(lab)}\\s*[:：]\\s*(.+)$`));
         if (inline?.[1]) val = inline[1];
+      }
+      if (!val) {
+        const spaced = cells[i].match(new RegExp(`^${escapeRe(lab)}\\s+(.+)$`));
+        if (spaced?.[1] && !isPureLabel(spaced[1])) val = spaced[1];
       }
       if (!val) continue;
       for (const key of keys) {
@@ -391,10 +415,31 @@ function digitsOnlyId(v: string): string {
   return m ? m[0] : dedupePhrases(v);
 }
 
+function fillMissingFromRaw(text: string, map: Map<string, string>) {
+  const specs: { key: string; re: RegExp }[] = [
+    { key: 'caseNumber', re: /رقم القضية[^\n\d٠-٩]{0,24}([0-9٠-٩]{5,})/ },
+    { key: 'deedNumber', re: /رقم الصك[^\n\d٠-٩]{0,24}([0-9٠-٩]{5,})/ },
+    { key: 'formation', re: /(?:رقم التشكيل|رقم الدائرة|التشكيل)\s*[:：\t ]+([^\n\t]+)/ },
+    { key: 'claimType', re: /المطالبة\s*[:：\t ]+([^\n\t]+)/ },
+    { key: 'claimAmount', re: /مقدار(?:ها| المطالبة)[^\n\d٠-٩]{0,24}([0-9٠-٩][0-9٠-٩.,٬٫]*)/ },
+    { key: 'researcher', re: /(?:دارس القضية|الباحثة|الباحث)\s*[:：\t ]+([^\n\t]+)/ },
+    { key: 'preparer', re: /(?:اسم معد الدراسة|معد الدراسة)\s*[:：\t ]+([^\n\t]+)/ },
+    { key: 'recommendation', re: /التوصية\s*[:：\t ]+([^\n\t]+)/ },
+    { key: 'summaryPlaintiff', re: /(?:ملخص )?دعوى المدعي\s*[:：\t ]+([^\n\t]+)/ },
+    { key: 'summaryDefendant', re: /إجابة المدعى عليه\s*[:：\t ]+([^\n\t]+)/ },
+  ];
+  for (const { key, re } of specs) {
+    if (map.has(key)) continue;
+    const m = text.match(re);
+    if (m?.[1]) setOnce(map, key, m[1]);
+  }
+}
+
 export function parseStudyPaste(raw: string): StudySections {
   const text = normalize(raw);
   const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
   const map = extractFieldMap(lines);
+  fillMissingFromRaw(text, map);
 
   const caseNumber = digitsOnlyId(pick(map, ['caseNumber']));
   const deedNumber = digitsOnlyId(pick(map, ['deedNumber']));
