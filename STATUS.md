@@ -88,13 +88,14 @@ npm run build && npm start
 - No paid services required
 - Optional: `OPENAI_API_KEY`, `PUBLIC_API_KEY`, `AUTH_SECRET`
 
-## Alternate access (2026-09-11)
+## Alternate access (2026-09-12)
 
-- Ministry/ISP blocks `*.vercel.app` → use Cloudflare Workers proxy:
-  - https://rakeza-moj-access.decorous-bramble-251.workers.dev
-- `/api/auth/ping` → `{"ok":true,"db":"turso"}`
-- Login default mode: `pin` (redeployed)
-- Proxy source: `cf-access-proxy/` — claim CF preview account so URL persists:
-  https://dash.cloudflare.com/claim-preview?claimToken=hg4HQhliIEvH_RqCcMPfS9baZ5thSzwQoHQxOQqLS94
-- Netlify/OpenNext full alternate host: blocked (no Netlify auth; OpenNext+libsql bundle failed). Proxy keeps same Vercel+Turso app reachable.
+- Ministry/ISP blocks `*.vercel.app` → use Cloudflare Workers proxy (**claim within ~60 min**):
+  - **https://rakeza-moj-access.iridescent-attempt.workers.dev** ← current hardened worker
+  - Claim: https://dash.cloudflare.com/claim-preview?claimToken=-XoYqtJCIc2EPr8Ak8RAlbBGSz_AAYxaHyNVVmY5Q50
+  - Prior URL (Decorous Bramble) still answers but cannot be updated without claim/login — migrate to Iridescent Attempt.
+- `/api/auth/ping` → `{"ok":true,"db":"turso"}` (246 employees / 4 documents verified)
+- Proxy fixes: strip Set-Cookie `Domain=`, no forced Host (X-Forwarded-Host/Proto), binary PDF/DOCX untouched + strip Content-Encoding, Location/URL rewrite, Cache-Control private
+- App fixes: SW v2 never intercepts `/api` or exports; middleware honors `X-Forwarded-Host`
+- Proxy source: `cf-access-proxy/` — `npx wrangler deploy --temporary`
 

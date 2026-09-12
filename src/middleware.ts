@@ -2,6 +2,14 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { jwtVerify } from 'jose';
 
+/** Prefer public workers.dev host when behind CF access proxy. */
+function absoluteUrl(req: NextRequest, path: string) {
+  const xfHost = req.headers.get('x-forwarded-host')?.split(',')[0]?.trim();
+  const xfProto = req.headers.get('x-forwarded-proto')?.split(',')[0]?.trim() || 'https';
+  if (xfHost) return new URL(path, `${xfProto}://${xfHost}`);
+  return new URL(path, req.url);
+}
+
 const PUBLIC = [
   '/login',
   '/verify',
@@ -34,7 +42,7 @@ export async function middleware(req: NextRequest) {
     if (pathname.startsWith('/api/')) {
       return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
     }
-    return NextResponse.redirect(new URL('/login', req.url));
+    return NextResponse.redirect(absoluteUrl(req, '/login'));
   }
 
   try {
@@ -50,14 +58,14 @@ export async function middleware(req: NextRequest) {
       if (pathname.startsWith('/api/')) {
         return NextResponse.json({ error: 'يجب تغيير كلمة المرور' }, { status: 403 });
       }
-      return NextResponse.redirect(new URL('/change-password', req.url));
+      return NextResponse.redirect(absoluteUrl(req, '/change-password'));
     }
     return NextResponse.next();
   } catch {
     if (pathname.startsWith('/api/')) {
       return NextResponse.json({ error: 'جلسة غير صالحة' }, { status: 401 });
     }
-    return NextResponse.redirect(new URL('/login', req.url));
+    return NextResponse.redirect(absoluteUrl(req, '/login'));
   }
 }
 

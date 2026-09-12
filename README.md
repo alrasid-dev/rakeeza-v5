@@ -10,7 +10,7 @@
 شبكات الوزارة/مزودي الخدمة في السعودية قد تحجب `*.vercel.app`.
 
 - استخدم الرابط البديل على Cloudflare Workers (ليس vercel.app):
-  - **https://rakeza-moj-access.decorous-bramble-251.workers.dev**
+  - **https://rakeza-moj-access.iridescent-attempt.workers.dev**
 - رابط Vercel الأصلي يبقى للبيئة/الشبكات غير المحجوبة: https://rakeza-moj-assistant.vercel.app
 - إعادة نشر الوكيل: انظر `cf-access-proxy/README.md` — يجب «claim» حساب Cloudflare المؤقت خلال ساعة حتى يبقى الرابط.
 
