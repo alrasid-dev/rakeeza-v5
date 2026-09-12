@@ -88,9 +88,9 @@ function SectionTitle({
 function Kv({ label, value }: { label: string; value?: string }) {
   if (!value) return null;
   return (
-    <div className="flex gap-2 text-sm border-b border-moj-green/10 py-1">
+    <div className="flex gap-2 text-sm border-b border-moj-green/10 py-1 text-gray-900">
       <span className="text-moj-green font-bold shrink-0 min-w-[7rem]">{label}</span>
-      <span className="flex-1">{value}</span>
+      <span className="flex-1 text-gray-900">{value}</span>
     </div>
   );
 }
@@ -229,7 +229,7 @@ function StudyFormView({ s }: { s: StudySections }) {
             {amount ? (
               <div className="flex gap-2 text-sm border-b border-moj-green/10 py-1">
                 <span className="text-moj-green font-bold shrink-0 min-w-[7rem]">مقدارها</span>
-                <span className="flex-1 font-semibold" dir="ltr" style={{ unicodeBidi: 'embed' }}>
+                <span className="flex-1 font-semibold text-gray-900" dir="ltr" style={{ unicodeBidi: 'embed' }}>
                   {amount}
                 </span>
               </div>
@@ -265,13 +265,13 @@ function StudyFormView({ s }: { s: StudySections }) {
             {s.summaryPlaintiff ? (
               <div className="rounded-md border border-moj-green/40 bg-[#f7faf8] p-2">
                 <div className="text-xs font-bold text-moj-gold mb-1">دعوى المدعي</div>
-                <pre className="whitespace-pre-wrap text-sm">{s.summaryPlaintiff}</pre>
+                <pre className="whitespace-pre-wrap text-sm text-gray-900">{s.summaryPlaintiff}</pre>
               </div>
             ) : null}
             {s.summaryDefendant ? (
               <div className="rounded-md border border-moj-gold/50 bg-[#fffaf0] p-2">
                 <div className="text-xs font-bold text-moj-gold mb-1">إجابة المدعى عليه</div>
-                <pre className="whitespace-pre-wrap text-sm">{s.summaryDefendant}</pre>
+                <pre className="whitespace-pre-wrap text-sm text-gray-900">{s.summaryDefendant}</pre>
               </div>
             ) : null}
           </div>
@@ -593,7 +593,7 @@ export default function OfficialPaperPreview({
     <div className="w-full max-w-full overflow-x-auto">
       <div
         dir="rtl"
-        className={`bg-white rounded-lg overflow-hidden shadow-sm font-arabic min-w-[min(100%,20rem)] max-w-full ${className}`}
+        className={`bg-white text-gray-900 rounded-lg overflow-hidden shadow-sm font-arabic min-w-[min(100%,20rem)] max-w-full [&_pre]:text-gray-900 [&_pre]:opacity-100 ${className}`}
         style={{ border: chrome.paperBorder, background: chrome.paperBg || '#fff', fontFamily, fontSize, textAlign }}
         data-paper-layout={layout}
       >
@@ -612,7 +612,7 @@ export default function OfficialPaperPreview({
           brandBorder={chrome.brandBorder}
         />
 
-        <div className={chrome.metaClass}>
+        <div className={`${chrome.metaClass} text-gray-900`}>
           <Clickable field="number" onFieldClick={onFieldClick}>
             <span className="text-moj-green font-bold">الرقم: </span>
             <span dir="ltr">{doc.number || '—'}</span>
@@ -631,7 +631,7 @@ export default function OfficialPaperPreview({
           </Clickable>
         </div>
 
-        <div className={chrome.sectionPad}>
+        <div className={`${chrome.sectionPad} text-gray-900`}>
           {hasStudy && study && (
             <Clickable field="studyFields" onFieldClick={onFieldClick}>
               <StudyFormView s={study} />
@@ -671,13 +671,13 @@ export default function OfficialPaperPreview({
           {showParties && (
             <Clickable field="parties" onFieldClick={onFieldClick}>
               <SectionTitle accent={chrome.titleAccent}>الأطراف</SectionTitle>
-              <pre className="whitespace-pre-wrap text-sm">{partiesLeftover}</pre>
+              <pre className="whitespace-pre-wrap text-sm text-gray-900">{partiesLeftover}</pre>
             </Clickable>
           )}
           {showReasons && (
             <Clickable field="reasons" onFieldClick={onFieldClick}>
               <SectionTitle accent={chrome.titleAccent}>الأسباب</SectionTitle>
-              <pre className="whitespace-pre-wrap text-sm">{reasonsLeftover}</pre>
+              <pre className="whitespace-pre-wrap text-sm text-gray-900">{reasonsLeftover}</pre>
             </Clickable>
           )}
           {bodyForPreview && (
@@ -686,7 +686,7 @@ export default function OfficialPaperPreview({
               {/* key forces remount when body changes — prevents stale stacked spans */}
               <pre
                 key={`body-${bodyForPreview.length}-${bodyForPreview.slice(0, 32)}`}
-                className="whitespace-pre-wrap text-sm leading-8"
+                className="whitespace-pre-wrap text-sm leading-8 text-gray-900"
               >
                 {bodyForPreview}
               </pre>
@@ -695,7 +695,7 @@ export default function OfficialPaperPreview({
           {showStudyFields && (
             <Clickable field="studyFields" onFieldClick={onFieldClick}>
               <SectionTitle accent={chrome.titleAccent}>الدراسة</SectionTitle>
-              <pre className="whitespace-pre-wrap text-sm">{studyFieldsLeftover}</pre>
+              <pre className="whitespace-pre-wrap text-sm text-gray-900">{studyFieldsLeftover}</pre>
             </Clickable>
           )}
         </div>
