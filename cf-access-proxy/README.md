@@ -10,21 +10,21 @@ Saudi ministry/ISP networks may block `*.vercel.app`. This Worker reverse-proxie
 - **HTML/JS/JSON**: rewrites absolute `*.vercel.app` URLs to the public workers origin
 - **Redirects**: rewrites `Location` the same way
 
-## Deploy (temporary preview account)
+## Live URL (2026-09-12)
+
+**https://rakeza-moj-access.iridescent-attempt.workers.dev**
+
+Claim the preview account within ~60 minutes so the Worker survives:
+
+https://dash.cloudflare.com/claim-preview?claimToken=-XoYqtJCIc2EPr8Ak8RAlbBGSz_AAYxaHyNVVmY5Q50
+
+(Prior Decorous Bramble URL cannot be updated from this box — migrate to the URL above.)
+
+## Redeploy
 
 ```bash
 cd cf-access-proxy
 npx wrangler deploy --temporary
 ```
 
-Claim the preview account within ~60 minutes via the Claim URL printed by Wrangler so the Worker survives:
-
-https://dash.cloudflare.com/claim-preview?claimToken=hg4HQhliIEvH_RqCcMPfS9baZ5thSzwQoHQxOQqLS94
-
-Keep the same worker name `rakeza-moj-access` (see `wrangler.toml`) so the URL stays:
-
-https://rakeza-moj-access.decorous-bramble-251.workers.dev
-
-## Live URL
-
-See repo README / STATUS for the active `workers.dev` URL.
+Keep worker name `rakeza-moj-access` in `wrangler.toml`. After deploy, claim the new Claim URL immediately if the subdomain changes.
