@@ -212,7 +212,11 @@ export function buildOfficialLetterHtml(doc: OfficialLetterDoc, opts?: { forPdf?
     ['المملكة العربية السعودية', 'وزارة العدل', court];
   const footer = doc.footer || 'للاستخدام الداخلي فقط';
   const pageCss = opts?.forPdf
-    ? `@page { size: A4; margin: 12mm; } body { margin: 0; }`
+    ? `@page { size: A4; margin: 12mm; }
+body { margin: 0; color: #111; }
+.paper, .paper * { font-family: 'Noto Naskh Arabic', 'Traditional Arabic', Tahoma, serif !important; font-weight: 400 !important; }
+.paper { color: #111 !important; }
+.bismillah, .bismillah * { color: #fff !important; font-weight: 400 !important; }`
     : '';
   const font = doc.fontFamily || "'Noto Naskh Arabic', 'Traditional Arabic', 'Sakkal Majalla', Tahoma, serif";
   const size = doc.fontSizePt || 14;
@@ -222,7 +226,7 @@ export function buildOfficialLetterHtml(doc: OfficialLetterDoc, opts?: { forPdf?
       ? `@font-face {
   font-family: 'Noto Naskh Arabic';
   font-style: normal;
-  font-weight: 400;
+  font-weight: 100 900;
   src: url('/fonts/NotoNaskhArabic-Regular.ttf') format('truetype');
   font-display: block;
 }`

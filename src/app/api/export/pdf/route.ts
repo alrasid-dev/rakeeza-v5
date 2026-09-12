@@ -290,13 +290,22 @@ export async function GET(req: NextRequest) {
       .filter(Boolean);
 
     const fontB64 = loadArabicFontBase64();
+    // Map all weights to Regular — bold faces without Arabic glyphs strip labels in PDF
     const embeddedFontCss = `@font-face {
   font-family: 'Noto Naskh Arabic';
   font-style: normal;
-  font-weight: 400;
+  font-weight: 100 900;
   src: url(data:font/ttf;base64,${fontB64}) format('truetype');
   font-display: block;
-}`;
+}
+html, body, .paper, .paper * {
+  font-family: 'Noto Naskh Arabic', 'Traditional Arabic', Tahoma, serif !important;
+  font-weight: 400 !important;
+  -webkit-font-smoothing: antialiased;
+}
+.paper { color: #111 !important; }
+.bismillah, .bismillah * { color: #fff !important; }
+`;
 
     // Chromium HTML path: logical Arabic + dir=rtl — NO reshape/bidi
     const html = buildOfficialLetterHtml(
