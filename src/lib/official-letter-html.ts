@@ -345,22 +345,22 @@ body {
   <div class="section">
     ${hasStudy && study ? studyHtml(study) : ''}
     ${
-      doc.parties && (!hasStudy || !study?.plaintiff)
+      !hasStudy && doc.parties
         ? `<h3>الأطراف</h3><div class="body">${pre(doc.parties)}</div>`
         : ''
     }
     ${
-      doc.reasons && (!hasStudy || !(study?.recommendation || study?.problem || study?.summaryPlaintiff))
+      !hasStudy && doc.reasons
         ? `<h3>الأسباب</h3><div class="body">${pre(doc.reasons)}</div>`
         : ''
     }
     ${
-      doc.body && (!hasStudy || !(study?.recommendation || study?.claimAmount || study?.problem))
+      !hasStudy && doc.body
         ? `<h3>النص</h3><div class="body">${pre(String(doc.body).trim())}</div>`
         : ''
     }
     ${
-      doc.studyFields && (!hasStudy || !study?.recommendation)
+      !hasStudy && doc.studyFields
         ? `<h3>الدراسة</h3><div class="body">${pre(doc.studyFields)}</div>`
         : ''
     }

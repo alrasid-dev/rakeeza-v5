@@ -578,13 +578,16 @@ export default function OfficialPaperPreview({
     study?.researcher,
     study?.preparer,
   ];
-  const partiesLeftover = leftoverBlock(doc.parties, already);
-  const reasonsLeftover = leftoverBlock(doc.reasons, already);
-  const studyFieldsLeftover = leftoverBlock(doc.studyFields, already);
-  const bodyForPreview = leftoverBlock(
-    bodyOnce ? bodyWithoutDuplicatedSections(bodyOnce, doc.parties, doc.reasons) : '',
-    already,
-  );
+  // When StudyFormView is on screen, hide form leftovers (empty label shells / duplicates).
+  const partiesLeftover = hasStudy ? '' : leftoverBlock(doc.parties, already);
+  const reasonsLeftover = hasStudy ? '' : leftoverBlock(doc.reasons, already);
+  const studyFieldsLeftover = hasStudy ? '' : leftoverBlock(doc.studyFields, already);
+  const bodyForPreview = hasStudy
+    ? ''
+    : leftoverBlock(
+        bodyOnce ? bodyWithoutDuplicatedSections(bodyOnce, doc.parties, doc.reasons) : '',
+        already,
+      );
   const showParties = Boolean(partiesLeftover);
   const showReasons = Boolean(reasonsLeftover);
   const showStudyFields = Boolean(studyFieldsLeftover);
