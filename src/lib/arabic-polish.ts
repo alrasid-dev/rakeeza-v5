@@ -60,10 +60,10 @@ const REPLACEMENTS: [RegExp, string][] = [
   [/فضيله\s+القاضية/g, 'فضيلة القاضية'],
   [/فضيله\s+الشيخ/g, 'فضيلة الشيخ'],
   [/فضيله\s+رئيس/g, 'فضيلة رئيس'],
-  [/\bفضيله\b/g, 'فضيلة'],
+  [/فضيله/g, 'فضيلة'],
   [/سعاده\s+الأستاذ/g, 'سعادة الأستاذ'],
   [/سعاده\s+الاستاذ/g, 'سعادة الأستاذ'],
-  [/\bسعاده\b/g, 'سعادة'],
+  [/سعاده/g, 'سعادة'],
   [/الاستاذ\b/g, 'الأستاذ'],
   [/الاستاذه\b/g, 'الأستاذة'],
   [/الاستاذة\b/g, 'الأستاذة'],
@@ -89,7 +89,9 @@ export function polishSpelling(raw: string): string {
   let t = String(raw || '').replace(/\r\n/g, '\n').trim();
   if (!t) return '';
   for (const [re, to] of REPLACEMENTS) t = t.replace(re, to as string);
-  // Extra pass: standalone علي → على (never عليكم/علينا/عليه)
+  // Extra pass for honorifics + علي
+  t = t.replace(/فضيله/g, 'فضيلة');
+  t = t.replace(/سعاده/g, 'سعادة');
   t = t.replace(/(^|[\s،.:؛])علي(?=$|[\s،.:؛])/g, (_, a) => `${a}على`);
   t = t.replace(/بناءاً?(?=$|[\s،.])/g, 'بناءً');
   t = t.replace(/[ \t]+/g, ' ').replace(/ *\n */g, '\n').replace(/\n{3,}/g, '\n\n');
