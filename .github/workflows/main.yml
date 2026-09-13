@@ -1,4 +1,4 @@
-name: Auto Format and Fix Code
+name: Auto Format and Fix All Files
 
 on:
   push:
@@ -7,13 +7,15 @@ on:
     branches: [ "main" ]
 
 jobs:
-  code-cleanup:
+  format-and-fix:
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout Repository
+    - name: Checkout Code
       uses: actions/checkout@v4
 
-    - name: Run Auto Fixer
-      uses: crey08/gofmt-action@v2.3.0
-      with:
-        gofmt-path: '.'
+    - name: Run Super-Linter and Auto Fixer
+      uses: super-linter/super-linter/designate@v7
+      env:
+        VALIDATE_ALL_CODEBASE: true
+        DEFAULT_BRANCH: main
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
