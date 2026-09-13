@@ -10,6 +10,7 @@ import {
   type PaperLayoutId,
 } from '@/lib/paper-layouts';
 import { officialDateDisplay } from '@/lib/hijri';
+import { fontStackFor } from '@/lib/font-stacks';
 import { enrichStudySections, hasStudyContent, studyDisplayMeta } from '@/lib/study-display';
 
 export type OfficialPaperFields = {
@@ -532,7 +533,7 @@ export default function OfficialPaperPreview({
   const chrome = chromeFor(layout);
   const court = doc.courtName || 'المحكمة العمالية بالرياض';
   const footer = doc.footer || 'للاستخدام الداخلي فقط';
-  const fontFamily = style?.fontFamily || 'Noto Naskh Arabic, Traditional Arabic, serif';
+  const fontFamily = fontStackFor(style?.fontFamily);
   const fontSize = style?.fontSizePt ? `${style.fontSizePt}pt` : undefined;
   const textAlign = style?.align || 'right';
   const study = doc.studySections

@@ -1,3 +1,5 @@
+import { polishLegalStyle, polishSpelling, proofreadReport } from '@/lib/arabic-polish';
+
 export type AiAction = { label: string; href: string };
 
 export type AssistResult = {
@@ -80,6 +82,24 @@ export async function assist(prompt: string, context?: string): Promise<AssistRe
   if (platform) {
     const local = platformHelp(prompt);
     if (local) return local;
+  }
+
+  // Local proofread / rewrite — no paid API
+  if (/تدقيق|إملائ|املائ|صحح|تصحيح|صياغ|أعد.?صياغ|اسلوب|أسلوب|قانوني/.test(prompt)) {
+    const src = (context || '').trim() || prompt.replace(/^(?:تدقيق|صياغة|صحح|أعد صياغة)[^\n]*\n?/i, '').trim();
+    if (src.length >= 8) {
+      const legal = /صياغ|اسلوب|أسلوب|قانوني|نظ[ّم]/.test(prompt);
+      const after = legal ? polishLegalStyle(src) : polishSpelling(src);
+      return {
+        source: 'local',
+        text: `[ركيزة Ai — تدقيق محلي مجاني]\n${proofreadReport(src, after)}\n\n--- النص بعد المعالجة ---\n${after}`,
+      };
+    }
+    return {
+      source: 'local',
+      text: 'الصق النص في خانة السياق أو اكتب: تدقيق:\nثم النص. أو من شاشة المستند استخدم زر «تدقيق إملائي (محلي)».',
+      actions: [{ label: 'مستند جديد', href: '/documents/new' }],
+    };
   }
 
   const key = process.env.OPENAI_API_KEY;

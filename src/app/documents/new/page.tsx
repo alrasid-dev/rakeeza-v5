@@ -14,6 +14,7 @@ import type { StudySections } from '@/lib/parse-study';
 import { enrichStudySections } from '@/lib/study-display';
 import { clearDraft, clearAllDrafts, loadDraft, saveDraft } from '@/lib/draft-store';
 import { suggestFont } from '@/lib/font-suggest';
+import { polishLegalStyle, polishSpelling, proofreadReport } from '@/lib/arabic-polish';
 import { DEFAULT_PAPER_LAYOUT, normalizePaperLayout, type PaperLayoutId } from '@/lib/paper-layouts';
 import {
   formatHijri,
@@ -62,6 +63,7 @@ function NewDocumentInner() {
   const [fontCorrections, setFontCorrections] = useState<
     { location: string; issue: string; suggestion: string }[]
   >([]);
+  const [polishNote, setPolishNote] = useState('');
   const [style, setStyle] = useState<DocStyle>({
     fontFamily: 'Traditional Arabic',
     fontSizePt: 16,
@@ -278,6 +280,33 @@ function NewDocumentInner() {
     setFontCorrections(corrections);
   }
 
+
+  function applySpellingPolish() {
+    const next = {
+      ...form,
+      body: polishSpelling(form.body),
+      reasons: polishSpelling(form.reasons),
+      studyFields: polishSpelling(form.studyFields),
+      subject: polishSpelling(form.subject),
+      parties: polishSpelling(form.parties),
+      recipients: polishSpelling(form.recipients),
+    };
+    setPolishNote(proofreadReport(form.body + form.reasons, next.body + next.reasons));
+    setForm(next);
+  }
+
+  function applyLegalPolish() {
+    const next = {
+      ...form,
+      body: polishLegalStyle(form.body),
+      reasons: polishLegalStyle(form.reasons),
+      studyFields: polishSpelling(form.studyFields),
+      subject: polishSpelling(form.subject),
+    };
+    setPolishNote('أُعيدت صياغة الأسلوب محلياً بصيغة رسمية أوضح. راجع النص قبل الإصدار.');
+    setForm(next);
+  }
+
   function focusField(field: string) {
     setStep(3);
     window.setTimeout(() => {
@@ -458,6 +487,19 @@ function NewDocumentInner() {
       {step === 3 && (
         <div className="space-y-3">
           <StyleToolbar value={style} onChange={setStyle} />
+          <div className="flex flex-wrap gap-2">
+            <button type="button" className="btn-secondary text-xs" onClick={applySpellingPolish}>
+              تدقيق إملائي (محلي)
+            </button>
+            <button type="button" className="btn-secondary text-xs" onClick={applyLegalPolish}>
+              صياغة قانونية منظمة (محلي)
+            </button>
+          </div>
+          {polishNote && (
+            <div className="text-xs rounded-lg border border-moj-green/30 bg-moj-light/60 dark:bg-white/5 px-3 py-2">
+              {polishNote}
+            </div>
+          )}
           <div className="bg-white dark:bg-[var(--surface)] rounded-xl border dark:border-white/10 p-3">
             <PaperLayoutPicker value={paperLayout} onChange={setPaperLayout} compact />
           </div>

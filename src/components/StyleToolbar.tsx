@@ -1,18 +1,12 @@
 'use client';
 
+import { FONT_OPTIONS } from '@/lib/font-stacks';
+
 export type DocStyle = {
   fontFamily: string;
   fontSizePt: number;
   align: 'right' | 'center' | 'left';
 };
-
-const FONTS = [
-  'Traditional Arabic',
-  'Sakkal Majalla',
-  'Noto Naskh Arabic',
-  'Arial',
-  'Tahoma',
-];
 
 const SIZES = [11, 12, 13, 14, 16, 18, 20, 22];
 
@@ -28,13 +22,14 @@ export default function StyleToolbar({
       <div>
         <label className="label text-xs mb-0.5">الخط</label>
         <select
-          className="input py-1.5 min-w-[10rem]"
+          className="input py-1.5 min-w-[12rem]"
           value={value.fontFamily}
           onChange={(e) => onChange({ ...value, fontFamily: e.target.value })}
+          style={{ fontFamily: FONT_OPTIONS.find((f) => f.id === value.fontFamily)?.stack }}
         >
-          {FONTS.map((f) => (
-            <option key={f} value={f}>
-              {f}
+          {FONT_OPTIONS.map((f) => (
+            <option key={f.id} value={f.id} style={{ fontFamily: f.stack }}>
+              {f.label}
             </option>
           ))}
         </select>
