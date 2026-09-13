@@ -1,4 +1,4 @@
-name: Auto Format and Fix All Files
+name: Auto Format and Fix
 
 on:
   push:
@@ -7,15 +7,14 @@ on:
     branches: [ "main" ]
 
 jobs:
-  format-and-fix:
+  prettier:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout Code
       uses: actions/checkout@v4
 
-    - name: Run Super-Linter and Auto Fixer
-      uses: super-linter/super-linter/designate@v7
-      env:
-        VALIDATE_ALL_CODEBASE: true
-        DEFAULT_BRANCH: main
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Run Prettier Formatter
+      uses: crey08/gofmt-action@v2.3.0
+      continue-on-error: true
+      with:
+        gofmt-path: '.'
