@@ -299,6 +299,32 @@ export function findPolishIssues(text: string): PolishIssue[] {
   return issues;
 }
 
+/** Apply one issue fix: replace the first occurrence of `found` with `suggestion`.
+ *  If suggestion is empty or «—», remove the word and collapse surrounding spaces.
+ */
+export function applyPolishFix(text: string, found: string, suggestion: string): string {
+  const src = String(text || '');
+  const needle = String(found || '');
+  if (!src || !needle) return src;
+  const idx = src.indexOf(needle);
+  if (idx === -1) return src;
+  const before = src.slice(0, idx);
+  const after = src.slice(idx + needle.length);
+  const trimmedSug = String(suggestion || '').trim();
+  const isDelete = !trimmedSug || trimmedSug === '—' || trimmedSug === '-';
+  if (isDelete) {
+    const left = before.replace(/[ \t]+$/, '');
+    const right = after.replace(/^[ \t]+/, '');
+    const needSpace =
+      left.length > 0 &&
+      right.length > 0 &&
+      !/[\n]$/.test(left) &&
+      !/^[\n]/.test(right);
+    return `${left}${needSpace ? ' ' : ''}${right}`;
+  }
+  return before + suggestion + after;
+}
+
 /** One-shot full polish for all document text fields */
 export function polishDocumentFields(fields: {
   subject?: string;

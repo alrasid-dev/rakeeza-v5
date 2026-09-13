@@ -14,7 +14,7 @@ import type { StudySections } from '@/lib/parse-study';
 import { enrichStudySections } from '@/lib/study-display';
 import { clearDraft, clearAllDrafts, loadDraft, saveDraft } from '@/lib/draft-store';
 import { suggestFont } from '@/lib/font-suggest';
-import { findPolishIssues, polishDocumentFields, polishLegalStyle, polishSpelling, proofreadReport, type PolishIssue } from '@/lib/arabic-polish';
+import { applyPolishFix, findPolishIssues, type PolishIssue } from '@/lib/arabic-polish';
 import { DEFAULT_PAPER_LAYOUT, normalizePaperLayout, type PaperLayoutId } from '@/lib/paper-layouts';
 import {
   formatHijri,
@@ -63,7 +63,6 @@ function NewDocumentInner() {
   const [fontCorrections, setFontCorrections] = useState<
     { location: string; issue: string; suggestion: string }[]
   >([]);
-  const [polishNote, setPolishNote] = useState('');
   const [polishIssues, setPolishIssues] = useState<PolishIssue[]>([]);
   const [style, setStyle] = useState<DocStyle>({
     fontFamily: 'Traditional Arabic',
@@ -290,36 +289,60 @@ function NewDocumentInner() {
   }
 
 
-  function applySpellingPolish() {
-    const before = [form.body, form.reasons, form.studyFields, form.subject, form.parties, form.recipients].join('\n');
-    const next = {
-      ...form,
-      subject: polishSpelling(form.subject || ''),
-      recipients: polishSpelling(form.recipients || ''),
-      parties: polishSpelling(form.parties || ''),
-      reasons: polishSpelling(form.reasons || ''),
-      studyFields: polishSpelling(form.studyFields || ''),
-      body: polishSpelling(form.body || ''),
-    };
-    const after = [next.body, next.reasons, next.studyFields, next.subject, next.parties, next.recipients].join('\n');
-    setPolishNote(proofreadReport(before, after));
+  const POLISH_FIELDS = ['body', 'reasons', 'studyFields', 'subject', 'parties', 'recipients'] as const;
+
+  function acceptPolishIssue(issue: PolishIssue) {
+    const next = { ...form };
+    let applied = false;
+    for (const key of POLISH_FIELDS) {
+      const val = next[key] || '';
+      if (!val.includes(issue.found)) continue;
+      next[key] = applyPolishFix(val, issue.found, issue.suggestion);
+      applied = true;
+      break;
+    }
+    if (!applied) return;
     setForm(next);
-    setPolishIssues(findPolishIssues(after));
+    const blob = POLISH_FIELDS.map((k) => next[k] || '').join('\n');
+    setPolishIssues(findPolishIssues(blob));
   }
 
-  function applyLegalPolish() {
-    const before = [form.body, form.reasons, form.subject].join('\n');
-    const polished = polishDocumentFields(form);
-    const next = {
-      ...form,
-      ...polished,
-      body: polishLegalStyle(form.body),
-      reasons: polishLegalStyle(form.reasons),
-    };
-    const after = [next.body, next.reasons, next.studyFields, next.subject, next.parties, next.recipients].join('\n');
-    setPolishNote(proofreadReport(before, after) + ' — صياغة قضائية منظمة.');
-    setForm(next);
-    setPolishIssues(findPolishIssues(after));
+  function renderPolishIssueRow(iss: PolishIssue, i: number, compact = false) {
+    const sugEmpty = !iss.suggestion.trim() || iss.suggestion === '—' || iss.suggestion === '-';
+    return (
+      <li
+        key={`${iss.type}-${iss.found}-${iss.suggestion}-${i}`}
+        className={`flex flex-wrap items-center gap-1.5 ${compact ? 'text-[11px]' : 'text-xs'}`}
+      >
+        <span
+          className={`rounded px-1.5 py-0.5 font-bold ${
+            iss.type === 'spelling'
+              ? 'bg-amber-200 text-amber-950 dark:bg-amber-400/30 dark:text-amber-50'
+              : 'bg-orange-200 text-orange-950 dark:bg-orange-400/30 dark:text-orange-50'
+          }`}
+        >
+          {iss.type === 'spelling' ? 'إملائي' : 'صياغي'}
+        </span>
+        <span
+          className={`font-bold line-through decoration-2 ${
+            iss.type === 'spelling' ? 'text-red-600 dark:text-red-400' : 'text-amber-700 dark:text-amber-300'
+          }`}
+        >
+          {iss.found}
+        </span>
+        <span className="text-gray-400">→</span>
+        <span className="font-bold text-emerald-700 dark:text-emerald-400">
+          {sugEmpty ? 'حذف' : iss.suggestion}
+        </span>
+        <button
+          type="button"
+          className="btn-primary text-[11px] py-0.5 px-2"
+          onClick={() => acceptPolishIssue(iss)}
+        >
+          اعتمد التعديل
+        </button>
+      </li>
+    );
   }
 
 
@@ -503,52 +526,34 @@ function NewDocumentInner() {
       {step === 3 && (
         <div className="space-y-3">
           <StyleToolbar value={style} onChange={setStyle} />
-          <div className="rounded-xl border-2 border-moj-gold bg-[#fff8e8] dark:bg-[#2a2418] p-3 space-y-2">
+          <div className="rounded-xl border-2 border-moj-gold bg-[#fff8e8] dark:bg-[#2a2418] p-3 space-y-2 shadow-sm">
             <div className="text-sm font-bold text-moj-green">التدقيق والصياغة القضائية</div>
             <div className="text-xs text-gray-600 dark:text-white/60">
-              يُرصد الخطأ الإملائي والصياغي تلقائياً ويظهر تنبيهاً فقط — النص لا يُعدَّل إلا إذا ضغطت أحد الأزرار. بدون تكلفة إضافية.
+              يُرصد الخطأ تلقائياً كنص ملوّن مع اقتراح التصحيح — النص لا يتغيّر إلا عند الضغط على «اعتمد التعديل». بدون تكلفة إضافية.
             </div>
-            {polishIssues.length > 0 && (
-              <div
-                dir="rtl"
-                className="rounded-lg border border-amber-500/70 bg-amber-50 dark:bg-amber-950/40 px-3 py-2 space-y-1.5"
-              >
-                <div className="text-xs font-bold text-amber-900 dark:text-amber-100">
-                  تنبيهات تلقائية ({polishIssues.length}) — النص لم يُغيَّر
+            <div
+              dir="rtl"
+              className={`rounded-lg border px-3 py-2 space-y-1.5 ${
+                polishIssues.length > 0
+                  ? 'border-amber-500/70 bg-amber-50 dark:bg-amber-950/40'
+                  : 'border-moj-green/25 bg-white/70 dark:bg-white/5'
+              }`}
+            >
+              {polishIssues.length > 0 ? (
+                <>
+                  <div className="text-xs font-bold text-amber-900 dark:text-amber-100">
+                    ملاحظات تلقائية ({polishIssues.length}) — اضغط «اعتمد التعديل» لكل ملاحظة
+                  </div>
+                  <ul className="space-y-1.5 text-amber-950 dark:text-amber-50">
+                    {polishIssues.map((iss, i) => renderPolishIssueRow(iss, i))}
+                  </ul>
+                </>
+              ) : (
+                <div className="text-xs text-moj-green/80 dark:text-emerald-300/80">
+                  لا توجد ملاحظات حالياً
                 </div>
-                <ul className="text-xs space-y-1 text-amber-950 dark:text-amber-50">
-                  {polishIssues.map((iss, i) => (
-                    <li key={`${iss.type}-${iss.found}-${iss.suggestion}-${i}`} className="flex flex-wrap items-center gap-1.5">
-                      <span
-                        className={`rounded px-1.5 py-0.5 font-bold ${
-                          iss.type === 'spelling'
-                            ? 'bg-amber-200 text-amber-950 dark:bg-amber-400/30 dark:text-amber-50'
-                            : 'bg-orange-200 text-orange-950 dark:bg-orange-400/30 dark:text-orange-50'
-                        }`}
-                      >
-                        {iss.type === 'spelling' ? 'إملائي' : 'صياغي'}
-                      </span>
-                      <span>
-                        «{iss.found}» → «{iss.suggestion}»
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            <div className="flex flex-wrap gap-2">
-              <button type="button" className="btn-primary text-sm" onClick={applySpellingPolish}>
-                تطبيق التصحيحات الإملائية
-              </button>
-              <button type="button" className="btn-gold text-sm" onClick={applyLegalPolish}>
-                تطبيق صياغة قضائية
-              </button>
+              )}
             </div>
-            {polishNote && (
-              <div className="text-xs rounded-lg border border-moj-green/30 bg-white/80 dark:bg-white/5 px-3 py-2">
-                {polishNote}
-              </div>
-            )}
           </div>
           <div className="bg-white dark:bg-[var(--surface)] rounded-xl border dark:border-white/10 p-3">
             <PaperLayoutPicker value={paperLayout} onChange={setPaperLayout} compact />
@@ -683,6 +688,19 @@ function NewDocumentInner() {
 
               <div>
                 <label className="label">نص المكاتبة</label>
+                {polishIssues.length > 0 && (
+                  <div
+                    dir="rtl"
+                    className="mb-2 rounded-lg border border-amber-400/80 bg-amber-50/90 dark:bg-amber-950/30 px-2.5 py-1.5 space-y-1"
+                  >
+                    <div className="text-[11px] font-bold text-amber-900 dark:text-amber-100">
+                      تدقيق سريع ({polishIssues.length})
+                    </div>
+                    <ul className="space-y-1">
+                      {polishIssues.map((iss, i) => renderPolishIssueRow(iss, i, true))}
+                    </ul>
+                  </div>
+                )}
                 <textarea
                   ref={(el) => {
                     fieldRefs.current.body = el;
