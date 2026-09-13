@@ -14,7 +14,7 @@ import type { StudySections } from '@/lib/parse-study';
 import { enrichStudySections } from '@/lib/study-display';
 import { clearDraft, clearAllDrafts, loadDraft, saveDraft } from '@/lib/draft-store';
 import { suggestFont } from '@/lib/font-suggest';
-import { polishLegalStyle, polishSpelling, proofreadReport } from '@/lib/arabic-polish';
+import { polishDocumentFields, polishLegalStyle, polishSpelling, proofreadReport } from '@/lib/arabic-polish';
 import { DEFAULT_PAPER_LAYOUT, normalizePaperLayout, type PaperLayoutId } from '@/lib/paper-layouts';
 import {
   formatHijri,
@@ -282,30 +282,28 @@ function NewDocumentInner() {
 
 
   function applySpellingPolish() {
-    const next = {
-      ...form,
-      body: polishSpelling(form.body),
-      reasons: polishSpelling(form.reasons),
-      studyFields: polishSpelling(form.studyFields),
-      subject: polishSpelling(form.subject),
-      parties: polishSpelling(form.parties),
-      recipients: polishSpelling(form.recipients),
-    };
-    setPolishNote(proofreadReport(form.body + form.reasons, next.body + next.reasons));
+    const before = [form.body, form.reasons, form.studyFields, form.subject, form.parties, form.recipients].join('\n');
+    const polished = polishDocumentFields(form);
+    const next = { ...form, ...polished };
+    const after = [next.body, next.reasons, next.studyFields, next.subject, next.parties, next.recipients].join('\n');
+    setPolishNote(proofreadReport(before, after));
     setForm(next);
   }
 
   function applyLegalPolish() {
+    const before = [form.body, form.reasons, form.subject].join('\n');
+    const polished = polishDocumentFields(form);
     const next = {
       ...form,
+      ...polished,
       body: polishLegalStyle(form.body),
       reasons: polishLegalStyle(form.reasons),
-      studyFields: polishSpelling(form.studyFields),
-      subject: polishSpelling(form.subject),
     };
-    setPolishNote('أُعيدت صياغة الأسلوب محلياً بصيغة رسمية أوضح. راجع النص قبل الإصدار.');
+    const after = [next.body, next.reasons, next.subject].join('\n');
+    setPolishNote(proofreadReport(before, after) + ' — صياغة قضائية منظمة.');
     setForm(next);
   }
+
 
   function focusField(field: string) {
     setStep(3);
@@ -487,19 +485,25 @@ function NewDocumentInner() {
       {step === 3 && (
         <div className="space-y-3">
           <StyleToolbar value={style} onChange={setStyle} />
-          <div className="flex flex-wrap gap-2">
-            <button type="button" className="btn-secondary text-xs" onClick={applySpellingPolish}>
-              تدقيق إملائي (محلي)
-            </button>
-            <button type="button" className="btn-secondary text-xs" onClick={applyLegalPolish}>
-              صياغة قانونية منظمة (محلي)
-            </button>
-          </div>
-          {polishNote && (
-            <div className="text-xs rounded-lg border border-moj-green/30 bg-moj-light/60 dark:bg-white/5 px-3 py-2">
-              {polishNote}
+          <div className="rounded-xl border-2 border-moj-gold bg-[#fff8e8] dark:bg-[#2a2418] p-3 space-y-2">
+            <div className="text-sm font-bold text-moj-green">التدقيق والصياغة القضائية</div>
+            <div className="text-xs text-gray-600 dark:text-white/60">
+              يصحّح الإملاء (مثل: فضيله → فضيلة) ويعيد صياغة الأسلوب بصيغة رسمية — بدون تكلفة إضافية.
             </div>
-          )}
+            <div className="flex flex-wrap gap-2">
+              <button type="button" className="btn-primary text-sm" onClick={applySpellingPolish}>
+                تدقيق إملائي ونحوي
+              </button>
+              <button type="button" className="btn-gold text-sm" onClick={applyLegalPolish}>
+                صياغة قضائية كاملة
+              </button>
+            </div>
+            {polishNote && (
+              <div className="text-xs rounded-lg border border-moj-green/30 bg-white/80 dark:bg-white/5 px-3 py-2">
+                {polishNote}
+              </div>
+            )}
+          </div>
           <div className="bg-white dark:bg-[var(--surface)] rounded-xl border dark:border-white/10 p-3">
             <PaperLayoutPicker value={paperLayout} onChange={setPaperLayout} compact />
           </div>
