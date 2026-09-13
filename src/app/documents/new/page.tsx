@@ -14,7 +14,7 @@ import type { StudySections } from '@/lib/parse-study';
 import { enrichStudySections } from '@/lib/study-display';
 import { clearDraft, clearAllDrafts, loadDraft, saveDraft } from '@/lib/draft-store';
 import { suggestFont } from '@/lib/font-suggest';
-import { polishDocumentFields, polishLegalStyle, polishSpelling, proofreadReport } from '@/lib/arabic-polish';
+import { findPolishIssues, polishDocumentFields, polishLegalStyle, polishSpelling, proofreadReport, type PolishIssue } from '@/lib/arabic-polish';
 import { DEFAULT_PAPER_LAYOUT, normalizePaperLayout, type PaperLayoutId } from '@/lib/paper-layouts';
 import {
   formatHijri,
@@ -64,6 +64,7 @@ function NewDocumentInner() {
     { location: string; issue: string; suggestion: string }[]
   >([]);
   const [polishNote, setPolishNote] = useState('');
+  const [polishIssues, setPolishIssues] = useState<PolishIssue[]>([]);
   const [style, setStyle] = useState<DocStyle>({
     fontFamily: 'Traditional Arabic',
     fontSizePt: 16,
@@ -187,6 +188,14 @@ function NewDocumentInner() {
     return () => window.clearTimeout(handle);
   }, [formSlug, templateId, paste, step, form, tableRows, studySections, style, paperLayout]);
 
+  useEffect(() => {
+    const handle = window.setTimeout(() => {
+      const blob = [form.body, form.reasons, form.studyFields, form.subject, form.parties, form.recipients].join('\n');
+      setPolishIssues(findPolishIssues(blob));
+    }, 500);
+    return () => window.clearTimeout(handle);
+  }, [form.body, form.reasons, form.studyFields, form.subject, form.parties, form.recipients]);
+
   /** Smart paste REPLACES fields — never merges/appends with previous body */
   function applyPaste() {
     const parsed = parsePaste(paste);
@@ -283,11 +292,19 @@ function NewDocumentInner() {
 
   function applySpellingPolish() {
     const before = [form.body, form.reasons, form.studyFields, form.subject, form.parties, form.recipients].join('\n');
-    const polished = polishDocumentFields(form);
-    const next = { ...form, ...polished };
+    const next = {
+      ...form,
+      subject: polishSpelling(form.subject || ''),
+      recipients: polishSpelling(form.recipients || ''),
+      parties: polishSpelling(form.parties || ''),
+      reasons: polishSpelling(form.reasons || ''),
+      studyFields: polishSpelling(form.studyFields || ''),
+      body: polishSpelling(form.body || ''),
+    };
     const after = [next.body, next.reasons, next.studyFields, next.subject, next.parties, next.recipients].join('\n');
     setPolishNote(proofreadReport(before, after));
     setForm(next);
+    setPolishIssues(findPolishIssues(after));
   }
 
   function applyLegalPolish() {
@@ -299,9 +316,10 @@ function NewDocumentInner() {
       body: polishLegalStyle(form.body),
       reasons: polishLegalStyle(form.reasons),
     };
-    const after = [next.body, next.reasons, next.subject].join('\n');
+    const after = [next.body, next.reasons, next.studyFields, next.subject, next.parties, next.recipients].join('\n');
     setPolishNote(proofreadReport(before, after) + ' — صياغة قضائية منظمة.');
     setForm(next);
+    setPolishIssues(findPolishIssues(after));
   }
 
 
@@ -488,14 +506,42 @@ function NewDocumentInner() {
           <div className="rounded-xl border-2 border-moj-gold bg-[#fff8e8] dark:bg-[#2a2418] p-3 space-y-2">
             <div className="text-sm font-bold text-moj-green">التدقيق والصياغة القضائية</div>
             <div className="text-xs text-gray-600 dark:text-white/60">
-              يصحّح الإملاء (مثل: فضيله → فضيلة) ويعيد صياغة الأسلوب بصيغة رسمية — بدون تكلفة إضافية.
+              يُرصد الخطأ الإملائي والصياغي تلقائياً ويظهر تنبيهاً فقط — النص لا يُعدَّل إلا إذا ضغطت أحد الأزرار. بدون تكلفة إضافية.
             </div>
+            {polishIssues.length > 0 && (
+              <div
+                dir="rtl"
+                className="rounded-lg border border-amber-500/70 bg-amber-50 dark:bg-amber-950/40 px-3 py-2 space-y-1.5"
+              >
+                <div className="text-xs font-bold text-amber-900 dark:text-amber-100">
+                  تنبيهات تلقائية ({polishIssues.length}) — النص لم يُغيَّر
+                </div>
+                <ul className="text-xs space-y-1 text-amber-950 dark:text-amber-50">
+                  {polishIssues.map((iss, i) => (
+                    <li key={`${iss.type}-${iss.found}-${iss.suggestion}-${i}`} className="flex flex-wrap items-center gap-1.5">
+                      <span
+                        className={`rounded px-1.5 py-0.5 font-bold ${
+                          iss.type === 'spelling'
+                            ? 'bg-amber-200 text-amber-950 dark:bg-amber-400/30 dark:text-amber-50'
+                            : 'bg-orange-200 text-orange-950 dark:bg-orange-400/30 dark:text-orange-50'
+                        }`}
+                      >
+                        {iss.type === 'spelling' ? 'إملائي' : 'صياغي'}
+                      </span>
+                      <span>
+                        «{iss.found}» → «{iss.suggestion}»
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
             <div className="flex flex-wrap gap-2">
               <button type="button" className="btn-primary text-sm" onClick={applySpellingPolish}>
-                تدقيق إملائي ونحوي
+                تطبيق التصحيحات الإملائية
               </button>
               <button type="button" className="btn-gold text-sm" onClick={applyLegalPolish}>
-                صياغة قضائية كاملة
+                تطبيق صياغة قضائية
               </button>
             </div>
             {polishNote && (

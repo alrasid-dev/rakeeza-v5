@@ -140,6 +140,165 @@ export function proofreadReport(before: string, after: string): string {
   return `تم التدقيق محلياً (إملاء وصياغة قضائية خفيفة).${tip} راجع النص قبل الاعتماد.`;
 }
 
+export type PolishIssue = {
+  type: 'spelling' | 'style';
+  found: string;
+  suggestion: string;
+  message: string;
+};
+
+const STYLE_MARKERS: { found: string; suggestion: string; message: string }[] = [
+  { found: 'طيب', suggestion: '—', message: 'لفظ غير رسمي — يُحذف في الصياغة القضائية' },
+  { found: 'اللي', suggestion: 'الذي', message: 'صيغة عامية — يُفضّل «الذي»' },
+  { found: 'علشان', suggestion: 'من أجل', message: 'صيغة عامية — يُفضّل «من أجل»' },
+  { found: 'عشان', suggestion: 'من أجل', message: 'صيغة عامية — يُفضّل «من أجل»' },
+  { found: 'يعني', suggestion: 'أي', message: 'صيغة غير رسمية — يُفضّل «أي»' },
+];
+
+function escapeRe(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function hasArabicWord(text: string, word: string): boolean {
+  const re = new RegExp(`(?:^|[^\\u0600-\\u06FF])${escapeRe(word)}(?:[^\\u0600-\\u06FF]|$)`);
+  return re.test(text);
+}
+
+function stripEdgeJunk(s: string): string {
+  return s.replace(/^[^\u0600-\u06FFa-zA-Z0-9]+|[^\u0600-\u06FFa-zA-Z0-9]+$/g, '');
+}
+
+function tokenize(s: string): string[] {
+  return s
+    .replace(/\s+/g, ' ')
+    .trim()
+    .split(' ')
+    .filter(Boolean);
+}
+
+function collectTokenDiffs(before: string, after: string): { found: string; suggestion: string }[] {
+  const a = tokenize(before);
+  const b = tokenize(after);
+  const out: { found: string; suggestion: string }[] = [];
+  let i = 0;
+  let j = 0;
+  while (i < a.length && j < b.length) {
+    if (a[i] === b[j]) {
+      i += 1;
+      j += 1;
+      continue;
+    }
+    if (j + 1 < b.length && a[i] === b[j + 1]) {
+      j += 1;
+      continue;
+    }
+    if (i + 1 < a.length && a[i + 1] === b[j]) {
+      i += 1;
+      continue;
+    }
+    out.push({ found: a[i], suggestion: b[j] });
+    i += 1;
+    j += 1;
+  }
+  return out;
+}
+
+/**
+ * Detect spelling + informal-style issues without rewriting the input.
+ * Discrete replacements only; callers must never mutate form state from this.
+ */
+export function findPolishIssues(text: string): PolishIssue[] {
+  const raw = String(text || '');
+  if (!raw.trim()) return [];
+
+  const issues: PolishIssue[] = [];
+  const seen = new Set<string>();
+
+  const add = (issue: PolishIssue) => {
+    const found = stripEdgeJunk(issue.found) || issue.found.trim();
+    const suggestion = stripEdgeJunk(issue.suggestion) || issue.suggestion.trim();
+    if (!found || found === suggestion) return;
+    const key = `${issue.type}:${found}→${suggestion}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    issues.push({
+      type: issue.type,
+      found,
+      suggestion,
+      message: issue.message,
+    });
+  };
+
+  // Honorifics — substring scan so «فضيله قاضيا التشكيل» is always flagged
+  if (raw.includes('فضيله')) {
+    add({
+      type: 'spelling',
+      found: 'فضيله',
+      suggestion: 'فضيلة',
+      message: 'إملائي: «فضيله» → «فضيلة»',
+    });
+  }
+  if (raw.includes('سعاده')) {
+    add({
+      type: 'spelling',
+      found: 'سعاده',
+      suggestion: 'سعادة',
+      message: 'إملائي: «سعاده» → «سعادة»',
+    });
+  }
+
+  // Discrete replacements from polishSpelling vs input (detection only)
+  const polished = polishSpelling(raw);
+  for (const d of collectTokenDiffs(raw, polished)) {
+    const from = stripEdgeJunk(d.found);
+    const to = stripEdgeJunk(d.suggestion);
+    if (!from || !to || from === to) continue;
+    const fromClean = from.replace(/[\u0640\u200f\u200e]/g, '');
+    const toClean = to.replace(/[\u0640\u200f\u200e]/g, '');
+    if (fromClean === toClean) continue;
+    add({
+      type: 'spelling',
+      found: from,
+      suggestion: to,
+      message: `إملائي: «${from}» → «${to}»`,
+    });
+  }
+
+  // Per-token fallback so isolated known wrong forms are not missed
+  const tokens = Array.from(
+    new Set(
+      tokenize(raw)
+        .map(stripEdgeJunk)
+        .filter(Boolean),
+    ),
+  );
+  for (const token of tokens) {
+    const solo = polishSpelling(token);
+    const soloTok = stripEdgeJunk(solo);
+    if (!soloTok || soloTok === token) continue;
+    if (solo.includes('\n') || soloTok.split(/\s+/).length > 2) continue;
+    add({
+      type: 'spelling',
+      found: token,
+      suggestion: soloTok,
+      message: `إملائي: «${token}» → «${soloTok}»`,
+    });
+  }
+
+  // Informal style markers from polishLegalStyle — detect only, never rewrite
+  for (const m of STYLE_MARKERS) {
+    if (!hasArabicWord(raw, m.found)) continue;
+    add({
+      type: 'style',
+      found: m.found,
+      suggestion: m.suggestion,
+      message: `صياغي: ${m.message}`,
+    });
+  }
+
+  return issues;
+}
+
 /** One-shot full polish for all document text fields */
 export function polishDocumentFields(fields: {
   subject?: string;
