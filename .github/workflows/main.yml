@@ -1,0 +1,19 @@
+name: Auto Format and Fix Code
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  code-cleanup:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Run Auto Fixer
+      uses: crey08/gofmt-action@v2.3.0
+      with:
+        gofmt-path: '.'
