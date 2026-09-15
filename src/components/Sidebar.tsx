@@ -18,6 +18,8 @@ const FORM_ITEMS: { slug: string; name: string }[] = [
   { slug: 'talab-ihala', name: 'طلب إحالة' },
   { slug: 'ifada', name: 'إفادة' },
   { slug: 'ishar-mawid', name: 'إشعار موعد' },
+  { slug: 'ishar-mawid-jalsa', name: 'إشعار موعد جلسة' },
+  { slug: 'ihala-dakhiliya-ajila', name: 'إحالة داخلية عاجلة' },
   { slug: 'radd-istifsar', name: 'رد على استفسار' },
   { slug: 'muthakkira-qanuniya', name: 'مذكرة قانونية' },
   { slug: 'namudhaj-hifz', name: 'نموذج حفظ' },
@@ -346,7 +348,7 @@ function SidebarInner({
         md:translate-x-0 md:pointer-events-auto shadow-2xl md:shadow-none`}
     >
       <div className="p-4 border-b border-white/20 flex items-center gap-3">
-        <img src="/logo.svg" alt="شعار" className="w-12 h-12 rounded-xl ring-1 ring-white/20 shadow-[0_0_16px_rgba(61,143,106,0.4)]" />
+        <img src="/brand/moj-logo-gold.png" alt="شعار وزارة العدل" className="w-11 h-11 object-contain rounded-xl ring-1 ring-white/20 shadow-[0_0_16px_rgba(61,143,106,0.4)] bg-white/95 p-0.5" />
         <div className="flex-1 min-w-0">
           <div className="font-bold text-sm leading-tight">ركيزة</div>
           <div className="text-[10px] text-moj-gold leading-tight">مكتبة المخاطبات والتعاميم</div>

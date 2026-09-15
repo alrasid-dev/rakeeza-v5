@@ -1,6 +1,6 @@
 /* Rakeeza SW — cache shell only; never touch API/export (avoids empty JSON/PDF via HTML fallback). */
-const CACHE = 'rakeeza-v5-cache-v2';
-const ASSETS = ['/manifest.json', '/logo.svg'];
+const CACHE = 'rakeeza-v5-cache-v3';
+const ASSETS = ['/manifest.json', '/brand/moj-logo-gold.png', '/icons/icon-192.png'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)).then(() => self.skipWaiting()));

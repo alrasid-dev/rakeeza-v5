@@ -99,3 +99,14 @@ export function IconChevron(props: P & { open?: boolean }) {
     </svg>
   );
 }
+
+export function IconCc(props: P) {
+  const p = base(props);
+  return (
+    <svg {...p} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="5" width="14" height="11" rx="1.5" />
+      <path d="M7 9h6M7 12h4" />
+      <path d="M19 8v9a1.5 1.5 0 0 1-1.5 1.5H8" />
+    </svg>
+  );
+}

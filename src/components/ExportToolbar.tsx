@@ -15,6 +15,7 @@ export type ExportDoc = {
   dateGregorian?: string | null;
   dateHijri?: string | null;
   recipients?: string | null;
+  copyTo?: string | null;
   parties?: string | null;
   reasons?: string | null;
   studyFields?: string | null;
@@ -45,6 +46,7 @@ function contentFingerprint(doc: ExportDoc) {
   return [
     doc.subject || '',
     doc.recipients || '',
+    doc.copyTo || '',
     doc.parties || '',
     doc.reasons || '',
     doc.studyFields || '',
@@ -68,6 +70,7 @@ function buildPlainLetter(doc: ExportDoc) {
     `الرقم: ${doc.number || '—'}`,
     `التاريخ: ${officialDateDisplay(doc.dateHijri, doc.dateGregorian)}`,
     `إلى: ${doc.recipients || '—'}`,
+    ...(doc.copyTo?.trim() ? [`نسخة إلى: ${doc.copyTo.trim()}`] : []),
     `الموضوع: ${doc.subject || '—'}`,
     '',
   ];
@@ -93,6 +96,7 @@ export default function ExportToolbar({
   ensureSavedId,
   onExported,
   onRequestIssue,
+  onFocusCopyTo,
 }: {
   doc: ExportDoc;
   className?: string;
@@ -101,6 +105,8 @@ export default function ExportToolbar({
   onExported?: () => void;
   /** Optional: jump user to official issue action */
   onRequestIssue?: () => void;
+  /** Focus the «نسخة إلى» form field */
+  onFocusCopyTo?: () => void;
 }) {
   const [picked, setPicked] = useState<FormatId | null>(null);
   const [busy, setBusy] = useState(false);
@@ -149,6 +155,7 @@ export default function ExportToolbar({
           dateGregorian: doc.dateGregorian ?? undefined,
           dateHijri: doc.dateHijri ?? undefined,
           recipients: doc.recipients || '',
+          copyTo: doc.copyTo || '',
           parties: doc.parties || '',
           reasons: doc.reasons || '',
           studyFields: doc.studyFields || '',
@@ -256,6 +263,7 @@ export default function ExportToolbar({
       dateGregorian: doc.dateGregorian,
       dateHijri: doc.dateHijri,
       recipients: doc.recipients || '',
+      copyTo: doc.copyTo || '',
       parties: doc.parties || '',
       reasons: doc.reasons || '',
       studyFields: doc.studyFields || '',
@@ -285,7 +293,20 @@ export default function ExportToolbar({
       dir="rtl"
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="text-sm font-bold text-moj-green dark:text-moj-gold">تصدير الخطاب</div>
+        <div className="flex items-center gap-2">
+          <div className="text-sm font-bold text-moj-green dark:text-moj-gold">تصدير الخطاب</div>
+          {onFocusCopyTo && (
+            <button
+              type="button"
+              className="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg border border-moj-green/30 text-moj-green hover:bg-moj-light/60"
+              onClick={onFocusCopyTo}
+              title="نسخة إلى"
+            >
+              <span aria-hidden>⧉</span>
+              نسخة إلى
+            </button>
+          )}
+        </div>
         {canExport ? (
           exportedOnce ? (
             <span className="text-[11px] text-moj-green bg-moj-light/80 rounded-full px-2 py-0.5">

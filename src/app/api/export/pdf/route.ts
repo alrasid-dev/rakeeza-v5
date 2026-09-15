@@ -139,6 +139,7 @@ function pdfViaJsPdf(doc: {
   dateGregorian: string | null;
   dateHijri: string | null;
   recipients: string;
+  copyTo?: string;
   body: string;
   parties: string;
   reasons: string;
@@ -214,6 +215,9 @@ function pdfViaJsPdf(doc: {
   writeAr(`الرقم: ${doc.number || '—'}`, 11);
   writeAr(`التاريخ: ${officialDateDisplay(doc.dateHijri, doc.dateGregorian)}`, 11);
   writeAr(`إلى: ${doc.recipients || '—'}`, 11);
+  if ((doc as { copyTo?: string }).copyTo?.trim()) {
+    writeAr(`نسخة إلى: ${(doc as { copyTo?: string }).copyTo}`, 11);
+  }
   writeAr(`الموضوع: ${doc.subject || '—'}`, 11);
   y += 3;
 
@@ -261,17 +265,20 @@ export async function GET(req: NextRequest) {
     let studySections: import('@/lib/parse-study').StudySections | null = null;
     let style: { fontFamily?: string; fontSizePt?: number } | null = null;
     let paperLayout: string | null = null;
+    let copyToField = '';
     try {
       const fields = JSON.parse(doc.fieldsJson || '{}') as {
         qrDataUrl?: string;
         studySections?: import('@/lib/parse-study').StudySections;
         style?: { fontFamily?: string; fontSizePt?: number };
         paperLayout?: string;
+        copyTo?: string;
       };
       qrDataUrl = fields.qrDataUrl || null;
       studySections = fields.studySections || null;
       style = fields.style || null;
       paperLayout = fields.paperLayout || null;
+      copyToField = fields.copyTo || '';
     } catch {
       qrDataUrl = null;
     }
@@ -315,6 +322,7 @@ html, body, .paper, .paper * {
         dateGregorian: doc.dateGregorian,
         dateHijri: doc.dateHijri,
         recipients: doc.recipients,
+        copyTo: copyToField,
         parties: doc.parties,
         reasons: doc.reasons,
         studyFields: doc.studyFields,
@@ -341,6 +349,7 @@ html, body, .paper, .paper * {
         dateGregorian: doc.dateGregorian,
         dateHijri: doc.dateHijri,
         recipients: doc.recipients,
+        copyTo: copyToField,
         body: doc.body,
         parties: doc.parties,
         reasons: doc.reasons,

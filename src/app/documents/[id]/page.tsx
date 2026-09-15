@@ -87,6 +87,7 @@ export default function DocumentDetailPage() {
     studySections?: StudySections;
     style?: DocStyle;
     paperLayout?: PaperLayoutId | string;
+    copyTo?: string;
   };
   const paperLayout = normalizePaperLayout(fields.paperLayout);
   const bodyOnce = normalizeBodyText(doc.body);
@@ -124,6 +125,7 @@ export default function DocumentDetailPage() {
             dateGregorian: doc.dateGregorian,
             dateHijri: doc.dateHijri,
             recipients: doc.recipients,
+            copyTo: fields.copyTo,
             parties: doc.parties,
             reasons: doc.reasons,
             studyFields: doc.studyFields,
@@ -151,6 +153,7 @@ export default function DocumentDetailPage() {
               dateGregorian: doc.dateGregorian,
               dateHijri: doc.dateHijri,
               recipients: doc.recipients,
+              copyTo: fields.copyTo,
               parties: doc.parties,
               reasons: doc.reasons,
               studyFields: doc.studyFields,

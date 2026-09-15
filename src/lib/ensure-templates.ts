@@ -1,6 +1,24 @@
 import 'server-only';
 import { prisma } from '@/lib/db';
 
+const SESSION_NOTICE_BODY = `فضيلة/سعادة: [اسم صاحب الفضيلة/السعادة]،
+
+إشارة إلى [موضوع المعاملة/رقم القضية]،
+
+نود إشعاركم بموعدكم المقرر في يوم: [اليوم] وتاريخ: [التاريخ الهجري]، في تمام الساعة: [الوقت]، وذلك في قاعة الاجتماعات بالدور الأول.
+
+وتقبلوا وافر التحية والتقدير.`;
+
+const URGENT_REFERRAL_BODY = `إلى: [الجهة / الإدارة المحال إليها]،
+
+إشارة إلى المعاملة رقم: [رقم المعاملة] وتاريخ: [التاريخ الهجري]، المتعلقة بـ: [موضوع المعاملة]،
+
+نأمل منكم اتخاذ اللازم حيالها بصفة عاجلة خلال مدة لا تتجاوز [المدة]، وإفادتنا بما يتم التوصل إليه.
+
+نسخة إلى: [الجهة / الإدارة للاطلاع].
+
+وتقبلوا وافر التحية والتقدير.`;
+
 /** Soft-migrate template categories + ensure new group templates exist (no wipe). */
 export async function ensureTemplates() {
   try {
@@ -23,18 +41,54 @@ export async function ensureTemplates() {
       category: string;
       description: string;
       fieldsJson: string;
+      bodyHtml: string;
+      isEmpty: boolean;
     }[] = [
       {
         name: 'نموذج خطاب PDF رسمي',
         category: 'pdf-official',
         description: 'قالب PDF رسمي للطباعة بهوية الوزارة',
-        fieldsJson: JSON.stringify(['number', 'date', 'subject', 'recipients', 'body']),
+        fieldsJson: JSON.stringify(['number', 'date', 'subject', 'recipients', 'copyTo', 'body']),
+        bodyHtml: '',
+        isEmpty: true,
       },
       {
         name: 'كشف أسماء / Excel',
         category: 'excel',
         description: 'قالب لكشوف الأسماء وأرقام الهوية (لصق جدول أو استيراد)',
         fieldsJson: JSON.stringify(['tableRows', 'parties', 'body']),
+        bodyHtml: '',
+        isEmpty: true,
+      },
+      {
+        name: 'إشعار موعد جلسة',
+        category: 'letter-official',
+        description: 'إشعار رسمي بموعد جلسة/اجتماع — نص جاهز للتعبئة',
+        fieldsJson: JSON.stringify([
+          'number',
+          'date',
+          'subject',
+          'recipients',
+          'copyTo',
+          'body',
+        ]),
+        bodyHtml: SESSION_NOTICE_BODY,
+        isEmpty: false,
+      },
+      {
+        name: 'إحالة داخلية عاجلة',
+        category: 'letter-official',
+        description: 'إحالة داخلية عاجلة لجهة/إدارة مع مهلة ونسخة إلى',
+        fieldsJson: JSON.stringify([
+          'number',
+          'date',
+          'subject',
+          'recipients',
+          'copyTo',
+          'body',
+        ]),
+        bodyHtml: URGENT_REFERRAL_BODY,
+        isEmpty: false,
       },
     ];
 
@@ -49,16 +103,23 @@ export async function ensureTemplates() {
             category: ex.category,
             description: ex.description,
             fieldsJson: ex.fieldsJson,
-            bodyHtml: '',
-            isEmpty: true,
+            bodyHtml: ex.bodyHtml,
+            isEmpty: ex.isEmpty,
             sortOrder: order++,
           },
         });
-      } else if (existing.category !== ex.category) {
-        await prisma.template.update({
-          where: { id: existing.id },
-          data: { category: ex.category },
-        });
+      } else {
+        const patch: Record<string, unknown> = {};
+        if (existing.category !== ex.category) patch.category = ex.category;
+        if (!ex.isEmpty && (!existing.bodyHtml || existing.isEmpty)) {
+          patch.bodyHtml = ex.bodyHtml;
+          patch.isEmpty = false;
+          patch.fieldsJson = ex.fieldsJson;
+          patch.description = ex.description;
+        }
+        if (Object.keys(patch).length) {
+          await prisma.template.update({ where: { id: existing.id }, data: patch });
+        }
       }
     }
   } catch (e) {

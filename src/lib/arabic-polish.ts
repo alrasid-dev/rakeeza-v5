@@ -1,14 +1,17 @@
 /** Local Arabic spelling / grammar / judicial style polish — no paid API */
 
+const HONORIFIC_BEFORE = /(?:^|[\s،.:؛])(?:فضيلة|سعادة|معالي|سمو|الأستاذ|الاستاذ|الأستاذة|الاستاذه|القاضي|القاضية|الشيخ|المستشار|المحامي|الدكتور|الدكتورة)\s+$/;
+const FAMILY_AFTER = /^\s+(?:بن\s+|ابن\s+|آل[\u0600-\u06FF])/;
+const NAME_LIKE_ALIASES = new Set(['علي', 'الى', 'الي']); // ambiguous short tokens
+
 const REPLACEMENTS: [RegExp, string][] = [
   [/ +/g, ' '],
   [/\u0640+/g, ''], // tatweel
   [/\u200f|\u200e/g, ''],
 
-  // Arabic-safe (avoid \b)
+  // Arabic-safe (avoid \b) — note: علي handled separately with name guard
   [/بناءاً?(?=\s|$)/g, 'بناءً'],
   [/(^|[\s،.])ان(?=[\s]|$)/g, '$1أن'],
-  [/(^|[\s،.])علي(?=[\s]|$)/g, '$1على'],
   [/(^|[\s،.])الي(?=[\s]|$)/g, '$1إلى'],
   [/(^|[\s،.])لدي(?=[\s]|$)/g, '$1لدى'],
   [/(^|[\s،.])حتي(?=[\s]|$)/g, '$1حتى'],
@@ -19,7 +22,6 @@ const REPLACEMENTS: [RegExp, string][] = [
   [/ى(?=\s|$|[.،؛:!؟\)])/g, 'ي'],
   [/(^|\s)ان(?=\s|$)/g, '$1أن'],
   [/\bان لا\b/g, 'ألا'],
-  [/\bعلي\b/g, 'على'],
   [/\bالي\b/g, 'إلى'],
   [/\bلدي\b/g, 'لدى'],
   [/\bحتي\b/g, 'حتى'],
@@ -55,7 +57,7 @@ const REPLACEMENTS: [RegExp, string][] = [
   [/المطالبه/g, 'المطالبة'],
   [/الأهليه|الاهليه/g, 'الأهلية'],
 
-  // honorifics — user's test case and variants
+  // honorifics — whole-phrase / known judicial forms first
   [/فضيله\s+القاضي/g, 'فضيلة القاضي'],
   [/فضيله\s+القاضية/g, 'فضيلة القاضية'],
   [/فضيله\s+الشيخ/g, 'فضيلة الشيخ'],
@@ -85,14 +87,32 @@ const REPLACEMENTS: [RegExp, string][] = [
   [/\n{3,}/g, '\n\n'],
 ];
 
+/** True when «علي» looks like a person name rather than the preposition «على». */
+export function isNameLikeAli(text: string, index: number): boolean {
+  const before = text.slice(Math.max(0, index - 40), index);
+  const after = text.slice(index + 3, index + 40);
+  if (HONORIFIC_BEFORE.test(before)) return true;
+  if (FAMILY_AFTER.test(after)) return true;
+  // «السيد علي …» / trailing name pattern
+  if (/(?:^|[\s،.:؛])(?:السيد|الشيخ|الأستاذ|الاستاذ)\s*$/.test(before)) return true;
+  return false;
+}
+
+function replaceAliSafely(t: string): string {
+  return t.replace(/(^|[\s،.:؛])علي(?=$|[\s،.:؛])/g, (full, prefix, offset, whole) => {
+    const idx = offset + String(prefix).length;
+    if (isNameLikeAli(String(whole), idx)) return full;
+    return `${prefix}على`;
+  });
+}
+
 export function polishSpelling(raw: string): string {
   let t = String(raw || '').replace(/\r\n/g, '\n').trim();
   if (!t) return '';
   for (const [re, to] of REPLACEMENTS) t = t.replace(re, to as string);
-  // Extra pass for honorifics + علي
   t = t.replace(/فضيله/g, 'فضيلة');
   t = t.replace(/سعاده/g, 'سعادة');
-  t = t.replace(/(^|[\s،.:؛])علي(?=$|[\s،.:؛])/g, (_, a) => `${a}على`);
+  t = replaceAliSafely(t);
   t = t.replace(/بناءاً?(?=$|[\s،.])/g, 'بناءً');
   t = t.replace(/[ \t]+/g, ' ').replace(/ *\n */g, '\n').replace(/\n{3,}/g, '\n\n');
   return t.trim();
@@ -109,13 +129,13 @@ export function polishLegalStyle(raw: string): string {
     if (!/السلام عليكم/.test(t) && t.length > 40) {
       t = `السلام عليكم ورحمة الله وبركاته وبعد:-\n\n${t}`;
     }
-    // Prefer formal connectors
+    // Prefer formal connectors — whole words only
     t = t
-      .replace(/\bيعني\b/g, 'أي')
-      .replace(/\bطيب\b/g, '')
-      .replace(/\bاللي\b/g, 'الذي')
-      .replace(/\bعلشان\b/g, 'من أجل')
-      .replace(/\bعشان\b/g, 'من أجل');
+      .replace(/(^|[^\u0600-\u06FF])يعني(?=[^\u0600-\u06FF]|$)/g, '$1أي')
+      .replace(/(^|[^\u0600-\u06FF])طيب(?=[^\u0600-\u06FF]|$)/g, '$1')
+      .replace(/(^|[^\u0600-\u06FF])اللي(?=[^\u0600-\u06FF]|$)/g, '$1الذي')
+      .replace(/(^|[^\u0600-\u06FF])علشان(?=[^\u0600-\u06FF]|$)/g, '$1من أجل')
+      .replace(/(^|[^\u0600-\u06FF])عشان(?=[^\u0600-\u06FF]|$)/g, '$1من أجل');
   }
 
   t = t
@@ -203,6 +223,16 @@ function collectTokenDiffs(before: string, after: string): { found: string; sugg
   return out;
 }
 
+function shouldSkipAmbiguousName(raw: string, found: string, suggestion: string): boolean {
+  if (found === suggestion) return true;
+  if (!NAME_LIKE_ALIASES.has(found) && found !== 'علي') return false;
+  if (found === 'علي' && suggestion === 'على') {
+    const idx = raw.indexOf('علي');
+    if (idx !== -1 && isNameLikeAli(raw, idx)) return true;
+  }
+  return false;
+}
+
 /**
  * Detect spelling + informal-style issues without rewriting the input.
  * Discrete replacements only; callers must never mutate form state from this.
@@ -218,6 +248,7 @@ export function findPolishIssues(text: string): PolishIssue[] {
     const found = stripEdgeJunk(issue.found) || issue.found.trim();
     const suggestion = stripEdgeJunk(issue.suggestion) || issue.suggestion.trim();
     if (!found || found === suggestion) return;
+    if (shouldSkipAmbiguousName(raw, found, suggestion)) return;
     const key = `${issue.type}:${found}→${suggestion}`;
     if (seen.has(key)) return;
     seen.add(key);
@@ -273,6 +304,19 @@ export function findPolishIssues(text: string): PolishIssue[] {
     ),
   );
   for (const token of tokens) {
+    if (token === 'علي') {
+      // only flag if at least one occurrence is not name-like
+      let i = 0;
+      let anyPrep = false;
+      while ((i = raw.indexOf('علي', i)) !== -1) {
+        if (!isNameLikeAli(raw, i)) {
+          anyPrep = true;
+          break;
+        }
+        i += 3;
+      }
+      if (!anyPrep) continue;
+    }
     const solo = polishSpelling(token);
     const soloTok = stripEdgeJunk(solo);
     if (!soloTok || soloTok === token) continue;
@@ -285,7 +329,7 @@ export function findPolishIssues(text: string): PolishIssue[] {
     });
   }
 
-  // Informal style markers from polishLegalStyle — detect only, never rewrite
+  // Informal style markers — whole words only
   for (const m of STYLE_MARKERS) {
     if (!hasArabicWord(raw, m.found)) continue;
     add({
@@ -306,6 +350,17 @@ export function applyPolishFix(text: string, found: string, suggestion: string):
   const src = String(text || '');
   const needle = String(found || '');
   if (!src || !needle) return src;
+  // For علي→على, prefer first non-name-like occurrence
+  if (needle === 'علي' && String(suggestion).trim() === 'على') {
+    let i = 0;
+    while ((i = src.indexOf('علي', i)) !== -1) {
+      if (!isNameLikeAli(src, i)) {
+        return src.slice(0, i) + 'على' + src.slice(i + 3);
+      }
+      i += 3;
+    }
+    return src;
+  }
   const idx = src.indexOf(needle);
   if (idx === -1) return src;
   const before = src.slice(0, idx);

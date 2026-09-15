@@ -7,7 +7,8 @@ export type PaperLayoutId =
   | 'taameem-circular'
   | 'study-report'
   | 'identity-service-a'
-  | 'identity-service-b';
+  | 'identity-service-b'
+  | 'modern-hex';
 
 export type PaperLayoutMeta = {
   id: PaperLayoutId;
@@ -16,6 +17,11 @@ export type PaperLayoutMeta = {
 };
 
 export const PAPER_LAYOUTS: PaperLayoutMeta[] = [
+  {
+    id: 'modern-hex',
+    nameAr: 'عصري هندسي',
+    description: 'مساحة قراءة كريمية وتذييل أخضر داكن مع زخارف سداسية ذهبية/خضراء',
+  },
   {
     id: 'classic-green',
     nameAr: 'كلاسيكي أخضر',

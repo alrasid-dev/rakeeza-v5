@@ -52,7 +52,7 @@ export default function AppShell({
         </button>
         <div className="flex items-center gap-2 min-w-0 flex-1">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.svg" alt="" className="w-8 h-8 rounded-lg ring-1 ring-white/20 shrink-0" />
+          <img src="/brand/moj-logo-gold.png" alt="شعار وزارة العدل" className="w-10 h-10 object-contain rounded-lg ring-1 ring-white/20 shrink-0 bg-white/95 p-0.5" />
           <div className="min-w-0">
             <div className="font-bold text-sm leading-tight truncate">ركيزة</div>
             <div className="text-[10px] text-moj-gold truncate">مكتبة المخاطبات والتعاميم</div>

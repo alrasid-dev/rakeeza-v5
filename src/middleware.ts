@@ -23,6 +23,8 @@ const PUBLIC = [
   '/manifest.json',
   '/sw.js',
   '/logo.svg',
+  '/brand/',
+  '/icons/',
   '/icons',
 ];
 

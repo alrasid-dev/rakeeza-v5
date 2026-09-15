@@ -27,6 +27,11 @@ export const FONT_OPTIONS: { id: string; label: string; stack: string }[] = [
     stack: 'var(--font-cairo), "Cairo", Tahoma, sans-serif',
   },
   {
+    id: 'Tajawal',
+    label: 'Tajawal',
+    stack: 'var(--font-tajawal), "Tajawal", Tahoma, sans-serif',
+  },
+  {
     id: 'Tahoma',
     label: 'Tahoma',
     stack: 'Tahoma, var(--font-noto-naskh), Arial, sans-serif',

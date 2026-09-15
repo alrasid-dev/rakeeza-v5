@@ -25,12 +25,13 @@ import {
   todayHijri,
 } from '@/lib/hijri';
 
-type Template = { id: string; name: string; category: string };
+type Template = { id: string; name: string; category: string; bodyHtml?: string; isEmpty?: boolean };
 type User = { name: string; role: string };
 
 const EMPTY_FORM = {
   subject: '',
   recipients: '',
+  copyTo: '',
   parties: '',
   reasons: '',
   studyFields: '',
@@ -167,6 +168,16 @@ function NewDocumentInner() {
   }, [templates, formName, templateId]);
 
   useEffect(() => {
+    if (!templateId || !templates.length) return;
+    const match = templates.find((t) => t.id === templateId);
+    if (!match?.bodyHtml || match.isEmpty === true) return;
+    setForm((f) => {
+      if (f.body && f.body.trim()) return f;
+      return { ...f, body: match.bodyHtml || '', docType: formName || match.name || f.docType };
+    });
+  }, [templateId, templates, formName]);
+
+  useEffect(() => {
     if (!formSlug || skipSave.current) return;
     const handle = window.setTimeout(() => {
       saveDraft(formSlug, {
@@ -189,7 +200,7 @@ function NewDocumentInner() {
 
   useEffect(() => {
     const handle = window.setTimeout(() => {
-      const blob = [form.body, form.reasons, form.studyFields, form.subject, form.parties, form.recipients].join('\n');
+      const blob = [form.body, form.reasons, form.studyFields, form.subject, form.parties, form.recipients, form.copyTo].join('\n');
       setPolishIssues(findPolishIssues(blob));
     }, 500);
     return () => window.clearTimeout(handle);
@@ -289,7 +300,7 @@ function NewDocumentInner() {
   }
 
 
-  const POLISH_FIELDS = ['body', 'reasons', 'studyFields', 'subject', 'parties', 'recipients'] as const;
+  const POLISH_FIELDS = ['body', 'reasons', 'studyFields', 'subject', 'parties', 'recipients', 'copyTo'] as const;
 
   function acceptPolishIssue(issue: PolishIssue) {
     const next = { ...form };
@@ -297,9 +308,10 @@ function NewDocumentInner() {
     for (const key of POLISH_FIELDS) {
       const val = next[key] || '';
       if (!val.includes(issue.found)) continue;
-      next[key] = applyPolishFix(val, issue.found, issue.suggestion);
+      const fixed = applyPolishFix(val, issue.found, issue.suggestion);
+      if (fixed === val) continue;
+      next[key] = fixed;
       applied = true;
-      break;
     }
     if (!applied) return;
     setForm(next);
@@ -372,7 +384,7 @@ function NewDocumentInner() {
         templateId: templateId || null,
         issue,
         assignNumber: issue,
-        fields: { tableRows, studySections, style, paperLayout },
+        fields: { tableRows, studySections, style, paperLayout, copyTo: form.copyTo },
       }),
     });
     const data = await res.json();
@@ -424,6 +436,7 @@ function NewDocumentInner() {
     dateGregorian: form.dateGregorian,
     dateHijri: form.dateHijri,
     recipients: form.recipients,
+    copyTo: form.copyTo,
     parties: form.parties,
     reasons: form.reasons,
     studyFields: form.studyFields,
@@ -650,6 +663,20 @@ function NewDocumentInner() {
               </div>
 
               <div>
+                <label className="label">نسخة إلى</label>
+                <input
+                  ref={(el) => {
+                    fieldRefs.current.copyTo = el;
+                  }}
+                  id="field-copyTo"
+                  className="input"
+                  value={form.copyTo}
+                  onChange={(e) => setForm({ ...form, copyTo: e.target.value })}
+                  placeholder="الجهة / الإدارة للاطلاع"
+                />
+              </div>
+
+              <div>
                 <label className="label">الأطراف</label>
                 <textarea
                   ref={(el) => {
@@ -733,7 +760,7 @@ function NewDocumentInner() {
             </div>
 
             <div className="min-w-0 space-y-3">
-              <ExportToolbar doc={exportDoc} ensureSavedId={ensureSavedId} onRequestIssue={() => save(true)} />
+              <ExportToolbar doc={exportDoc} ensureSavedId={ensureSavedId} onRequestIssue={() => save(true)} onFocusCopyTo={() => focusField('copyTo')} />
               <div className="text-sm font-medium text-gray-500 dark:text-white/50">
                 معاينة ورقية رسمية — انقر قسماً للتحرير
               </div>
@@ -748,6 +775,7 @@ function NewDocumentInner() {
                   dateGregorian: form.dateGregorian,
                   dateHijri: form.dateHijri,
                   recipients: form.recipients,
+                  copyTo: form.copyTo,
                   parties: form.parties,
                   reasons: form.reasons,
                   studyFields: form.studyFields,

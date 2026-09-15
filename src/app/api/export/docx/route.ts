@@ -185,8 +185,9 @@ export async function GET(req: NextRequest) {
 
     let qrDataUrl: string | null = null;
     try {
-      const fields = JSON.parse(doc.fieldsJson || '{}') as { qrDataUrl?: string };
+      const fields = JSON.parse(doc.fieldsJson || '{}') as { qrDataUrl?: string; copyTo?: string };
       qrDataUrl = fields.qrDataUrl || null;
+      (doc as { _copyTo?: string })._copyTo = fields.copyTo || '';
     } catch {
       qrDataUrl = null;
     }
@@ -347,6 +348,19 @@ export async function GET(req: NextRequest) {
           children: [
             new TextRun({ text: 'إلى: ', bold: true, color: GREEN, size: 22, font: 'Arial', rightToLeft: true }),
             new TextRun({ text: doc.recipients, size: 22, font: 'Arial', rightToLeft: true }),
+          ],
+        }),
+      );
+    }
+
+    const copyToVal = String((doc as { _copyTo?: string })._copyTo || '').trim();
+    if (copyToVal) {
+      children.push(
+        new Paragraph({
+          alignment: AlignmentType.RIGHT,
+          children: [
+            new TextRun({ text: 'نسخة إلى: ', bold: true, color: GREEN, size: 22, font: 'Arial', rightToLeft: true }),
+            new TextRun({ text: copyToVal, size: 22, font: 'Arial', rightToLeft: true }),
           ],
         }),
       );

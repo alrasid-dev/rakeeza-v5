@@ -360,10 +360,10 @@ export default function LoginPage() {
         </div>
 
         <div className="text-center mb-6">
-          <div className="mx-auto mb-4 w-[4.5rem] h-[4.5rem] rounded-2xl shadow-[0_0_24px_rgba(61,143,106,0.45)] ring-1 ring-[#3d8f6a]/50 overflow-hidden">
-            <img src="/logo.svg" alt="شعار ركيزة" className="w-full h-full" />
+          <div className="mx-auto mb-4 w-24 h-24 rounded-2xl shadow-[0_0_24px_rgba(61,143,106,0.45)] ring-1 ring-[#3d8f6a]/50 overflow-hidden bg-white flex items-center justify-center p-2">
+            <img src="/brand/moj-logo-gold.png" alt="شعار وزارة العدل" className="w-full h-full object-contain" />
           </div>
-          <h1 className="text-2xl font-bold text-moj-green dark:text-white">الدخول إلى ركيزة</h1>
+          <h1 className="text-2xl font-bold text-moj-green dark:text-white">منصة ركيزة الذكية</h1>
           <p className="text-sm text-moj-gold mt-1">مكتبة المخاطبات والتعاميم</p>
           <p className="text-sm text-gray-500 dark:text-white/50 mt-2">{modeHint}</p>
         </div>

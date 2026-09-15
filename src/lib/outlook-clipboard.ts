@@ -64,6 +64,7 @@ export type OutlookLetterDoc = {
   dateGregorian?: string | null;
   dateHijri?: string | null;
   recipients?: string;
+  copyTo?: string;
   parties?: string;
   reasons?: string;
   studyFields?: string;
@@ -93,7 +94,7 @@ export function buildLetterHtml(doc: OutlookLetterDoc) {
   );
 
   // Emblem: hosted PNG first (Outlook-safe), data-uri fallback
-  const emblemSrc = origin ? `${origin}/brand/moj-emblem.png` : MOJ_EMBLEM_PNG_DATA_URL;
+  const emblemSrc = origin ? `${origin}/brand/moj-logo-gold.png` : MOJ_EMBLEM_PNG_DATA_URL;
   const emblem = `<img src="${esc(emblemSrc)}" width="64" height="64" alt="شعار وزارة العدل" style="width:64px;height:64px;border:1.5px solid ${GOLD};border-radius:10px;background:#fff;display:block" />`;
 
   // QR: public API URL when we have a number/origin; else data-uri; else dashed box
@@ -130,6 +131,7 @@ export function buildLetterHtml(doc: OutlookLetterDoc) {
 <meta charset="utf-8"/>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
 <title>مكاتبة ركيزة</title>
+<style>@media print { .cc-row, .cc-icon { display: inline-block !important; visibility: visible !important; } }</style>
 </head>
 <body style="margin:0;padding:12px;background:#f5f5f5" dir="rtl" lang="ar">
 <!--[if mso]><table role="presentation" width="700" cellpadding="0" cellspacing="0" align="center"><tr><td><![endif]-->
@@ -158,6 +160,7 @@ export function buildLetterHtml(doc: OutlookLetterDoc) {
           <div><b style="color:${GREEN}">الرقم:</b> <span dir="ltr" style="unicode-bidi:embed">${esc(doc.number || '—')}</span></div>
           <div><b style="color:${GREEN}">التاريخ:</b> ${esc(officialDateDisplay(doc.dateHijri, doc.dateGregorian))}</div>
           <div><b style="color:${GREEN}">إلى:</b> ${esc(doc.recipients || '')}</div>
+          ${doc.copyTo?.trim() ? `<div class="cc-row" style="display:inline-block"><b style="color:${GREEN}"><span class="cc-icon" style="display:inline-block;visibility:visible">⧉</span> نسخة إلى:</b> ${esc(doc.copyTo)}</div>` : ''}
           <div><b style="color:${GREEN}">الموضوع:</b> ${esc(doc.subject || '')}</div>
         </td></tr>
       </table>

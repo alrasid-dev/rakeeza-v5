@@ -16,6 +16,8 @@ const NAME_TO_FORM: Record<string, string> = {
   'طلب إحالة': 'talab-ihala',
   إفادة: 'ifada',
   'إشعار موعد': 'ishar-mawid',
+  'إشعار موعد جلسة': 'ishar-mawid-jalsa',
+  'إحالة داخلية عاجلة': 'ihala-dakhiliya-ajila',
   'رد على استفسار': 'radd-istifsar',
   'مذكرة قانونية': 'muthakkira-qanuniya',
   'نموذج حفظ': 'namudhaj-hifz',

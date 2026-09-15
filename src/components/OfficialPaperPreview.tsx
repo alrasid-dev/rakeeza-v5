@@ -19,6 +19,8 @@ export type OfficialPaperFields = {
   dateGregorian?: string | null;
   dateHijri?: string | null;
   recipients?: string | null;
+  copyTo?: string | null;
+  attachments?: string | null;
   parties?: string | null;
   facts?: string | null;
   reasons?: string | null;
@@ -37,10 +39,28 @@ function EmblemImg({ className = '' }: { className?: string }) {
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src="/moj-emblem.svg"
-      alt="شعار الوزارة"
+      src="/brand/moj-logo-gold.png"
+      alt="شعار وزارة العدل"
       className={`w-16 h-16 shrink-0 rounded-xl border-2 border-moj-gold bg-white object-contain p-0.5 ${className}`}
     />
+  );
+}
+
+function CcIcon({ className = '' }: { className?: string }) {
+  return (
+    <svg
+      className={`cc-icon inline-block w-3.5 h-3.5 align-middle text-moj-green ${className}`}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      aria-hidden
+      style={{ display: 'inline-block', visibility: 'visible' }}
+    >
+      <rect x="3" y="5" width="14" height="11" rx="1.5" />
+      <path d="M7 9h6M7 12h4" strokeLinecap="round" />
+      <path d="M19 8v9a1.5 1.5 0 0 1-1.5 1.5H8" strokeLinecap="round" />
+    </svg>
   );
 }
 
@@ -341,6 +361,8 @@ type LayoutChrome = {
   showCircularBadge: boolean;
   compact: boolean;
   identityFooter?: 'a' | 'b' | null;
+  modernHex?: boolean;
+  metaFontClass?: string;
 };
 
 function chromeFor(layout: PaperLayoutId): LayoutChrome {
@@ -432,6 +454,24 @@ function chromeFor(layout: PaperLayoutId): LayoutChrome {
         showCircularBadge: false,
         compact: false,
         identityFooter: 'b',
+      };
+    case 'modern-hex':
+      return {
+        paperBorder: '2px solid #C5A059',
+        paperBg: '#F9F7F1',
+        bismillahBg: '#006C35',
+        bismillahBorder: '#C5A059',
+        brandBorder: 'border-b border-[#C5A059]/70',
+        metaClass:
+          'mx-6 my-3 rounded-lg border border-[#C5A059]/40 bg-white/90 px-4 py-2.5 text-sm grid sm:grid-cols-2 gap-1.5 font-[family-name:var(--font-cairo),var(--font-tajawal),Tahoma,sans-serif]',
+        sectionPad: 'px-8 pb-4 space-y-3 text-sm relative z-[1]',
+        footClass: 'text-center text-xs text-white/90 py-0 bg-[#1B4332] border-0',
+        titleAccent: 'gold',
+        showCircularBadge: false,
+        compact: false,
+        identityFooter: null,
+        modernHex: true,
+        metaFontClass: 'font-[family-name:var(--font-cairo),Tajawal,Tahoma,sans-serif]',
       };
     case 'classic-green':
     default:
@@ -595,12 +635,26 @@ export default function OfficialPaperPreview({
 
   return (
     <div className="w-full max-w-full overflow-x-auto">
+      <style>{`@media print { .cc-row, .cc-icon { display: inline-block !important; visibility: visible !important; } }`}</style>
       <div
         dir="rtl"
-        className={`bg-white text-gray-900 rounded-lg overflow-hidden shadow-sm font-arabic min-w-[min(100%,20rem)] max-w-full [&_pre]:text-gray-900 [&_pre]:opacity-100 ${className}`}
+        className={`bg-white text-gray-900 rounded-lg overflow-hidden shadow-sm font-arabic min-w-[min(100%,20rem)] max-w-full [&_pre]:text-gray-900 [&_pre]:opacity-100 relative ${className}`}
         style={{ border: chrome.paperBorder, background: chrome.paperBg || '#fff', fontFamily, fontSize, textAlign }}
         data-paper-layout={layout}
       >
+        {chrome.modernHex && (
+          <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
+            <div
+              className="absolute left-0 top-0 bottom-16 w-16 opacity-25 bg-no-repeat bg-left bg-contain"
+              style={{ backgroundImage: 'url(/brand/letter-hex-bg.jpg)' }}
+            />
+            <svg className="absolute left-2 top-24 w-14 h-28 opacity-40" viewBox="0 0 60 120" fill="none">
+              <polygon points="30,4 54,18 54,46 30,60 6,46 6,18" stroke="#C5A059" strokeWidth="1.5" fill="#006C35" fillOpacity="0.25" />
+              <polygon points="30,40 48,50 48,70 30,80 12,70 12,50" stroke="#006C35" strokeWidth="1.2" fill="#C5A059" fillOpacity="0.2" />
+              <polygon points="30,72 44,80 44,96 30,104 16,96 16,80" stroke="#C5A059" strokeWidth="1" fill="none" />
+            </svg>
+          </div>
+        )}
         <div
           className={`text-center text-white font-bold ${chrome.compact ? 'py-1.5 text-xs' : 'py-2 text-sm'} border-b-[3px]`}
           style={{ background: chrome.bismillahBg, borderColor: chrome.bismillahBorder }}
@@ -629,6 +683,21 @@ export default function OfficialPaperPreview({
             <span className="text-moj-green font-bold">إلى: </span>
             {doc.recipients || '—'}
           </Clickable>
+          {doc.copyTo?.trim() ? (
+            <Clickable field="copyTo" onFieldClick={onFieldClick} className="sm:col-span-2 cc-row">
+              <span className="text-moj-green font-bold inline-flex items-center gap-1">
+                <CcIcon />
+                نسخة إلى:{' '}
+              </span>
+              {doc.copyTo}
+            </Clickable>
+          ) : null}
+          {doc.attachments?.trim() ? (
+            <div className="sm:col-span-2">
+              <span className="text-moj-green font-bold">مرفقات: </span>
+              {doc.attachments}
+            </div>
+          ) : null}
           <Clickable field="subject" onFieldClick={onFieldClick} className="sm:col-span-2">
             <span className="text-moj-green font-bold">الموضوع: </span>
             {previewSubject}
@@ -733,7 +802,10 @@ export default function OfficialPaperPreview({
               </svg>
             </div>
           )}
-          <div className={chrome.identityFooter ? 'py-2.5 px-3' : undefined}>{footer}</div>
+          {chrome.modernHex && (
+            <div className="h-1 bg-[#C5A059]" aria-hidden />
+          )}
+          <div className={chrome.identityFooter || chrome.modernHex ? 'py-2.5 px-3' : undefined}>{footer}</div>
         </div>
       </div>
     </div>

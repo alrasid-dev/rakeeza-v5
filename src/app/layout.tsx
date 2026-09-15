@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Amiri, Cairo, IBM_Plex_Sans_Arabic, Noto_Naskh_Arabic, Scheherazade_New } from 'next/font/google';
+import { Amiri, Cairo, IBM_Plex_Sans_Arabic, Noto_Naskh_Arabic, Scheherazade_New, Tajawal } from 'next/font/google';
 import './globals.css';
 import PwaRegister from '@/components/PwaRegister';
 import ThemeProvider from '@/components/ThemeProvider';
@@ -39,11 +39,18 @@ const cairo = Cairo({
   display: 'swap',
 });
 
+const tajawal = Tajawal({
+  subsets: ['arabic'],
+  variable: '--font-tajawal',
+  weight: ['400', '500', '700'],
+  display: 'swap',
+});
+
 export const metadata: Metadata = {
   title: 'ركيزة — مكتبة المخاطبات والتعاميم',
   description: 'ركيزة — مكتبة المخاطبات والتعاميم — المحكمة العمالية بالرياض — v5.0.0',
   manifest: '/manifest.json',
-  icons: { icon: '/logo.svg' },
+  icons: { icon: [{ url: '/brand/moj-icon-64.png', type: 'image/png', sizes: '64x64' }, { url: '/icons/icon-192.png', type: 'image/png', sizes: '192x192' }] },
 };
 
 export const viewport: Viewport = {
@@ -57,7 +64,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html
       lang="ar"
       dir="rtl"
-      className={`${notoNaskh.variable} ${amiri.variable} ${scheherazade.variable} ${ibmPlex.variable} ${cairo.variable}`}
+      className={`${notoNaskh.variable} ${amiri.variable} ${scheherazade.variable} ${ibmPlex.variable} ${cairo.variable} ${tajawal.variable}`}
       suppressHydrationWarning
     >
       <head>
@@ -69,6 +76,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             --font-scheherazade-stack: var(--font-scheherazade), "Scheherazade New", "Sakkal Majalla", serif;
             --font-ibm-stack: var(--font-ibm-plex-ar), "IBM Plex Sans Arabic", Tahoma, sans-serif;
             --font-cairo-stack: var(--font-cairo), "Cairo", Tahoma, sans-serif;
+            --font-tajawal-stack: var(--font-tajawal), "Tajawal", Tahoma, sans-serif;
           }
         `}</style>
       </head>

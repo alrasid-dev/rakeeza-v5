@@ -44,7 +44,9 @@ export default function PaperLayoutPicker({
                   className="h-2 flex-1 rounded-sm"
                   style={{
                     background:
-                      l.id === 'formal-gold'
+                      l.id === 'modern-hex'
+                        ? '#F9F7F1'
+                        : l.id === 'formal-gold'
                         ? '#C5A059'
                         : l.id === 'taameem-circular'
                           ? '#004d26'
@@ -54,14 +56,18 @@ export default function PaperLayoutPicker({
                               ? '#147A5F'
                               : '#006C35',
                     border:
-                      l.id === 'identity-service-a' ? '1px solid #C5A059' : undefined,
+                      l.id === 'identity-service-a' || l.id === 'modern-hex'
+                        ? '1px solid #C5A059'
+                        : undefined,
                   }}
                 />
                 <span
                   className="h-2 w-6 rounded-sm"
                   style={{
                     background:
-                      l.id === 'identity-service-a'
+                      l.id === 'modern-hex'
+                        ? '#1B4332'
+                        : l.id === 'identity-service-a'
                         ? '#006C35'
                         : l.id === 'identity-service-b'
                           ? '#0B6E4F'

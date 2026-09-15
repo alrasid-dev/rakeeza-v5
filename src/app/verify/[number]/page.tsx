@@ -21,7 +21,7 @@ export default async function VerifyPage({ params }: { params: { number: string 
   return (
     <div className="min-h-screen bg-moj-light flex items-center justify-center p-4" dir="rtl">
       <div className="bg-white rounded-2xl shadow border max-w-lg w-full p-8 text-center">
-        <img src="/logo.svg" alt="" className="w-16 h-16 mx-auto mb-3" />
+        <img src="/brand/moj-logo-gold.png" alt="شعار وزارة العدل" className="w-20 h-20 mx-auto mb-3 object-contain" />
         <h1 className="text-xl font-bold text-moj-green mb-1">التحقق من المكاتبة</h1>
         <p className="text-sm text-gray-500 mb-6">ركيزة — المحكمة العمالية بالرياض</p>
         {!doc ? (

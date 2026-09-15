@@ -18,6 +18,8 @@ export type OfficialLetterDoc = {
   dateGregorian?: string | null;
   dateHijri?: string | null;
   recipients?: string | null;
+  copyTo?: string | null;
+  attachments?: string | null;
   parties?: string | null;
   facts?: string | null;
   reasons?: string | null;
@@ -109,7 +111,8 @@ function studyHtml(s: StudySections) {
 }
 
 /** Raster emblem (stable in Chromium PDF / Outlook) — SVG kept as tiny fallback */
-const EMBLEM_IMG = `<img src="${MOJ_EMBLEM_PNG_DATA_URL}" alt="شعار" width="64" height="64" style="width:64px;height:64px;object-fit:contain;display:block" />`;
+const EMBLEM_IMG = `<img src="${MOJ_EMBLEM_PNG_DATA_URL}" alt="شعار وزارة العدل" width="64" height="64" style="width:64px;height:64px;object-fit:contain;display:block" />`;
+const EMBLEM_IMG_FILE = `<img src="/brand/moj-logo-gold.png" alt="شعار وزارة العدل" width="64" height="64" style="width:64px;height:64px;object-fit:contain;display:block" onerror="this.src='/brand/moj-emblem.png'" />`;
 
 function geometricFooterSvg(variant: 'a' | 'b') {
   const g = IDENTITY_COLORS.green;
@@ -191,6 +194,20 @@ function layoutTheme(layout: PaperLayoutId) {
         foot: `border-top:none;background:transparent;padding:0;`,
         extraChrome: `<div style="line-height:0">${geometricFooterSvg('b')}</div>`,
       };
+    case 'modern-hex':
+      return {
+        paperBg: '#F9F7F1',
+        paperBorder: `2px solid ${IDENTITY_COLORS.gold}`,
+        bismillah: `background:${IDENTITY_COLORS.green};border-bottom:3px solid ${IDENTITY_COLORS.gold};`,
+        meta: `background:#fff;border:1px solid ${IDENTITY_COLORS.gold}66;border-radius:8px;font-family:Cairo,Tajawal,Tahoma,sans-serif;`,
+        foot: `border-top:3px solid ${IDENTITY_COLORS.gold};background:#1B4332;color:#f5f5f5;`,
+        extraChrome: `<div style="position:relative;line-height:0;height:36px;background:#1B4332">
+          <svg xmlns="http://www.w3.org/2000/svg" width="80" height="36" viewBox="0 0 80 36" style="position:absolute;left:4px;bottom:0;opacity:0.55" aria-hidden="true">
+            <polygon points="20,2 36,11 36,29 20,38 4,29 4,11" fill="${IDENTITY_COLORS.gold}" opacity="0.45"/>
+            <polygon points="44,6 56,13 56,27 44,34 32,27 32,13" fill="none" stroke="${IDENTITY_COLORS.gold}" stroke-width="1.2"/>
+          </svg>
+        </div>`,
+      };
     default:
       return {
         paperBg: '#fff',
@@ -236,7 +253,8 @@ body { margin: 0; color: #111; }
     ? `<img src="${esc(doc.qrDataUrl)}" alt="QR" style="width:72px;height:72px;border:1px solid ${GOLD};border-radius:6px;background:#fff;display:block" />`
     : `<div style="width:72px;height:72px;border:1px dashed ${GOLD};border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;color:${GREEN};background:#fff">QR</div>`;
 
-  const emblem = `<div style="width:64px;height:64px;border:1.5px solid ${GOLD};border-radius:12px;background:#fff;overflow:hidden;display:flex;align-items:center;justify-content:center">${EMBLEM_IMG}</div>`;
+  const emblemInner = opts?.forPdf ? EMBLEM_IMG : EMBLEM_IMG_FILE;
+  const emblem = `<div style="width:64px;height:64px;border:1.5px solid ${GOLD};border-radius:12px;background:#fff;overflow:hidden;display:flex;align-items:center;justify-content:center">${emblemInner}</div>`;
 
   const study = doc.studySections
     ? enrichStudySections(doc.studySections, {
@@ -334,6 +352,9 @@ body {
   font-size: 11px;
   ${theme.foot}
 }
+@media print {
+  .cc-row, .cc-icon { display: inline-block !important; visibility: visible !important; }
+}
 </style>
 </head>
 <body>
@@ -344,9 +365,19 @@ body {
     <div><span class="label">الرقم:</span> <span dir="ltr">${esc(doc.number || '—')}</span></div>
     <div><span class="label">التاريخ:</span> ${esc(officialDateDisplay(doc.dateHijri, doc.dateGregorian))}</div>
     <div style="grid-column:1/-1"><span class="label">إلى:</span> ${esc(doc.recipients || '—')}</div>
+    ${
+      doc.copyTo?.trim()
+        ? `<div class="cc-row" style="grid-column:1/-1;display:inline-block"><span class="label"><span class="cc-icon" style="display:inline-block;visibility:visible;margin-inline-end:4px">⧉</span>نسخة إلى:</span> ${esc(doc.copyTo)}</div>`
+        : ''
+    }
+    ${
+      doc.attachments?.trim()
+        ? `<div style="grid-column:1/-1"><span class="label">مرفقات:</span> ${esc(doc.attachments)}</div>`
+        : ''
+    }
     <div style="grid-column:1/-1"><span class="label">الموضوع:</span> ${esc(previewSubject)}</div>
   </div>
-  <div class="section">
+  <div class="section" style="${layout === 'modern-hex' ? 'padding-inline:28px' : ''}">
     ${hasStudy && study ? studyHtml(study) : ''}
     ${
       !hasStudy && doc.parties

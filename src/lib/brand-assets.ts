@@ -17,10 +17,15 @@ export const BRAND = {
   basmala: 'بسم الله الرحمن الرحيم',
 } as const;
 
-/** Raw PNG bytes for docx/exceljs image embedding */
+/** Prefer official MOJ gold logo; fall back to legacy emblem / embedded data URL */
 export function loadEmblemPng(): Buffer {
-  const p = path.join(process.cwd(), 'public', 'brand', 'moj-emblem.png');
-  if (fs.existsSync(p)) return fs.readFileSync(p);
+  const candidates = [
+    path.join(process.cwd(), 'public', 'brand', 'moj-logo-gold.png'),
+    path.join(process.cwd(), 'public', 'brand', 'moj-emblem.png'),
+  ];
+  for (const p of candidates) {
+    if (fs.existsSync(p)) return fs.readFileSync(p);
+  }
   const b64 = MOJ_EMBLEM_PNG_DATA_URL.replace(/^data:image\/png;base64,/, '');
   return Buffer.from(b64, 'base64');
 }
