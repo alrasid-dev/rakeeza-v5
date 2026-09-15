@@ -95,7 +95,7 @@ export function buildLetterHtml(doc: OutlookLetterDoc) {
   );
 
   // Emblem: hosted PNG first (Outlook-safe), data-uri fallback
-  const emblemSrc = origin ? `${origin}/brand/moj-logo-gold.png` : MOJ_EMBLEM_PNG_DATA_URL;
+  const emblemSrc = MOJ_EMBLEM_PNG_DATA_URL;
   const emblem = `<img src="${esc(emblemSrc)}" width="64" height="64" alt="شعار وزارة العدل" style="width:64px;height:64px;border:1.5px solid ${GOLD};border-radius:10px;background:#fff;display:block" />`;
 
   // QR: public API URL when we have a number/origin; else data-uri; else dashed box

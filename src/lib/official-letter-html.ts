@@ -111,9 +111,9 @@ function studyHtml(s: StudySections) {
   </div>`;
 }
 
-/** Raster emblem (stable in Chromium PDF / Outlook) — SVG kept as tiny fallback */
-const EMBLEM_IMG = `<img src="${MOJ_EMBLEM_PNG_DATA_URL}" alt="شعار وزارة العدل" width="64" height="64" style="width:64px;height:64px;object-fit:contain;display:block" />`;
-const EMBLEM_IMG_FILE = `<img src="/brand/moj-logo-gold.png" alt="شعار وزارة العدل" width="64" height="64" style="width:64px;height:64px;object-fit:contain;display:block" onerror="this.src='/brand/moj-emblem.png'" />`;
+/** Always embed MOJ logo as data URL so PDF/DOCX/print never fall back to old icon */
+const EMBLEM_IMG = `<img src="${MOJ_EMBLEM_PNG_DATA_URL}" alt="شعار وزارة العدل" width="72" height="72" style="width:72px;height:72px;object-fit:contain;display:block" />`;
+const EMBLEM_IMG_FILE = EMBLEM_IMG;
 
 function geometricFooterSvg(variant: 'a' | 'b') {
   const g = IDENTITY_COLORS.green;
