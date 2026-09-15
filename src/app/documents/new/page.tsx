@@ -204,7 +204,7 @@ function NewDocumentInner() {
       setPolishIssues(findPolishIssues(blob));
     }, 500);
     return () => window.clearTimeout(handle);
-  }, [form.body, form.reasons, form.studyFields, form.subject, form.parties, form.recipients]);
+  }, [form.body, form.reasons, form.studyFields, form.subject, form.parties, form.recipients, form.copyTo]);
 
   /** Smart paste REPLACES fields — never merges/appends with previous body */
   function applyPaste() {
