@@ -12,6 +12,7 @@ import {
 import { officialDateDisplay } from '@/lib/hijri';
 import { fontStackFor } from '@/lib/font-stacks';
 import { enrichStudySections, hasStudyContent, studyDisplayMeta } from '@/lib/study-display';
+import { BRAND } from '@/lib/brand';
 
 export type OfficialPaperFields = {
   number?: string | null;
@@ -550,7 +551,7 @@ function BrandHeader({
         >
           {court}
         </div>
-        {!compact && <div className="text-moj-gold text-xs mt-0.5">منصة ركيزة الذكية</div>}
+        {!compact && <div className="text-moj-gold text-xs mt-0.5">{BRAND.platform}</div>}
       </div>
     </div>
   );

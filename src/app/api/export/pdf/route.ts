@@ -8,7 +8,7 @@ import { hasOfficialOutgoingNumber } from '@/lib/honorific';
 import { attachmentDisposition } from '@/lib/download-headers';
 import { officialDateDisplay } from '@/lib/hijri';
 import { wrapArabicLines } from '@/lib/arabic-pdf-text';
-import { loadEmblemPng } from '@/lib/brand-assets';
+import { loadEmblemPng, BRAND } from '@/lib/brand-assets';
 import { jsPDF } from 'jspdf';
 import QRCode from 'qrcode';
 
@@ -209,7 +209,7 @@ function pdfViaJsPdf(doc: {
   for (const h of doc.headerLines.slice(0, 3)) {
     writeAr(h, h.includes('محكمة') || h.includes('المحكمة') ? 13 : 11, [0, 108, 53], 'right');
   }
-  writeAr('منصة ركيزة الذكية', 9, [197, 160, 89], 'right');
+  writeAr(BRAND.platform, 9, [197, 160, 89], 'right');
   y = Math.max(y, 48);
 
   writeAr(`الرقم: ${doc.number || '—'}`, 11);

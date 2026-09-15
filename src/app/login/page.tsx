@@ -4,6 +4,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import ThemeToggle from '@/components/ThemeToggle';
 import { IconFingerprint } from '@/components/Icons';
+import { BRAND } from '@/lib/brand';
 
 type Mode = 'pin' | 'setup' | 'fingerprint';
 
@@ -363,7 +364,7 @@ export default function LoginPage() {
           <div className="mx-auto mb-4 w-24 h-24 rounded-2xl shadow-[0_0_24px_rgba(61,143,106,0.45)] ring-1 ring-[#3d8f6a]/50 overflow-hidden bg-white flex items-center justify-center p-2">
             <img src="/brand/moj-logo-gold.png" alt="شعار وزارة العدل" className="w-full h-full object-contain" />
           </div>
-          <h1 className="text-2xl font-bold text-moj-green dark:text-white">منصة ركيزة الذكية</h1>
+          <h1 className="text-2xl font-bold text-moj-green dark:text-white">{BRAND.platform}</h1>
           <p className="text-sm text-moj-gold mt-1">مكتبة المخاطبات والتعاميم</p>
           <p className="text-sm text-gray-500 dark:text-white/50 mt-2">{modeHint}</p>
         </div>

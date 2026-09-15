@@ -4,6 +4,41 @@ const HONORIFIC_BEFORE = /(?:^|[\s،.:؛])(?:فضيلة|سعادة|معالي|س
 const FAMILY_AFTER = /^\s+(?:بن\s+|ابن\s+|آل[\u0600-\u06FF])/;
 const NAME_LIKE_ALIASES = new Set(['علي', 'الى', 'الي']); // ambiguous short tokens
 
+/** Correct judicial MSA endings — never flag these as errors and never flip ى→ي on them. */
+const PROTECTED_FORMS = [
+  'على',
+  'إلى',
+  'الى',
+  'لدى',
+  'حتى',
+  'الدعوى',
+  'دعوى',
+  'المدعى',
+  'شكوى',
+  'فتوى',
+  'مستشفى',
+] as const;
+
+/**
+ * Forbidden suggestion flips: found (already correct) → suggestion (corrupt).
+ * Never propose these in findPolishIssues.
+ */
+const FORBIDDEN_FLIPS: [string, string][] = [
+  ['المدعى', 'المدعي'],
+  ['المدعى عليه', 'المدعي عليه'],
+  ['المدعى عليها', 'المدعي عليها'],
+  ['الدعوى', 'الدعوي'],
+  ['دعوى', 'دعوي'],
+  ['على', 'علي'],
+  ['إلى', 'الي'],
+  ['إلى', 'الى'],
+  ['لدى', 'لدي'],
+  ['حتى', 'حتي'],
+  ['شكوى', 'شكوي'],
+  ['فتوى', 'فتوي'],
+  ['مستشفى', 'مستشفي'],
+];
+
 const REPLACEMENTS: [RegExp, string][] = [
   [/ +/g, ' '],
   [/\u0640+/g, ''], // tatweel
@@ -18,8 +53,7 @@ const REPLACEMENTS: [RegExp, string][] = [
   [/(^|[\s،.])اذا(?=[\s]|$)/g, '$1إذا'],
   [/(^|[\s،.])او(?=[\s]|$)/g, '$1أو'],
 
-  // hamza / common typos
-  [/ى(?=\s|$|[.،؛:!؟\)])/g, 'ي'],
+  // hamza / common typos — NEVER global ى→ي (destroys judicial MSA: على/إلى/الدعوى/المدعى)
   [/(^|\s)ان(?=\s|$)/g, '$1أن'],
   [/\bان لا\b/g, 'ألا'],
   [/\bالي\b/g, 'إلى'],
@@ -43,10 +77,15 @@ const REPLACEMENTS: [RegExp, string][] = [
   [/السعوديه/g, 'السعودية'],
   [/العداله/g, 'العدالة'],
   [/المحاكمه/g, 'المحاكمة'],
-  [/الدعوي(?!\s)/g, 'الدعوى'],
-  [/دعوي\b/g, 'دعوى'],
+
+  // Judicial MSA — corrupt ي → correct ى (correct direction ONLY)
+  [/المدعي عليها/g, 'المدعى عليها'],
+  [/(^|[^\u0600-\u06FF])المدعي عليه(?=[^\u0600-\u06FF]|$)/g, '$1المدعى عليه'],
+  [/الدعوي/g, 'الدعوى'],
+  [/(^|[^\u0600-\u06FF])دعوي(?=[^\u0600-\u06FF]|$)/g, '$1دعوى'],
   [/قضيه/g, 'قضية'],
   [/شكوي/g, 'شكوى'],
+  [/فتوي/g, 'فتوى'],
   [/مذكره/g, 'مذكرة'],
   [/محضره/g, 'محضرة'],
   [/نتيجه/g, 'نتيجة'],
@@ -167,12 +206,41 @@ export type PolishIssue = {
   message: string;
 };
 
+export type LegalPhraseSuggestion = {
+  found: string;
+  suggestion: string;
+  message: string;
+};
+
 const STYLE_MARKERS: { found: string; suggestion: string; message: string }[] = [
   { found: 'طيب', suggestion: '—', message: 'لفظ غير رسمي — يُحذف في الصياغة القضائية' },
   { found: 'اللي', suggestion: 'الذي', message: 'صيغة عامية — يُفضّل «الذي»' },
   { found: 'علشان', suggestion: 'من أجل', message: 'صيغة عامية — يُفضّل «من أجل»' },
   { found: 'عشان', suggestion: 'من أجل', message: 'صيغة عامية — يُفضّل «من أجل»' },
   { found: 'يعني', suggestion: 'أي', message: 'صيغة غير رسمية — يُفضّل «أي»' },
+];
+
+/** Informal / weak openings → concise formal judicial phrasing */
+const LEGAL_PHRASE_RULES: { found: string; suggestion: string; message: string }[] = [
+  { found: 'نحب نبلغكم', suggestion: 'نود إشعاركم', message: 'افتتاح غير رسمي' },
+  { found: 'نحب نحيطكم', suggestion: 'نحيطكم علماً', message: 'افتتاح غير رسمي' },
+  { found: 'نبغى نبلغكم', suggestion: 'نود إشعاركم', message: 'افتتاح عامي' },
+  { found: 'نبي نبلغكم', suggestion: 'نود إشعاركم', message: 'افتتاح عامي' },
+  { found: 'يرجى العلم', suggestion: 'نحيطكم علماً', message: 'صياغة أقصر وأقوى' },
+  { found: 'نرجو العلم', suggestion: 'نحيطكم علماً', message: 'صياغة قضائية مختصرة' },
+  { found: 'نود إفادتكم', suggestion: 'نحيطكم علماً', message: 'صياغة قضائية مختصرة' },
+  { found: 'حابين نبلغكم', suggestion: 'نود إشعاركم', message: 'افتتاح عامي' },
+  { found: 'بصراحة', suggestion: '—', message: 'لفظ غير قضائي — يُحذف' },
+  { found: 'والله', suggestion: '—', message: 'حشو غير رسمي في المتن (إلا إن كان ختاماً معتاداً)' },
+  { found: 'طيب', suggestion: '—', message: 'لفظ غير رسمي — يُحذف' },
+  { found: 'اللي', suggestion: 'الذي', message: 'صيغة عامية' },
+  { found: 'علشان', suggestion: 'من أجل', message: 'صيغة عامية' },
+  { found: 'عشان', suggestion: 'من أجل', message: 'صيغة عامية' },
+  { found: 'ما فيه', suggestion: 'لا يوجد', message: 'صيغة عامية' },
+  { found: 'مافي', suggestion: 'لا يوجد', message: 'صيغة عامية' },
+  { found: 'لازم', suggestion: 'يتعين', message: 'صيغة غير رسمية' },
+  { found: 'بالسرعة', suggestion: 'على وجه السرعة', message: 'صياغة قضائية' },
+  { found: 'بأقرب وقت', suggestion: 'في أقرب وقت ممكن', message: 'صياغة أوضح' },
 ];
 
 function escapeRe(s: string): string {
@@ -223,6 +291,32 @@ function collectTokenDiffs(before: string, after: string): { found: string; sugg
   return out;
 }
 
+function isForbiddenFlip(found: string, suggestion: string): boolean {
+  const f = stripEdgeJunk(found);
+  const s = stripEdgeJunk(suggestion);
+  for (const [ok, bad] of FORBIDDEN_FLIPS) {
+    if (f === ok && s === bad) return true;
+    // multi-word only: e.g. «المدعى عليه» → «المدعي عليه»
+    if (ok.includes(' ') && f === ok && s === bad) return true;
+  }
+  // Never suggest changing a protected form into a ي-ending corrupt twin
+  for (const p of PROTECTED_FORMS) {
+    if (f === p && s !== p && s.replace(/ى/g, 'ي') === f.replace(/ى/g, 'ي')) {
+      if (f.includes('ى') && s.includes('ي') && !s.includes('ى')) return true;
+    }
+  }
+  // Correct compound already present must never be flipped back
+  if (f === 'المدعى عليه' && s === 'المدعي عليه') return true;
+  if (f === 'المدعى عليها' && s === 'المدعي عليها') return true;
+  if (f === 'الدعوى' && s === 'الدعوي') return true;
+  return false;
+}
+
+function isProtectedToken(token: string): boolean {
+  const t = stripEdgeJunk(token);
+  return (PROTECTED_FORMS as readonly string[]).includes(t);
+}
+
 function shouldSkipAmbiguousName(raw: string, found: string, suggestion: string): boolean {
   if (found === suggestion) return true;
   if (!NAME_LIKE_ALIASES.has(found) && found !== 'علي') return false;
@@ -231,6 +325,33 @@ function shouldSkipAmbiguousName(raw: string, found: string, suggestion: string)
     if (idx !== -1 && isNameLikeAli(raw, idx)) return true;
   }
   return false;
+}
+
+/**
+ * Short formal rewrite proposals for common informal/weak openings.
+ * Returns 1–3 concise suggestions when body text contains matchable phrases.
+ */
+export function suggestLegalPhrases(text: string): LegalPhraseSuggestion[] {
+  const raw = String(text || '');
+  if (!raw.trim()) return [];
+  const out: LegalPhraseSuggestion[] = [];
+  const seen = new Set<string>();
+  for (const rule of LEGAL_PHRASE_RULES) {
+    if (!raw.includes(rule.found) && !hasArabicWord(raw, rule.found)) continue;
+    // require word-ish presence for short tokens
+    if (rule.found.length <= 4 && !hasArabicWord(raw, rule.found)) continue;
+    if (rule.found.length > 4 && !raw.includes(rule.found)) continue;
+    const key = `${rule.found}→${rule.suggestion}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({
+      found: rule.found,
+      suggestion: rule.suggestion,
+      message: rule.message,
+    });
+    if (out.length >= 3) break;
+  }
+  return out;
 }
 
 /**
@@ -248,6 +369,12 @@ export function findPolishIssues(text: string): PolishIssue[] {
     const found = stripEdgeJunk(issue.found) || issue.found.trim();
     const suggestion = stripEdgeJunk(issue.suggestion) || issue.suggestion.trim();
     if (!found || found === suggestion) return;
+    if (isProtectedToken(found) && isForbiddenFlip(found, suggestion)) return;
+    if (isForbiddenFlip(found, suggestion)) return;
+    // Bare «المدعي» (plaintiff) must never become «المدعى» — only the compound «المدعي عليه/عليها»
+    if (found === 'المدعي' && suggestion === 'المدعى') return;
+    // Never flag a protected correct form as an error at all
+    if (isProtectedToken(found) && suggestion.replace(/ى/g, 'ي') === found.replace(/ى/g, 'ي')) return;
     if (shouldSkipAmbiguousName(raw, found, suggestion)) return;
     const key = `${issue.type}:${found}→${suggestion}`;
     if (seen.has(key)) return;
@@ -278,6 +405,44 @@ export function findPolishIssues(text: string): PolishIssue[] {
     });
   }
 
+  // Explicit judicial MSA corrections (correct direction only)
+  // Check feminine first so «المدعي عليها» is not also matched as «المدعي عليه»
+  if (raw.includes('المدعي عليها')) {
+    add({
+      type: 'spelling',
+      found: 'المدعي عليها',
+      suggestion: 'المدعى عليها',
+      message: 'إملائي قضائي: «المدعي عليها» → «المدعى عليها»',
+    });
+  }
+  if (/(^|[^\u0600-\u06FF])المدعي عليه(?=[^\u0600-\u06FF]|$)/.test(raw)) {
+    add({
+      type: 'spelling',
+      found: 'المدعي عليه',
+      suggestion: 'المدعى عليه',
+      message: 'إملائي قضائي: «المدعي عليه» → «المدعى عليه»',
+    });
+  }
+  if (/(^|[^\u0600-\u06FF])الدعوي(?=[^\u0600-\u06FF]|$)/.test(raw) || raw.includes('الدعوي')) {
+    // only if actually الدعوي (with ي), not الدعوى
+    if (raw.includes('الدعوي')) {
+      add({
+        type: 'spelling',
+        found: 'الدعوي',
+        suggestion: 'الدعوى',
+        message: 'إملائي قضائي: «الدعوي» → «الدعوى»',
+      });
+    }
+  }
+  if (hasArabicWord(raw, 'دعوي')) {
+    add({
+      type: 'spelling',
+      found: 'دعوي',
+      suggestion: 'دعوى',
+      message: 'إملائي قضائي: «دعوي» → «دعوى»',
+    });
+  }
+
   // Discrete replacements from polishSpelling vs input (detection only)
   const polished = polishSpelling(raw);
   for (const d of collectTokenDiffs(raw, polished)) {
@@ -304,6 +469,7 @@ export function findPolishIssues(text: string): PolishIssue[] {
     ),
   );
   for (const token of tokens) {
+    if (isProtectedToken(token)) continue;
     if (token === 'علي') {
       // only flag if at least one occurrence is not name-like
       let i = 0;

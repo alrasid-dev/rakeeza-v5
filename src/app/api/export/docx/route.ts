@@ -4,7 +4,7 @@ import { getSession } from '@/lib/auth';
 import { hasOfficialOutgoingNumber } from '@/lib/honorific';
 import { attachmentDisposition } from '@/lib/download-headers';
 import { officialDateDisplay } from '@/lib/hijri';
-import { loadEmblemPng, dataUrlToBuffer } from '@/lib/brand-assets';
+import { loadEmblemPng, dataUrlToBuffer, BRAND } from '@/lib/brand-assets';
 import QRCode from 'qrcode';
 import {
   Document,
@@ -266,7 +266,7 @@ export async function GET(req: NextRequest) {
         spacing: { after: 80 },
         children: [
           new TextRun({
-            text: 'منصة ركيزة الذكية',
+            text: BRAND.platform,
             color: GOLD,
             size: 18,
             font: 'Arial',

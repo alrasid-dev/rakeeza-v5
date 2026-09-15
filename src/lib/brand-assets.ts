@@ -2,20 +2,9 @@
 import fs from 'fs';
 import path from 'path';
 import { MOJ_EMBLEM_PNG_DATA_URL } from '@/lib/brand-emblem-data';
+import { BRAND } from '@/lib/brand';
 
-export { MOJ_EMBLEM_PNG_DATA_URL };
-
-export const BRAND = {
-  green: '#006C35',
-  gold: '#C5A059',
-  light: '#E6F2EB',
-  kingdom: 'المملكة العربية السعودية',
-  ministry: 'وزارة العدل',
-  court: 'المحكمة العمالية بالرياض',
-  platform: 'منصة ركيزة الذكية',
-  footer: 'للاستخدام الداخلي فقط',
-  basmala: 'بسم الله الرحمن الرحيم',
-} as const;
+export { MOJ_EMBLEM_PNG_DATA_URL, BRAND };
 
 /** Prefer official MOJ gold logo; fall back to legacy emblem / embedded data URL */
 export function loadEmblemPng(): Buffer {

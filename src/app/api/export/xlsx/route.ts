@@ -4,7 +4,7 @@ import { getSession } from '@/lib/auth';
 import { hasOfficialOutgoingNumber } from '@/lib/honorific';
 import { attachmentDisposition } from '@/lib/download-headers';
 import { officialDateDisplay } from '@/lib/hijri';
-import { loadEmblemPng } from '@/lib/brand-assets';
+import { loadEmblemPng, BRAND } from '@/lib/brand-assets';
 import ExcelJS from 'exceljs';
 
 const GREEN = '006C35';
@@ -102,7 +102,7 @@ export async function GET(req: NextRequest) {
     styleHeaderCell(r3.getCell(1), { fill: GREEN, size: 14 });
     r3.height = 22;
 
-    const r4 = ws.addRow(['منصة ركيزة الذكية']);
+    const r4 = ws.addRow([BRAND.platform]);
     ws.mergeCells(r4.number, 1, r4.number, 4);
     styleHeaderCell(r4.getCell(1), { fill: GOLD, color: '1A1A1A', size: 11 });
 

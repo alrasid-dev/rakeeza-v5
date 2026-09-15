@@ -14,7 +14,7 @@ import type { StudySections } from '@/lib/parse-study';
 import { enrichStudySections } from '@/lib/study-display';
 import { clearDraft, clearAllDrafts, loadDraft, saveDraft } from '@/lib/draft-store';
 import { suggestFont } from '@/lib/font-suggest';
-import { applyPolishFix, findPolishIssues, type PolishIssue } from '@/lib/arabic-polish';
+import { applyPolishFix, findPolishIssues, suggestLegalPhrases, type PolishIssue, type LegalPhraseSuggestion } from '@/lib/arabic-polish';
 import { DEFAULT_PAPER_LAYOUT, normalizePaperLayout, type PaperLayoutId } from '@/lib/paper-layouts';
 import {
   formatHijri,
@@ -65,6 +65,7 @@ function NewDocumentInner() {
     { location: string; issue: string; suggestion: string }[]
   >([]);
   const [polishIssues, setPolishIssues] = useState<PolishIssue[]>([]);
+  const [legalPhrases, setLegalPhrases] = useState<LegalPhraseSuggestion[]>([]);
   const [style, setStyle] = useState<DocStyle>({
     fontFamily: 'Traditional Arabic',
     fontSizePt: 16,
@@ -202,6 +203,7 @@ function NewDocumentInner() {
     const handle = window.setTimeout(() => {
       const blob = [form.body, form.reasons, form.studyFields, form.subject, form.parties, form.recipients, form.copyTo].join('\n');
       setPolishIssues(findPolishIssues(blob));
+      setLegalPhrases(suggestLegalPhrases(form.body || form.reasons || blob));
     }, 500);
     return () => window.clearTimeout(handle);
   }, [form.body, form.reasons, form.studyFields, form.subject, form.parties, form.recipients, form.copyTo]);
@@ -284,6 +286,8 @@ function NewDocumentInner() {
     setStudySections(null);
     setDetectedKind('');
     setFontCorrections([]);
+    setPolishIssues([]);
+    setLegalPhrases([]);
     setSavedDocId(null);
     setDraftRestored(false);
     setStep(formSlug || templateIdParam ? 2 : 1);
@@ -317,14 +321,25 @@ function NewDocumentInner() {
     setForm(next);
     const blob = POLISH_FIELDS.map((k) => next[k] || '').join('\n');
     setPolishIssues(findPolishIssues(blob));
+    setLegalPhrases(suggestLegalPhrases(next.body || next.reasons || blob));
+  }
+
+  function acceptLegalPhrase(phrase: LegalPhraseSuggestion) {
+    acceptPolishIssue({
+      type: 'style',
+      found: phrase.found,
+      suggestion: phrase.suggestion,
+      message: phrase.message,
+    });
   }
 
   function renderPolishIssueRow(iss: PolishIssue, i: number, compact = false) {
     const sugEmpty = !iss.suggestion.trim() || iss.suggestion === '—' || iss.suggestion === '-';
+    const sugLabel = sugEmpty ? 'حذف' : iss.suggestion;
     return (
       <li
         key={`${iss.type}-${iss.found}-${iss.suggestion}-${i}`}
-        className={`flex flex-wrap items-center gap-1.5 ${compact ? 'text-[11px]' : 'text-xs'}`}
+        className={`flex flex-wrap items-center gap-1.5 rounded-lg border border-moj-gold/30 bg-white/80 dark:bg-black/20 px-2 py-1.5 ${compact ? 'text-[11px]' : 'text-xs'}`}
       >
         <span
           className={`rounded px-1.5 py-0.5 font-bold ${
@@ -335,20 +350,12 @@ function NewDocumentInner() {
         >
           {iss.type === 'spelling' ? 'إملائي' : 'صياغي'}
         </span>
-        <span
-          className={`font-bold line-through decoration-2 ${
-            iss.type === 'spelling' ? 'text-red-600 dark:text-red-400' : 'text-amber-700 dark:text-amber-300'
-          }`}
-        >
-          {iss.found}
-        </span>
-        <span className="text-gray-400">→</span>
-        <span className="font-bold text-emerald-700 dark:text-emerald-400">
-          {sugEmpty ? 'حذف' : iss.suggestion}
-        </span>
+        <span className="font-bold text-red-700 dark:text-red-300">«{iss.found}»</span>
+        <span className="text-moj-gold font-bold">← اقترح:</span>
+        <span className="font-bold text-emerald-700 dark:text-emerald-400">«{sugLabel}»</span>
         <button
           type="button"
-          className="btn-primary text-[11px] py-0.5 px-2"
+          className="btn-primary text-[11px] py-0.5 px-2 mr-auto"
           onClick={() => acceptPolishIssue(iss)}
         >
           اعتمد التعديل
@@ -539,34 +546,80 @@ function NewDocumentInner() {
       {step === 3 && (
         <div className="space-y-3">
           <StyleToolbar value={style} onChange={setStyle} />
-          <div className="rounded-xl border-2 border-moj-gold bg-[#fff8e8] dark:bg-[#2a2418] p-3 space-y-2 shadow-sm">
-            <div className="text-sm font-bold text-moj-green">التدقيق والصياغة القضائية</div>
-            <div className="text-xs text-gray-600 dark:text-white/60">
-              يُرصد الخطأ تلقائياً كنص ملوّن مع اقتراح التصحيح — النص لا يتغيّر إلا عند الضغط على «اعتمد التعديل». بدون تكلفة إضافية.
+          <div className="rounded-xl border-2 border-moj-gold bg-[#fff8e8] dark:bg-[#2a2418] p-3 space-y-2 shadow-md ring-2 ring-moj-gold/40">
+            <div className="text-sm font-bold text-moj-green flex items-center gap-2">
+              <span className="inline-block h-2.5 w-2.5 rounded-full bg-moj-gold animate-pulse" />
+              التدقيق والصياغة القضائية
+            </div>
+            <div className="text-xs text-gray-700 dark:text-white/70">
+              مقترحات بصيغة قانونية مختصرة — النص لا يتغيّر إلا عند «اعتمد التعديل».
             </div>
             <div
               dir="rtl"
               className={`rounded-lg border px-3 py-2 space-y-1.5 ${
-                polishIssues.length > 0
+                polishIssues.length > 0 || legalPhrases.length > 0
                   ? 'border-amber-500/70 bg-amber-50 dark:bg-amber-950/40'
-                  : 'border-moj-green/25 bg-white/70 dark:bg-white/5'
+                  : 'border-moj-gold/40 bg-white/80 dark:bg-white/5'
               }`}
             >
               {polishIssues.length > 0 ? (
                 <>
                   <div className="text-xs font-bold text-amber-900 dark:text-amber-100">
-                    ملاحظات تلقائية ({polishIssues.length}) — اضغط «اعتمد التعديل» لكل ملاحظة
+                    مقترحات التدقيق ({polishIssues.length}) — اضغط «اعتمد التعديل»
                   </div>
                   <ul className="space-y-1.5 text-amber-950 dark:text-amber-50">
                     {polishIssues.map((iss, i) => renderPolishIssueRow(iss, i))}
                   </ul>
                 </>
+              ) : (form.body || form.reasons || form.subject || form.parties || form.studyFields) ? (
+                <div className="text-xs text-moj-green dark:text-emerald-300 space-y-1">
+                  <div className="font-bold">لا ملاحظات إملائية حالياً على النص الظاهر.</div>
+                  <div className="text-[11px] opacity-80">
+                    تُفحص تلقائياً ألفاظ شائعة مثل: فضيلة، سعادة، المدعى عليه، الدعوى، بناءً على.
+                  </div>
+                </div>
               ) : (
-                <div className="text-xs text-moj-green/80 dark:text-emerald-300/80">
-                  لا توجد ملاحظات حالياً
+                <div className="text-xs text-moj-gold/90 font-medium">
+                  اكتب أو الصق نص المكاتبة ليظهر مقترح اختصار بصيغة قانونية هنا فوراً.
                 </div>
               )}
             </div>
+            {(form.body.trim() || form.reasons.trim() || legalPhrases.length > 0) && (
+              <div className="rounded-lg border-2 border-moj-green/40 bg-moj-green/5 px-3 py-2 space-y-1.5" dir="rtl">
+                <div className="text-xs font-bold text-moj-green">صياغة قانونية مختصرة</div>
+                {legalPhrases.length > 0 ? (
+                  <ul className="space-y-1.5">
+                    {legalPhrases.map((ph, i) => {
+                      const sugEmpty = !ph.suggestion.trim() || ph.suggestion === '—' || ph.suggestion === '-';
+                      return (
+                        <li
+                          key={`lp-${ph.found}-${ph.suggestion}-${i}`}
+                          className="flex flex-wrap items-center gap-1.5 rounded-lg border border-moj-green/25 bg-white/90 dark:bg-black/20 px-2 py-1.5 text-xs"
+                        >
+                          <span className="rounded px-1.5 py-0.5 font-bold bg-moj-green/15 text-moj-green">صياغة</span>
+                          <span className="font-bold text-red-700 dark:text-red-300">«{ph.found}»</span>
+                          <span className="text-moj-gold font-bold">← اقترح:</span>
+                          <span className="font-bold text-emerald-700 dark:text-emerald-400">
+                            «{sugEmpty ? 'حذف' : ph.suggestion}»
+                          </span>
+                          <button
+                            type="button"
+                            className="btn-primary text-[11px] py-0.5 px-2 mr-auto"
+                            onClick={() => acceptLegalPhrase(ph)}
+                          >
+                            اعتمد التعديل
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                ) : (
+                  <div className="text-[11px] text-gray-600 dark:text-white/60">
+                    لم يُرصد افتتاح عامّي — جرّب عبارات مثل «نحب نبلغكم» أو «يرجى العلم» لترى مقترح الصياغة.
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           <div className="bg-white dark:bg-[var(--surface)] rounded-xl border dark:border-white/10 p-3">
             <PaperLayoutPicker value={paperLayout} onChange={setPaperLayout} compact />
@@ -664,16 +717,17 @@ function NewDocumentInner() {
 
               <div>
                 <label className="label">نسخة إلى</label>
-                <input
+                <div
                   ref={(el) => {
                     fieldRefs.current.copyTo = el;
                   }}
                   id="field-copyTo"
-                  className="input"
-                  value={form.copyTo}
-                  onChange={(e) => setForm({ ...form, copyTo: e.target.value })}
-                  placeholder="الجهة / الإدارة للاطلاع"
-                />
+                >
+                  <RecipientCascade
+                    value={form.copyTo}
+                    onChange={(line) => setForm({ ...form, copyTo: line })}
+                  />
+                </div>
               </div>
 
               <div>

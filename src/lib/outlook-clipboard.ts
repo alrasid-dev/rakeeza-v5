@@ -1,5 +1,6 @@
 import { officialDateDisplay } from '@/lib/hijri';
 import { MOJ_EMBLEM_PNG_DATA_URL } from '@/lib/brand-emblem-data';
+import { BRAND } from '@/lib/brand';
 
 /** Client helper: copy Outlook-friendly full official letter HTML */
 
@@ -147,7 +148,7 @@ export function buildLetterHtml(doc: OutlookLetterDoc) {
           <td width="34%" valign="middle" align="center" style="padding:12px;width:34%">${emblem}</td>
           <td width="33%" valign="middle" align="right" style="padding:12px 8px;width:33%" dir="rtl">
             ${headerCenter}
-            <div style="color:${GOLD};font-size:11pt;margin-top:4px;font-family:Tahoma,Arial,sans-serif;text-align:right">منصة ركيزة الذكية</div>
+            <div style="color:${GOLD};font-size:11pt;margin-top:4px;font-family:Tahoma,Arial,sans-serif;text-align:right">${BRAND.platform}</div>
           </td>
         </tr>
       </table>

@@ -11,6 +11,7 @@ import { MOJ_EMBLEM_PNG_DATA_URL } from '@/lib/brand-emblem-data';
 import { researcherRoleLabel, preparerRoleLabel } from '@/lib/honorific';
 import { formatClaimAmount, normalizeFormationOrdinal } from '@/lib/arabic-normalize';
 import { enrichStudySections, hasStudyContent, studyDisplayMeta } from '@/lib/study-display';
+import { BRAND } from '@/lib/brand';
 
 export type OfficialLetterDoc = {
   number?: string | null;
@@ -286,7 +287,7 @@ body { margin: 0; color: #111; }
               `<div class="court" style="font-size:${h === court || i === header.length - 1 ? 16 : 13}px;color:${GREEN};font-weight:800;text-align:right">${esc(h)}</div>`,
           )
           .join('')}
-        <div class="sub" style="color:${GOLD};font-size:12px;margin-top:2px;text-align:right">منصة ركيزة الذكية</div>
+        <div class="sub" style="color:${GOLD};font-size:12px;margin-top:2px;text-align:right">${BRAND.platform}</div>
       </td>
     </tr>
   </table>`;
