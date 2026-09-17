@@ -381,6 +381,19 @@ function SidebarInner({
           <span className="font-medium">{homeLabel}</span>
         </Link>
 
+        <a
+          href="/api/guide"
+          onClick={onClose}
+          className="flex items-center gap-2 rounded-xl px-3 py-2 transition hover:bg-white/10 text-moj-gold/95"
+        >
+          <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+            <path d="M8 3h7l5 5v13a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" />
+            <path d="M15 3v5h5" />
+            <path d="M9 13h6M9 17h4" strokeLinecap="round" />
+          </svg>
+          <span className="font-medium">دليل الاستخدام</span>
+        </a>
+
         <TreeGroup
           group={formsGroup}
           open={!!openMap.forms}

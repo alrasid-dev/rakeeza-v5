@@ -578,6 +578,21 @@ export default function LoginPage() {
         )}
       </div>
 
+      <div className="mt-5 flex flex-wrap items-center justify-center gap-3 relative z-10">
+        <a
+          href="/api/guide"
+          className="inline-flex items-center gap-2 rounded-xl border border-moj-gold/50 bg-moj-gold/10 text-moj-gold px-4 py-2 text-sm font-medium hover:bg-moj-gold/20 transition"
+        >
+          دليل الاستخدام (PDF)
+        </a>
+        <a
+          href="/guide"
+          className="text-xs text-gray-400 dark:text-white/40 underline hover:text-moj-gold"
+        >
+          عرض الدليل
+        </a>
+      </div>
+
       <p className="text-center text-[11px] text-gray-400 dark:text-white/35 mt-4 relative z-10">
         ليس لديك حساب في الدليل؟{' '}
         <button type="button" className="underline hover:text-moj-gold" onClick={() => openRegister()}>

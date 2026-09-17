@@ -46,6 +46,8 @@ export default async function DashboardPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <Card title="أرشيفي" hint="المكاتبات المحفوظة والمؤرشفة" href="/archive" />
             <Card title="دليلي" hint="دليل الموظفين والألقاب" href="/directory" />
+            <Card title="دليل الاستخدام" hint="PDF لأول مرة — خطوات البدء" href="/api/guide" />
+            <Card title="عرض الدليل" hint="صفحة تفاعلية مع طباعة" href="/guide" />
           </div>
           <FingerprintEnable email={user.email} />
           <p className="text-center text-xs text-gray-400">للاستخدام الداخلي فقط · المحكمة العمالية بالرياض</p>
@@ -110,6 +112,7 @@ export default async function DashboardPage() {
           href="/admin/registrations"
         />
         <Card title="التقارير" hint="إحصاءات وإشراف" href="/reports" />
+        <Card title="دليل الاستخدام" hint="PDF لأول مرة — خطوات البدء" href="/api/guide" />
       </div>
       <div className="mt-6 max-w-xl">
         <FingerprintEnable email={user.email} />

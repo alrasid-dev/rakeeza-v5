@@ -12,7 +12,9 @@ function absoluteUrl(req: NextRequest, path: string) {
 
 const PUBLIC = [
   '/login',
+  '/guide',
   '/verify',
+  '/api/guide',
   '/api/auth/login',
   '/api/auth/ping',
   '/api/auth/setup-pin',
