@@ -4,6 +4,7 @@ import { getSession } from '@/lib/auth';
 import { hasOfficialOutgoingNumber } from '@/lib/honorific';
 import { attachmentDisposition } from '@/lib/download-headers';
 import { officialDateDisplay } from '@/lib/hijri';
+import { docxFontName } from '@/lib/font-stacks';
 import { loadEmblemPng, dataUrlToBuffer, BRAND } from '@/lib/brand-assets';
 import QRCode from 'qrcode';
 import {
@@ -33,7 +34,7 @@ const PAGE_W = 9360;
 
 function cell(
   text: string,
-  opts: { bold?: boolean; fill?: string; color?: string; width?: number; center?: boolean } = {},
+  opts: { bold?: boolean; fill?: string; color?: string; width?: number; center?: boolean; font?: string } = {},
 ) {
   return new TableCell({
     width: { size: opts.width || 2340, type: WidthType.DXA },
@@ -53,7 +54,7 @@ function cell(
             bold: opts.bold,
             color: opts.color || '111111',
             size: 20,
-            font: 'Arial',
+            font: opts.font || 'Traditional Arabic',
             rightToLeft: true,
           }),
         ],
@@ -184,10 +185,16 @@ export async function GET(req: NextRequest) {
       .filter(Boolean);
 
     let qrDataUrl: string | null = null;
+    let bodyFont = 'Traditional Arabic';
     try {
-      const fields = JSON.parse(doc.fieldsJson || '{}') as { qrDataUrl?: string; copyTo?: string };
+      const fields = JSON.parse(doc.fieldsJson || '{}') as {
+        qrDataUrl?: string;
+        copyTo?: string;
+        style?: { fontFamily?: string };
+      };
       qrDataUrl = fields.qrDataUrl || null;
       (doc as { _copyTo?: string })._copyTo = fields.copyTo || '';
+      bodyFont = docxFontName(fields.style?.fontFamily);
     } catch {
       qrDataUrl = null;
     }
@@ -229,7 +236,7 @@ export async function GET(req: NextRequest) {
                         bold: true,
                         color: 'FFFFFF',
                         size: 24,
-                        font: 'Arial',
+                        font: bodyFont,
                         rightToLeft: true,
                       }),
                     ],
@@ -255,7 +262,7 @@ export async function GET(req: NextRequest) {
                 bold: true,
                 color: GREEN,
                 size: i === headerLines.length - 1 ? 26 : 20,
-                font: 'Arial',
+                font: bodyFont,
                 rightToLeft: true,
               }),
             ],
@@ -269,7 +276,7 @@ export async function GET(req: NextRequest) {
             text: BRAND.platform,
             color: GOLD,
             size: 18,
-            font: 'Arial',
+            font: bodyFont,
             rightToLeft: true,
           }),
         ],
@@ -333,8 +340,8 @@ export async function GET(req: NextRequest) {
           bottom: { style: BorderStyle.SINGLE, size: 6, color: GREEN, space: 4 },
         },
         children: [
-          new TextRun({ text: 'الموضوع: ', bold: true, color: GREEN, size: 22, font: 'Arial', rightToLeft: true }),
-          new TextRun({ text: doc.subject || '—', size: 22, font: 'Arial', rightToLeft: true }),
+          new TextRun({ text: 'الموضوع: ', bold: true, color: GREEN, size: 22, font: bodyFont, rightToLeft: true }),
+          new TextRun({ text: doc.subject || '—', size: 22, font: bodyFont, rightToLeft: true }),
         ],
       }),
     );
@@ -346,8 +353,8 @@ export async function GET(req: NextRequest) {
         new Paragraph({
           alignment: AlignmentType.RIGHT,
           children: [
-            new TextRun({ text: 'إلى: ', bold: true, color: GREEN, size: 22, font: 'Arial', rightToLeft: true }),
-            new TextRun({ text: doc.recipients, size: 22, font: 'Arial', rightToLeft: true }),
+            new TextRun({ text: 'إلى: ', bold: true, color: GREEN, size: 22, font: bodyFont, rightToLeft: true }),
+            new TextRun({ text: doc.recipients, size: 22, font: bodyFont, rightToLeft: true }),
           ],
         }),
       );
@@ -359,8 +366,8 @@ export async function GET(req: NextRequest) {
         new Paragraph({
           alignment: AlignmentType.RIGHT,
           children: [
-            new TextRun({ text: 'نسخة إلى: ', bold: true, color: GREEN, size: 22, font: 'Arial', rightToLeft: true }),
-            new TextRun({ text: copyToVal, size: 22, font: 'Arial', rightToLeft: true }),
+            new TextRun({ text: 'نسخة إلى: ', bold: true, color: GREEN, size: 22, font: bodyFont, rightToLeft: true }),
+            new TextRun({ text: copyToVal, size: 22, font: bodyFont, rightToLeft: true }),
           ],
         }),
       );
@@ -426,7 +433,7 @@ export async function GET(req: NextRequest) {
             italics: true,
             color: '555555',
             size: 18,
-            font: 'Arial',
+            font: bodyFont,
             rightToLeft: true,
           }),
         ],
@@ -459,7 +466,7 @@ export async function GET(req: NextRequest) {
                       text: 'وزارة العدل — المحكمة العمالية بالرياض',
                       color: GREEN,
                       size: 16,
-                      font: 'Arial',
+                      font: bodyFont,
                       rightToLeft: true,
                     }),
                   ],
@@ -480,7 +487,7 @@ export async function GET(req: NextRequest) {
                       text: 'للاستخدام الداخلي فقط  |  صفحة ',
                       color: GREEN,
                       size: 14,
-                      font: 'Arial',
+                      font: bodyFont,
                       rightToLeft: true,
                     }),
                     new TextRun({ children: [PageNumber.CURRENT], color: GOLD, size: 14 }),

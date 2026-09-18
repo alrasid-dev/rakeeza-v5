@@ -12,6 +12,7 @@ import { researcherRoleLabel, preparerRoleLabel } from '@/lib/honorific';
 import { formatClaimAmount, normalizeFormationOrdinal } from '@/lib/arabic-normalize';
 import { enrichStudySections, hasStudyContent, studyDisplayMeta } from '@/lib/study-display';
 import { BRAND } from '@/lib/brand';
+import { fontStackFor } from '@/lib/font-stacks';
 
 export type OfficialLetterDoc = {
   number?: string | null;
@@ -199,9 +200,10 @@ function layoutTheme(layout: PaperLayoutId) {
       return {
         paperBg: '#F9F7F1',
         paperBorder: `2px solid ${IDENTITY_COLORS.gold}`,
-        bismillah: `background:${IDENTITY_COLORS.green};border-bottom:3px solid ${IDENTITY_COLORS.gold};`,
-        meta: `background:#fff;border:1px solid ${IDENTITY_COLORS.gold}66;border-radius:8px;font-family:Cairo,Tajawal,Tahoma,sans-serif;`,
+        bismillah: `background:${IDENTITY_COLORS.greenDeep};border-bottom:3px solid ${IDENTITY_COLORS.gold};text-align:right;padding-inline:20px;`,
+        meta: `background:#fff;border:1px solid ${IDENTITY_COLORS.gold}55;border-radius:8px;`,
         foot: `border-top:3px solid ${IDENTITY_COLORS.gold};background:#1B4332;color:#f5f5f5;`,
+        modernHex: true,
         extraChrome: `<div style="position:relative;line-height:0;height:36px;background:#1B4332">
           <svg xmlns="http://www.w3.org/2000/svg" width="80" height="36" viewBox="0 0 80 36" style="position:absolute;left:4px;bottom:0;opacity:0.55" aria-hidden="true">
             <polygon points="20,2 36,11 36,29 20,38 4,29 4,11" fill="${IDENTITY_COLORS.gold}" opacity="0.45"/>
@@ -229,15 +231,15 @@ export function buildOfficialLetterHtml(doc: OfficialLetterDoc, opts?: { forPdf?
     doc.headerLines?.filter(Boolean) ||
     ['المملكة العربية السعودية', 'وزارة العدل', court];
   const footer = doc.footer || 'للاستخدام الداخلي فقط';
+  const font = fontStackFor(doc.fontFamily);
+  const size = doc.fontSizePt || 14;
   const pageCss = opts?.forPdf
     ? `@page { size: A4; margin: 12mm; }
 body { margin: 0; color: #111; }
-.paper, .paper * { font-family: 'Noto Naskh Arabic', 'Traditional Arabic', Tahoma, serif !important; font-weight: 400 !important; }
+.paper, .paper *:not(img):not(svg):not(svg *) { font-family: ${font} !important; font-weight: 400 !important; }
 .paper { color: #111 !important; }
 .bismillah, .bismillah * { color: #fff !important; font-weight: 400 !important; }`
     : '';
-  const font = doc.fontFamily || "'Noto Naskh Arabic', 'Traditional Arabic', 'Sakkal Majalla', Tahoma, serif";
-  const size = doc.fontSizePt || 14;
   const fontFace =
     opts?.embeddedFontCss ||
     (opts?.forPdf
@@ -274,8 +276,39 @@ body { margin: 0; color: #111; }
       ? doc.subject
       : meta.subject || (study?.caseNumber ? `دراسة شكوى — ${study.caseNumber}` : '') || '—';
 
+  const hexDecor = layout === 'modern-hex'
+    ? `<div style="position:absolute;inset:0;pointer-events:none;overflow:hidden" aria-hidden="true">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 280" width="55%" height="70%" style="position:absolute;left:0;top:40px;opacity:0.22">
+          <g stroke="${GREEN}" stroke-width="1.4" fill="none">
+            <polygon points="48,20 88,42 88,86 48,108 8,86 8,42" fill="${GREEN}" fill-opacity="0.12"/>
+            <polygon points="110,8 158,34 158,86 110,112 62,86 62,34" stroke="${GOLD}"/>
+            <polygon points="170,50 210,72 210,116 170,138 130,116 130,72" fill="${GOLD}" fill-opacity="0.14" stroke="${GOLD}"/>
+            <polygon points="70,120 118,146 118,198 70,224 22,198 22,146"/>
+            <polygon points="140,140 188,166 188,218 140,244 92,218 92,166" fill="${GREEN}" fill-opacity="0.08" stroke="${GOLD}"/>
+            <polygon points="220,100 255,120 255,160 220,180 185,160 185,120"/>
+          </g>
+          <g stroke="${GOLD}" stroke-width="1.1" fill="none" opacity="0.85">
+            <path d="M250 40 L280 55 L280 90 L250 105 L220 90 L220 55 Z"/>
+            <path d="M220 55 L250 40 L280 55"/>
+            <path d="M250 40 L250 105"/>
+          </g>
+        </svg>
+      </div>`
+    : '';
+
   // Official Saudi letterhead (physical LTR): LEFT=QR, CENTER=emblem, RIGHT=kingdom/ministry/court
-  const brandRow = `
+  // modern-hex cliché: LEFT=QR, RIGHT=MOJ logo in gold-bordered white box (no phone-screenshot emblem)
+  const brandRow = layout === 'modern-hex'
+    ? `<div style="position:relative;background:#F9F7F1">
+  ${hexDecor}
+  <table class="brand-row" dir="ltr" width="100%" cellpadding="0" cellspacing="0" role="presentation" style="position:relative;z-index:1;border-collapse:collapse;border-bottom:1px solid ${GOLD}80;table-layout:fixed;background:transparent">
+    <tr>
+      <td width="50%" valign="middle" align="left" style="padding:14px 18px">${qr.replace('border:1px solid', 'border:1.5px dashed').replace('border:1px dashed', 'border:1.5px dashed')}</td>
+      <td width="50%" valign="middle" align="right" style="padding:14px 18px">${emblem}</td>
+    </tr>
+  </table>
+</div>`
+    : `
   <table class="brand-row" dir="ltr" width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse:collapse;border-bottom:2px solid ${GOLD};table-layout:fixed">
     <tr>
       <td width="33%" valign="middle" align="left" style="padding:14px 12px;width:33%">${qr}</td>
@@ -314,6 +347,11 @@ body {
   border-radius: 4px;
   overflow: hidden;
   background: ${theme.paperBg};
+  font-family: ${font};
+  position: relative;
+}
+.paper, .paper *:not(img):not(svg):not(svg *) {
+  font-family: inherit;
 }
 .bismillah {
   color: #fff;
@@ -344,7 +382,7 @@ body {
   border-bottom: 1px solid ${GOLD};
   padding-bottom: 2px;
 }
-.body { white-space: pre-wrap; text-align: justify; }
+.body { white-space: pre-wrap; text-align: justify; font-family: inherit; }
 .foot {
   margin-top: 18px;
   padding: 10px 18px;

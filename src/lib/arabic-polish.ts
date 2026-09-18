@@ -19,6 +19,31 @@ const PROTECTED_FORMS = [
   'مستشفى',
 ] as const;
 
+/** Formal blessings / closings — never suggest deleting or rewriting these. */
+const PROTECTED_BLESSINGS = [
+  'والله يحفظكم',
+  'والله يرعاكم',
+  'والله الموفق',
+  'يحفظكم ويرعاكم',
+  'بارك الله',
+  'جزاكم الله',
+] as const;
+
+function isProtectedBlessingHit(text: string, found: string): boolean {
+  const f = String(found || '').trim();
+  if (!f) return false;
+  // Never flag bare «والله» when it sits inside a known blessing/closing
+  if (f === 'والله') {
+    if (PROTECTED_BLESSINGS.some((p) => text.includes(p))) return true;
+    // Also protect common closing patterns even if not exact list match
+    if (/والله\s+(?:يحفظكم|يرعاكم|الموفق)/.test(text)) return true;
+    return true; // bare والله in judicial closings is never a delete target
+  }
+  if ((PROTECTED_BLESSINGS as readonly string[]).includes(f)) return true;
+  if (PROTECTED_BLESSINGS.some((p) => p.includes(f) && f.length >= 4)) return true;
+  return false;
+}
+
 /**
  * Forbidden suggestion flips: found (already correct) → suggestion (corrupt).
  * Never propose these in findPolishIssues.
@@ -231,7 +256,6 @@ const LEGAL_PHRASE_RULES: { found: string; suggestion: string; message: string }
   { found: 'نود إفادتكم', suggestion: 'نحيطكم علماً', message: 'صياغة قضائية مختصرة' },
   { found: 'حابين نبلغكم', suggestion: 'نود إشعاركم', message: 'افتتاح عامي' },
   { found: 'بصراحة', suggestion: '—', message: 'لفظ غير قضائي — يُحذف' },
-  { found: 'والله', suggestion: '—', message: 'حشو غير رسمي في المتن (إلا إن كان ختاماً معتاداً)' },
   { found: 'طيب', suggestion: '—', message: 'لفظ غير رسمي — يُحذف' },
   { found: 'اللي', suggestion: 'الذي', message: 'صيغة عامية' },
   { found: 'علشان', suggestion: 'من أجل', message: 'صيغة عامية' },
@@ -341,6 +365,8 @@ export function suggestLegalPhrases(text: string): LegalPhraseSuggestion[] {
     // require word-ish presence for short tokens
     if (rule.found.length <= 4 && !hasArabicWord(raw, rule.found)) continue;
     if (rule.found.length > 4 && !raw.includes(rule.found)) continue;
+    if (isProtectedBlessingHit(raw, rule.found)) continue;
+    if (rule.found === 'والله' || (rule.suggestion === '—' && /والله/.test(rule.found))) continue;
     const key = `${rule.found}→${rule.suggestion}`;
     if (seen.has(key)) continue;
     seen.add(key);
@@ -369,6 +395,8 @@ export function findPolishIssues(text: string): PolishIssue[] {
     const found = stripEdgeJunk(issue.found) || issue.found.trim();
     const suggestion = stripEdgeJunk(issue.suggestion) || issue.suggestion.trim();
     if (!found || found === suggestion) return;
+    if (isProtectedBlessingHit(raw, found)) return;
+    if (found === 'والله') return;
     if (isProtectedToken(found) && isForbiddenFlip(found, suggestion)) return;
     if (isForbiddenFlip(found, suggestion)) return;
     // Bare «المدعي» (plaintiff) must never become «المدعى» — only the compound «المدعي عليه/عليها»

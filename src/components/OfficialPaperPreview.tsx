@@ -47,6 +47,75 @@ function EmblemImg({ className = '' }: { className?: string }) {
   );
 }
 
+/** Subtle geometric hex/cube wireframes — CSS/SVG only (no phone-screenshot wallpaper). */
+function HexMotifDecor({ className = '' }: { className?: string }) {
+  return (
+    <div className={`pointer-events-none absolute inset-0 overflow-hidden ${className}`} aria-hidden>
+      <svg
+        className="absolute left-0 top-10 w-[55%] h-[70%] opacity-[0.22]"
+        viewBox="0 0 320 280"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        {/* wireframe hex cluster — left/center */}
+        <g stroke="#006C35" strokeWidth="1.4">
+          <polygon points="48,20 88,42 88,86 48,108 8,86 8,42" fill="#006C35" fillOpacity="0.12" />
+          <polygon points="110,8 158,34 158,86 110,112 62,86 62,34" fill="none" stroke="#C5A059" />
+          <polygon points="170,50 210,72 210,116 170,138 130,116 130,72" fill="#C5A059" fillOpacity="0.14" stroke="#C5A059" />
+          <polygon points="70,120 118,146 118,198 70,224 22,198 22,146" fill="none" />
+          <polygon points="140,140 188,166 188,218 140,244 92,218 92,166" fill="#006C35" fillOpacity="0.08" stroke="#C5A059" />
+          <polygon points="220,100 255,120 255,160 220,180 185,160 185,120" fill="none" stroke="#006C35" />
+        </g>
+        {/* cube / isometric accents */}
+        <g stroke="#C5A059" strokeWidth="1.1" fill="none" opacity="0.85">
+          <path d="M250 40 L280 55 L280 90 L250 105 L220 90 L220 55 Z" />
+          <path d="M220 55 L250 40 L280 55" />
+          <path d="M250 40 L250 105" />
+          <path d="M40 200 L70 215 L70 250 L40 265 L10 250 L10 215 Z" stroke="#006C35" />
+          <path d="M10 215 L40 200 L70 215" stroke="#006C35" />
+        </g>
+      </svg>
+    </div>
+  );
+}
+
+/** modern-hex cliché: basmala bar + RIGHT logo box + LEFT QR + cream paper (matches hex-cliche-ref). */
+function ModernHexHeader({
+  qrDataUrl,
+}: {
+  qrDataUrl?: string | null;
+}) {
+  return (
+    <div
+      dir="ltr"
+      className="relative grid grid-cols-[1fr_auto] items-center gap-3 px-5 py-3 border-b border-[#C5A059]/50 bg-[#F9F7F1]/80"
+    >
+      <div className="flex justify-start items-center min-w-0 z-[1]">
+        {qrDataUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={qrDataUrl}
+            alt="QR"
+            className="w-16 h-16 rounded-lg border border-dashed border-moj-gold bg-white object-contain p-0.5"
+          />
+        ) : (
+          <div className="w-16 h-16 text-[10px] rounded-lg border-2 border-dashed border-moj-gold bg-white flex items-center justify-center text-moj-green font-semibold">
+            QR
+          </div>
+        )}
+      </div>
+      <div className="flex justify-end z-[1]" dir="rtl">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/brand/moj-logo-gold.png"
+          alt="شعار وزارة العدل"
+          className="w-[4.5rem] h-[4.5rem] shrink-0 rounded-xl border-2 border-moj-gold bg-white object-contain p-1 shadow-sm"
+        />
+      </div>
+    </div>
+  );
+}
+
 function CcIcon({ className = '' }: { className?: string }) {
   return (
     <svg
@@ -363,7 +432,7 @@ type LayoutChrome = {
   compact: boolean;
   identityFooter?: 'a' | 'b' | null;
   modernHex?: boolean;
-  metaFontClass?: string;
+  bismillahAlign?: 'right' | 'center';
 };
 
 function chromeFor(layout: PaperLayoutId): LayoutChrome {
@@ -460,11 +529,11 @@ function chromeFor(layout: PaperLayoutId): LayoutChrome {
       return {
         paperBorder: '2px solid #C5A059',
         paperBg: '#F9F7F1',
-        bismillahBg: '#006C35',
+        bismillahBg: '#004d26',
         bismillahBorder: '#C5A059',
-        brandBorder: 'border-b border-[#C5A059]/70',
+        brandBorder: 'border-b border-[#C5A059]/50',
         metaClass:
-          'mx-6 my-3 rounded-lg border border-[#C5A059]/40 bg-white/90 px-4 py-2.5 text-sm grid sm:grid-cols-2 gap-1.5 font-[family-name:var(--font-cairo),var(--font-tajawal),Tahoma,sans-serif]',
+          'mx-6 my-3 rounded-lg border border-[#C5A059]/35 bg-white/95 px-4 py-2.5 text-sm grid sm:grid-cols-2 gap-1.5',
         sectionPad: 'px-8 pb-4 space-y-3 text-sm relative z-[1]',
         footClass: 'text-center text-xs text-white/90 py-0 bg-[#1B4332] border-0',
         titleAccent: 'gold',
@@ -472,7 +541,7 @@ function chromeFor(layout: PaperLayoutId): LayoutChrome {
         compact: false,
         identityFooter: null,
         modernHex: true,
-        metaFontClass: 'font-[family-name:var(--font-cairo),Tajawal,Tahoma,sans-serif]',
+        bismillahAlign: 'right' as const,
       };
     case 'classic-green':
     default:
@@ -634,44 +703,46 @@ export default function OfficialPaperPreview({
   const showReasons = Boolean(reasonsLeftover);
   const showStudyFields = Boolean(studyFieldsLeftover);
 
+  const letterFontStyle: React.CSSProperties = {
+    fontFamily,
+    fontSize,
+    textAlign,
+  };
+
   return (
     <div className="w-full max-w-full overflow-x-auto">
-      <style>{`@media print { .cc-row, .cc-icon { display: inline-block !important; visibility: visible !important; } }`}</style>
+      <style>{`@media print { .cc-row, .cc-icon { display: inline-block !important; visibility: visible !important; } }
+.official-paper-root, .official-paper-root *:not(img):not(svg):not(svg *) { font-family: inherit !important; }
+`}</style>
       <div
         dir="rtl"
-        className={`bg-white text-gray-900 rounded-lg overflow-hidden shadow-sm font-arabic min-w-[min(100%,20rem)] max-w-full [&_pre]:text-gray-900 [&_pre]:opacity-100 relative ${className}`}
-        style={{ border: chrome.paperBorder, background: chrome.paperBg || '#fff', fontFamily, fontSize, textAlign }}
+        className={`official-paper-root bg-white text-gray-900 rounded-lg overflow-hidden shadow-sm min-w-[min(100%,20rem)] max-w-full [&_pre]:text-gray-900 [&_pre]:opacity-100 relative ${className}`}
+        style={{ border: chrome.paperBorder, background: chrome.paperBg || '#fff', ...letterFontStyle }}
         data-paper-layout={layout}
       >
-        {chrome.modernHex && (
-          <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
-            <div
-              className="absolute left-0 top-0 bottom-16 w-16 opacity-25 bg-no-repeat bg-left bg-contain"
-              style={{ backgroundImage: 'url(/brand/letter-hex-bg.jpg)' }}
-            />
-            <svg className="absolute left-2 top-24 w-14 h-28 opacity-40" viewBox="0 0 60 120" fill="none">
-              <polygon points="30,4 54,18 54,46 30,60 6,46 6,18" stroke="#C5A059" strokeWidth="1.5" fill="#006C35" fillOpacity="0.25" />
-              <polygon points="30,40 48,50 48,70 30,80 12,70 12,50" stroke="#006C35" strokeWidth="1.2" fill="#C5A059" fillOpacity="0.2" />
-              <polygon points="30,72 44,80 44,96 30,104 16,96 16,80" stroke="#C5A059" strokeWidth="1" fill="none" />
-            </svg>
-          </div>
-        )}
+        {chrome.modernHex && <HexMotifDecor />}
         <div
-          className={`text-center text-white font-bold ${chrome.compact ? 'py-1.5 text-xs' : 'py-2 text-sm'} border-b-[3px]`}
-          style={{ background: chrome.bismillahBg, borderColor: chrome.bismillahBorder }}
+          className={`text-white font-bold ${chrome.compact ? 'py-1.5 text-xs' : 'py-2 text-sm'} border-b-[3px] ${
+            chrome.modernHex || chrome.bismillahAlign === 'right' ? 'text-right px-5' : 'text-center'
+          }`}
+          style={{ background: chrome.bismillahBg, borderColor: chrome.bismillahBorder, fontFamily }}
         >
           بسم الله الرحمن الرحيم
         </div>
 
-        <BrandHeader
-          court={court}
-          qrDataUrl={doc.qrDataUrl}
-          compact={chrome.compact}
-          showCircularBadge={chrome.showCircularBadge}
-          brandBorder={chrome.brandBorder}
-        />
+        {chrome.modernHex ? (
+          <ModernHexHeader qrDataUrl={doc.qrDataUrl} />
+        ) : (
+          <BrandHeader
+            court={court}
+            qrDataUrl={doc.qrDataUrl}
+            compact={chrome.compact}
+            showCircularBadge={chrome.showCircularBadge}
+            brandBorder={chrome.brandBorder}
+          />
+        )}
 
-        <div className={`${chrome.metaClass} text-gray-900`}>
+        <div className={`${chrome.metaClass} text-gray-900`} style={letterFontStyle}>
           <Clickable field="number" onFieldClick={onFieldClick}>
             <span className="text-moj-green font-bold">الرقم: </span>
             <span dir="ltr">{doc.number || '—'}</span>
@@ -705,7 +776,7 @@ export default function OfficialPaperPreview({
           </Clickable>
         </div>
 
-        <div className={`${chrome.sectionPad} text-gray-900`}>
+        <div className={`${chrome.sectionPad} text-gray-900`} style={letterFontStyle}>
           {hasStudy && study && (
             <Clickable field="studyFields" onFieldClick={onFieldClick}>
               <StudyFormView s={study} />
@@ -745,13 +816,13 @@ export default function OfficialPaperPreview({
           {showParties && (
             <Clickable field="parties" onFieldClick={onFieldClick}>
               <SectionTitle accent={chrome.titleAccent}>الأطراف</SectionTitle>
-              <pre className="whitespace-pre-wrap text-sm text-gray-900">{partiesLeftover}</pre>
+              <pre className="whitespace-pre-wrap text-sm text-gray-900" style={{ fontFamily, fontSize }}>{partiesLeftover}</pre>
             </Clickable>
           )}
           {showReasons && (
             <Clickable field="reasons" onFieldClick={onFieldClick}>
               <SectionTitle accent={chrome.titleAccent}>الأسباب</SectionTitle>
-              <pre className="whitespace-pre-wrap text-sm text-gray-900">{reasonsLeftover}</pre>
+              <pre className="whitespace-pre-wrap text-sm text-gray-900" style={{ fontFamily, fontSize }}>{reasonsLeftover}</pre>
             </Clickable>
           )}
           {bodyForPreview && (
@@ -761,6 +832,7 @@ export default function OfficialPaperPreview({
               <pre
                 key={`body-${bodyForPreview.length}-${bodyForPreview.slice(0, 32)}`}
                 className="whitespace-pre-wrap text-sm leading-8 text-gray-900"
+                style={{ fontFamily, fontSize }}
               >
                 {bodyForPreview}
               </pre>
@@ -769,7 +841,7 @@ export default function OfficialPaperPreview({
           {showStudyFields && (
             <Clickable field="studyFields" onFieldClick={onFieldClick}>
               <SectionTitle accent={chrome.titleAccent}>الدراسة</SectionTitle>
-              <pre className="whitespace-pre-wrap text-sm text-gray-900">{studyFieldsLeftover}</pre>
+              <pre className="whitespace-pre-wrap text-sm text-gray-900" style={{ fontFamily, fontSize }}>{studyFieldsLeftover}</pre>
             </Clickable>
           )}
         </div>

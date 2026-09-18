@@ -305,8 +305,8 @@ export async function GET(req: NextRequest) {
   src: url(data:font/ttf;base64,${fontB64}) format('truetype');
   font-display: block;
 }
-html, body, .paper, .paper * {
-  font-family: 'Noto Naskh Arabic', 'Traditional Arabic', Tahoma, serif !important;
+html, body, .paper, .paper *:not(img):not(svg):not(svg *) {
+  font-family: 'Noto Naskh Arabic', 'Traditional Arabic', Tahoma, serif;
   font-weight: 400 !important;
   -webkit-font-smoothing: antialiased;
 }
@@ -332,7 +332,7 @@ html, body, .paper, .paper * {
         qrDataUrl,
         headerLines,
         studySections,
-        fontFamily: style?.fontFamily || "'Noto Naskh Arabic', 'Traditional Arabic', Tahoma, serif",
+        fontFamily: style?.fontFamily || 'Traditional Arabic',
         fontSizePt: style?.fontSizePt,
         paperLayout,
       },

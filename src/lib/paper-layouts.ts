@@ -20,7 +20,7 @@ export const PAPER_LAYOUTS: PaperLayoutMeta[] = [
   {
     id: 'modern-hex',
     nameAr: 'عصري هندسي',
-    description: 'مساحة قراءة كريمية وتذييل أخضر داكن مع زخارف سداسية ذهبية/خضراء',
+    description: 'كليشيه عصري: شريط بسملة أخضر داكن، شعار الوزارة يميناً وQR يساراً، وزخارف سداسية هندسية خفيفة على خلفية كريمية',
   },
   {
     id: 'classic-green',

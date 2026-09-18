@@ -47,3 +47,18 @@ export function fontStackFor(id?: string | null): string {
   const hit = FONT_OPTIONS.find((f) => f.id === id);
   return hit?.stack || FONT_OPTIONS[0].stack;
 }
+
+/** Word-safe family name for DOCX TextRun.font */
+export function docxFontName(id?: string | null): string {
+  const map: Record<string, string> = {
+    'Traditional Arabic': 'Traditional Arabic',
+    'Sakkal Majalla': 'Sakkal Majalla',
+    'Noto Naskh Arabic': 'Noto Naskh Arabic',
+    'IBM Plex Sans Arabic': 'IBM Plex Sans Arabic',
+    Cairo: 'Cairo',
+    Tajawal: 'Tajawal',
+    Tahoma: 'Tahoma',
+    Arial: 'Arial',
+  };
+  return map[String(id || '')] || 'Traditional Arabic';
+}

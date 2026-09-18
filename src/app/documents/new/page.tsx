@@ -16,6 +16,7 @@ import { clearDraft, clearAllDrafts, loadDraft, saveDraft } from '@/lib/draft-st
 import { suggestFont } from '@/lib/font-suggest';
 import { applyPolishFix, findPolishIssues, suggestLegalPhrases, type PolishIssue, type LegalPhraseSuggestion } from '@/lib/arabic-polish';
 import { DEFAULT_PAPER_LAYOUT, normalizePaperLayout, type PaperLayoutId } from '@/lib/paper-layouts';
+import { fontStackFor } from '@/lib/font-stacks';
 import {
   formatHijri,
   looksLikeHijri,
@@ -73,6 +74,7 @@ function NewDocumentInner() {
   });
   const [paperLayout, setPaperLayout] = useState<PaperLayoutId>(DEFAULT_PAPER_LAYOUT);
   const [savedDocId, setSavedDocId] = useState<string | null>(null);
+  const [subjectManual, setSubjectManual] = useState(false);
   const fieldRefs = useRef<Record<string, HTMLElement | null>>({});
   const skipSave = useRef(true);
 
@@ -435,6 +437,10 @@ function NewDocumentInner() {
 
   const title = formName || 'مكاتبة جديدة';
   const previewBody = normalizeBodyText(form.body);
+  const editorFontStyle: React.CSSProperties = {
+    fontFamily: fontStackFor(style.fontFamily),
+    fontSize: style.fontSizePt ? `${style.fontSizePt}pt` : undefined,
+  };
 
   const exportDoc = {
     id: savedDocId || undefined,
@@ -650,15 +656,46 @@ function NewDocumentInner() {
             <div className="bg-white dark:bg-[var(--surface)] rounded-xl border dark:border-white/10 p-3 sm:p-4 space-y-3 min-w-0">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
-                  <label className="label">الموضوع</label>
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <label className="label mb-0">الموضوع</label>
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-1 rounded-lg border border-moj-gold/60 bg-moj-gold/10 px-2 py-1 text-[11px] font-semibold text-moj-green hover:bg-moj-gold/20 transition"
+                      title="تحرير موضوع يدوي حر"
+                      onClick={() => {
+                        setSubjectManual(true);
+                        const el = fieldRefs.current.subject as HTMLInputElement | null;
+                        if (el) {
+                          el.removeAttribute('readonly');
+                          el.focus();
+                          el.select();
+                        }
+                      }}
+                    >
+                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+                        <path d="M12 20h9" strokeLinecap="round" />
+                        <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" strokeLinejoin="round" />
+                      </svg>
+                      موضوع يدوي
+                    </button>
+                  </div>
                   <input
                     ref={(el) => {
                       fieldRefs.current.subject = el;
                     }}
                     className="input"
+                    style={editorFontStyle}
                     value={form.subject}
-                    onChange={(e) => setForm({ ...form, subject: e.target.value })}
+                    placeholder="اكتب أي موضوع يدوياً…"
+                    onChange={(e) => {
+                      setSubjectManual(true);
+                      setForm({ ...form, subject: e.target.value });
+                    }}
+                    onFocus={() => setSubjectManual(true)}
                   />
+                  {subjectManual && (
+                    <p className="text-[11px] text-moj-green/80 mt-1">يمكنك كتابة أي موضوع يدوياً — غير مقيّد بالقالب.</p>
+                  )}
                 </div>
                 <div>
                   <label className="label">التاريخ (هجري)</label>
@@ -737,6 +774,7 @@ function NewDocumentInner() {
                     fieldRefs.current.parties = el;
                   }}
                   className="input min-h-[60px]"
+                  style={editorFontStyle}
                   value={form.parties}
                   onChange={(e) => setForm({ ...form, parties: e.target.value })}
                 />
@@ -749,6 +787,7 @@ function NewDocumentInner() {
                     fieldRefs.current.reasons = el;
                   }}
                   className="input min-h-[80px]"
+                  style={editorFontStyle}
                   value={form.reasons}
                   onChange={(e) => setForm({ ...form, reasons: e.target.value })}
                 />
@@ -761,6 +800,7 @@ function NewDocumentInner() {
                     fieldRefs.current.studyFields = el;
                   }}
                   className="input min-h-[60px]"
+                  style={editorFontStyle}
                   value={form.studyFields}
                   onChange={(e) => setForm({ ...form, studyFields: e.target.value })}
                   placeholder="التوصية: ..."
@@ -787,6 +827,7 @@ function NewDocumentInner() {
                     fieldRefs.current.body = el;
                   }}
                   className="input min-h-[140px]"
+                  style={editorFontStyle}
                   value={form.body}
                   onChange={(e) => setBodyField(e.target.value)}
                 />
