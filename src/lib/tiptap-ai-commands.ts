@@ -6,6 +6,7 @@
 
 import type { Editor } from '@tiptap/core';
 import type { Node as PmNode } from '@tiptap/pm/model';
+import { tiptapFontFamilyCss } from '@/lib/arabic-font-library';
 
 export type AiBodyCommand =
   | { op: 'highlightWord'; word: string; color?: string }
