@@ -497,7 +497,7 @@ function NewDocumentInner() {
       strictPatch.form,
     );
     setPasteToast(
-      `تم تطبيق اللصق الصارم — ${PASTE_BUILD_ID} — حقول: ${filled.length ? filled.join('/') : '—'}`,
+      `تم تطبيق اللصق — حقول: ${filled.length ? filled.join(' / ') : '—'}`,
     );
 
     setSavedDocId(null);
@@ -856,16 +856,14 @@ function NewDocumentInner() {
 
   return (
     <AppShell user={user}>
-      {/* Cache-bust proof banner — visible on EVERY step */}
+      {/* Tiny build stamp — proof only, not a product feature */}
       <div
-        className="fixed top-0 inset-x-0 z-[200] bg-[#ffe600] text-black text-center font-black font-mono text-base sm:text-2xl md:text-3xl py-3 px-2 shadow-lg border-b-4 border-red-600 tracking-wide"
+        className="mb-2 inline-flex items-center rounded border border-moj-gold/40 bg-moj-gold/10 px-2 py-0.5 text-[10px] font-mono text-moj-green/80 dark:text-white/50"
         data-paste-build={PASTE_BUILD_ID}
-        role="status"
-        aria-live="polite"
+        title="ختم تحقق مؤقت — يؤكد أن نسخة اللصق الصارم محمّلة"
       >
-        PASTE BUILD: {PASTE_BUILD_ID} — STRICT PASTE LIVE ON ALL STEPS
+        {PASTE_BUILD_ID}
       </div>
-      <div className="h-14 sm:h-16 md:h-[4.25rem]" aria-hidden />
       {(formName || formSlug) && (
         <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-moj-gold/30 bg-gradient-to-l from-moj-gold/15 to-moj-green/5 px-3 py-2 text-sm text-moj-green">
           <span className="font-medium">مساحة العمل</span>
@@ -920,7 +918,7 @@ function NewDocumentInner() {
 
       {pasteToast && (
         <div
-          className="fixed top-3 left-1/2 z-50 -translate-x-1/2 max-w-xl w-[min(92vw,36rem)] rounded-lg border border-moj-gold bg-[#fff8e8] dark:bg-[#2a2418] px-4 py-2 text-sm text-moj-green shadow-lg"
+          className="mb-3 rounded-lg border border-moj-gold/50 bg-moj-gold/10 px-3 py-1.5 text-xs text-moj-green dark:text-white/80"
           role="status"
         >
           <div className="flex items-start justify-between gap-3">
