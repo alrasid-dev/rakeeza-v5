@@ -7,6 +7,7 @@ import PageHeader from '@/components/PageHeader';
 import OfficialPaperPreview, { normalizeBodyText } from '@/components/OfficialPaperPreview';
 import RecipientCascade from '@/components/RecipientCascade';
 import StyleToolbar, { type DocStyle } from '@/components/StyleToolbar';
+import { applyAlignToRange } from '@/lib/body-align';
 import PaperLayoutPicker from '@/components/PaperLayoutPicker';
 import ExportToolbar from '@/components/ExportToolbar';
 import { parsePaste, type TableRow } from '@/lib/parse-paste';
@@ -658,6 +659,30 @@ function NewDocumentInner() {
     fontSize: style.fontSizePt ? `${style.fontSizePt}pt` : undefined,
   };
 
+  const applyBodyAlign = (align: DocStyle['align']) => {
+    const el = fieldRefs.current.body as HTMLTextAreaElement | undefined | null;
+    if (el && typeof el.selectionStart === 'number') {
+      const start = el.selectionStart;
+      const end = el.selectionEnd;
+      const next = applyAlignToRange(form.body || '', start, end, align);
+      setBodyField(next);
+      // restore selection roughly
+      requestAnimationFrame(() => {
+        const box = fieldRefs.current.body as HTMLTextAreaElement | null;
+        if (box) {
+          box.focus();
+          try {
+            box.setSelectionRange(start, Math.max(start, end));
+          } catch {
+            /* ignore */
+          }
+        }
+      });
+      return;
+    }
+    // no body focus: still update default for inference fallback
+  };
+
   const exportDoc = {
     id: savedDocId || undefined,
     number: null as string | null,
@@ -683,6 +708,7 @@ function NewDocumentInner() {
     judgmentPriority: isBriefing ? judgmentPriority : undefined,
     fontFamily: style.fontFamily,
     fontSizePt: style.fontSizePt,
+    align: style.align,
   };
 
   return (
@@ -775,7 +801,7 @@ function NewDocumentInner() {
 
       {step === 3 && (
         <div className="space-y-3">
-          <StyleToolbar value={style} onChange={setStyle} />
+          <StyleToolbar value={style} onChange={setStyle} onAlignSelection={applyBodyAlign} />
           <div className="rounded-xl border-2 border-moj-gold bg-[#fff8e8] dark:bg-[#2a2418] p-3 space-y-2 shadow-md ring-2 ring-moj-gold/40">
             <div className="text-sm font-bold text-moj-green flex items-center gap-2">
               <span className="inline-block h-2.5 w-2.5 rounded-full bg-moj-gold animate-pulse" />
@@ -1165,6 +1191,10 @@ function NewDocumentInner() {
                         </ul>
                       </div>
                     )}
+                    <p className="text-[10px] text-gray-500 mb-1">
+                      حدّد سطراً أو فقرة ثم اضغط يمين / وسط / يسار من شريط التنسيق أعلاه.
+                      التحية والخاتمة تُوسَّطان تلقائياً، وباقي النص يمين.
+                    </p>
                     <textarea
                       ref={(el) => {
                         fieldRefs.current.body = el;

@@ -13,6 +13,7 @@ import { officialDateDisplay } from '@/lib/hijri';
 import { fontStackFor } from '@/lib/font-stacks';
 import { enrichStudySections, hasStudyContent, studyDisplayMeta } from '@/lib/study-display';
 import { BRAND } from '@/lib/brand';
+import { parseBodyBlocks, type ParaAlign } from '@/lib/body-align';
 import {
   JUDGMENT_CARD_RECIPIENTS,
   JUDGMENT_CLOSING,
@@ -831,8 +832,8 @@ export default function OfficialPaperPreview({
   const letterFontStyle: React.CSSProperties = {
     fontFamily,
     fontSize,
-    textAlign,
   };
+  void textAlign; // per-paragraph via body-align; meta stays RTL/right
 
   return (
     <div className="w-full max-w-full overflow-x-auto">
@@ -984,14 +985,21 @@ export default function OfficialPaperPreview({
           )}
           {bodyForPreview && (
             <Clickable field="body" onFieldClick={onFieldClick}>
-              {/* key forces remount when body changes — prevents stale stacked spans */}
-              <pre
-                key={`body-${bodyForPreview.length}-${bodyForPreview.slice(0, 32)}`}
-                className="whitespace-pre-wrap text-sm leading-8 text-gray-900"
+              <div
+                key={`body-${bodyForPreview.length}-${bodyForPreview.slice(0, 48)}`}
+                className="leading-8 text-gray-900 space-y-2"
                 style={{ fontFamily, fontSize }}
               >
-                {bodyForPreview}
-              </pre>
+                {parseBodyBlocks(bodyForPreview, (style?.align as ParaAlign) || 'right').map((b, i) => (
+                  <div
+                    key={i}
+                    className="whitespace-pre-wrap"
+                    style={{ textAlign: b.align }}
+                  >
+                    {b.text || ' '}
+                  </div>
+                ))}
+              </div>
             </Clickable>
           )}
 

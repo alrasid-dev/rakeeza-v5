@@ -13,9 +13,12 @@ const SIZES = [11, 12, 13, 14, 16, 18, 20, 22];
 export default function StyleToolbar({
   value,
   onChange,
+  onAlignSelection,
 }: {
   value: DocStyle;
   onChange: (next: DocStyle) => void;
+  /** When set, يمين/وسط/يسار apply to the selected body paragraph(s). */
+  onAlignSelection?: (align: DocStyle['align']) => void;
 }) {
   return (
     <div className="flex flex-wrap items-end gap-2 rounded-xl border border-moj-green/20 bg-white dark:bg-[var(--surface)] p-2 text-sm">
@@ -41,34 +44,41 @@ export default function StyleToolbar({
           value={value.fontSizePt}
           onChange={(e) => onChange({ ...value, fontSizePt: Number(e.target.value) })}
         >
-          {SIZES.map((s) => (
-            <option key={s} value={s}>
-              {s}
+          {SIZES.map((n) => (
+            <option key={n} value={n}>
+              {n}
             </option>
           ))}
         </select>
       </div>
-      <div className="flex gap-1 pb-0.5">
-        {(
-          [
-            ['right', 'يمين'],
-            ['center', 'وسط'],
-            ['left', 'يسار'],
-          ] as const
-        ).map(([a, label]) => (
-          <button
-            key={a}
-            type="button"
-            className={`px-2.5 py-1.5 rounded-lg border text-xs ${
-              value.align === a
-                ? 'bg-moj-green text-white border-moj-green'
-                : 'border-gray-300 dark:border-white/20'
-            }`}
-            onClick={() => onChange({ ...value, align: a })}
-          >
-            {label}
-          </button>
-        ))}
+      <div className="flex flex-col gap-0.5 pb-0.5">
+        <span className="label text-xs mb-0">محاذاة الفقرة المحددة</span>
+        <div className="flex gap-1">
+          {(
+            [
+              ['right', 'يمين'],
+              ['center', 'وسط'],
+              ['left', 'يسار'],
+            ] as const
+          ).map(([a, label]) => (
+            <button
+              key={a}
+              type="button"
+              title="حدّد نصاً في المكاتبة ثم اضغط — أو ضع المؤشر داخل الفقرة"
+              className={`px-2.5 py-1.5 rounded-lg border text-xs ${
+                value.align === a
+                  ? 'bg-moj-green text-white border-moj-green'
+                  : 'border-gray-300 dark:border-white/20'
+              }`}
+              onClick={() => {
+                onChange({ ...value, align: a });
+                onAlignSelection?.(a);
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );

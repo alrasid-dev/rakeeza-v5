@@ -13,6 +13,7 @@ import { formatClaimAmount, normalizeFormationOrdinal } from '@/lib/arabic-norma
 import { enrichStudySections, hasStudyContent, studyDisplayMeta } from '@/lib/study-display';
 import { BRAND } from '@/lib/brand';
 import { fontStackFor } from '@/lib/font-stacks';
+import { bodyBlocksToHtml } from '@/lib/body-align';
 import {
   buildJudgmentBriefingBlockHtml,
   isJudgmentBriefingDoc,
@@ -46,6 +47,7 @@ export type OfficialLetterDoc = {
   judgmentPriority?: string | null;
   fontFamily?: string | null;
   fontSizePt?: number | null;
+  align?: 'right' | 'center' | 'left' | null;
   paperLayout?: PaperLayoutId | string | null;
 };
 
@@ -429,7 +431,7 @@ body {
   border-bottom: 1px solid ${GOLD};
   padding-bottom: 2px;
 }
-.body { white-space: pre-wrap; text-align: justify; font-family: inherit; }
+.body { font-family: inherit; }
 .foot {
   margin-top: 18px;
   padding: 10px 18px;
@@ -478,7 +480,7 @@ body {
     }
     ${
       !hasStudy && !isBriefing && doc.body
-        ? `<div class="body">${pre(String(doc.body).trim())}</div>`
+        ? `<div class="body">${bodyBlocksToHtml(String(doc.body).trim(), { escape: esc, fallbackAlign: (doc.align as 'right'|'center'|'left') || 'right' })}</div>`
         : ''
     }
     ${
