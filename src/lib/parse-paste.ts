@@ -286,10 +286,23 @@ export function parsePaste(raw: string): ParsedPaste {
     }
   }
 
+
+  // LETTER_HEAD_FALLBACK: plain letter often starts with honorific without "إلى:"
+  if (!recipients) {
+    const salIdx = lines.findIndex((l) => SALUTATION.test(l));
+    const head = (salIdx >= 0 ? lines.slice(0, salIdx) : lines.slice(0, 8)).map((l) => l.trim()).filter(Boolean);
+    const hit = head.find((l) => /^(فضيل[ةه]|سعاد[ةه]|معالي|سمو)\b/.test(l) && l.length < 120);
+    if (hit) recipients = hit.replace(/^إلى\s*[:：]\s*/, '').trim();
+  }
+
   // If subject still empty, use decision/circular title line if short
   if (!subject) {
     const decision = lines.find((l) => /قرار رقم|تعميم رقم|خطاب رقم/.test(l));
     if (decision && decision.length < 120) subject = decision;
+  }
+  if (!subject) {
+    const bshan = text.match(/بشأن\s*[:：]?\s*([^\n]{8,120})/);
+    if (bshan) subject = ('بشأن ' + bshan[1].trim()).trim();
   }
 
   const parties =

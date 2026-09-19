@@ -92,9 +92,10 @@ const TiptapBodyEditor = forwardRef<TiptapBodyEditorHandle, Props>(function Tipt
     content: markersToEditorHtml(value, style?.align || 'right'),
     editorProps: {
       attributes: {
-        class: 'tiptap-body-editor prose-moj focus:outline-none',
+        class: 'tiptap-body-editor prose-moj focus:outline-none whitespace-pre-wrap',
         dir: 'rtl',
         lang: 'ar',
+        style: 'white-space: pre-wrap;',
       },
     },
     onUpdate: ({ editor: ed }) => {
@@ -191,7 +192,7 @@ const TiptapBodyEditor = forwardRef<TiptapBodyEditorHandle, Props>(function Tipt
   return (
     <div className={`tiptap-body-shell rounded-xl border border-gray-300 dark:border-white/15 bg-white dark:bg-[#121c18] ${className}`}>
       {showCommandBar && (
-        <div className="flex flex-wrap gap-1.5 items-center border-b border-moj-green/15 px-2 py-1.5 bg-moj-light/40 dark:bg-white/5">
+        <div className="whitespace-pre-wrap flex flex-wrap gap-1.5 items-center border-b border-moj-green/15 px-2 py-1.5 bg-moj-light/40 dark:bg-white/5">
           <label className="text-[10px] font-bold text-moj-green whitespace-nowrap">أمر تنسيق (محلي)</label>
           <input
             className="input py-1 text-xs flex-1 min-w-[10rem]"

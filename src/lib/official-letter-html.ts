@@ -52,6 +52,8 @@ export type OfficialLetterDoc = {
   fontSizePt?: number | null;
   align?: 'right' | 'center' | 'left' | null;
   paperLayout?: PaperLayoutId | string | null;
+  /** Name/id rows from smart paste — must show in preview as a real table */
+  tableRows?: { name: string; id?: string; extra?: string }[] | null;
 };
 
 const GREEN = '#006C35';
@@ -68,6 +70,40 @@ function esc(s: string) {
 function pre(s: string) {
   return esc(s).replace(/\n/g, '<br/>');
 }
+
+function tableRowsHtml(
+  rows: { name: string; id?: string; extra?: string }[],
+  paraFont: string,
+): string {
+  if (!rows?.length) return '';
+  const head =
+    `<tr>`
+    + `<th align="right" style="border:1px solid ${GREEN};background:#e6f2eb;padding:6px 8px;font-family:${paraFont};font-size:12px">الاسم</th>`
+    + `<th align="right" style="border:1px solid ${GREEN};background:#e6f2eb;padding:6px 8px;font-family:${paraFont};font-size:12px">الهوية / الرقم</th>`
+    + `<th align="right" style="border:1px solid ${GREEN};background:#e6f2eb;padding:6px 8px;font-family:${paraFont};font-size:12px">بيان</th>`
+    + `</tr>`;
+  const body = rows
+    .map((r) => {
+      const name = esc(r.name || '');
+      const id = esc(r.id || '');
+      const extra = esc(r.extra || '');
+      return (
+        `<tr>`
+        + `<td align="right" style="border:1px solid ${GREEN};padding:6px 8px;font-family:${paraFont}">${name}</td>`
+        + `<td align="right" dir="ltr" style="border:1px solid ${GREEN};padding:6px 8px;font-family:${paraFont}">${id}</td>`
+        + `<td align="right" style="border:1px solid ${GREEN};padding:6px 8px;font-family:${paraFont}">${extra}</td>`
+        + `</tr>`
+      );
+    })
+    .join('');
+  return (
+    `<div data-field="tableRows" style="margin:12px 0;cursor:pointer">`
+    + `<h3 style="margin:12px 0 6px;color:${GREEN};font-size:13px;border-bottom:1px solid ${GOLD};padding-bottom:2px">الجدول</h3>`
+    + `<table dir="rtl" width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse:collapse;width:100%">`
+    + `<thead>${head}</thead><tbody>${body}</tbody></table></div>`
+  );
+}
+
 
 /** Table KV — Outlook Word engine cannot layout flex/grid. */
 function kv(label: string, value?: string) {
@@ -515,6 +551,11 @@ ${embeddedBlock}`;
       !hasStudy && !isBriefing && doc.studyFields
         ? `<div data-field="studyFields" style="cursor:pointer"><h3 style="margin:12px 0 6px;color:${GREEN};font-size:13px;border-bottom:1px solid ${GOLD};padding-bottom:2px">الدراسة</h3><div class="body">${pre(doc.studyFields)}</div></div>`
         : ''
+    }
+    ${
+      !hasStudy && !isBriefing && (doc.tableRows?.length || 0) > 0
+        ? tableRowsHtml(doc.tableRows || [], paraFont)
+        : ''
     }`;
   const bodySection = opts?.forOutlook
     ? `<table dir="rtl" width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse:collapse"><tr><td class="section" style="${sectionPad};font-family:${paraFont};font-size:${size}px;color:#111">${bodyInner}</td></tr></table>`
@@ -637,7 +678,8 @@ ${opts?.forOutlook
   border-bottom: 1px solid ${GOLD};
   padding-bottom: 2px;
 }
-.body { font-family: ${paraFont}; }
+.body { font-family: ${paraFont}; white-space: pre-wrap; }
+.body p { white-space: pre-wrap; }
 .foot {
   margin-top: 18px;
   padding: 10px 18px;

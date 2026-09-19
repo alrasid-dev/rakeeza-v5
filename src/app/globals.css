@@ -184,3 +184,10 @@ html.dark main {
   border-bottom-color: #006C35;
   background: rgba(0, 108, 53, 0.1);
 }
+
+
+.tiptap-body-editor,
+.tiptap-body-editor .ProseMirror,
+.ProseMirror {
+  white-space: pre-wrap;
+}

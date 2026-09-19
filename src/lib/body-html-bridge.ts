@@ -54,13 +54,26 @@ export function editorHtmlToBody(html: string | null | undefined): string {
  * Body fragment for official-letter-html / Outlook / PDF.
  * HTML bodies pass through; marker bodies use bodyBlocksToHtml.
  */
+
+/** Ensure TipTap/HTML paragraphs keep spaces visible in preview/PDF. */
+export function ensurePreWrapOnParagraphs(html: string): string {
+  return String(html || '').replace(/<p(\s[^>]*)?>/gi, (full, attrs = '') => {
+    const a = attrs || '';
+    if (/white-space\s*:/i.test(a)) return full;
+    if (/style\s*=\s*"/i.test(a)) {
+      return full.replace(/style\s*=\s*"/i, 'style="white-space:pre-wrap;');
+    }
+    return `<p${a} style="white-space:pre-wrap">`;
+  });
+}
+
 export function bodyToExportHtml(
   body: string | null | undefined,
   opts?: { fallbackAlign?: ParaAlign; escape?: (s: string) => string; fontFamily?: string | null },
 ): string {
   const raw = String(body ?? '');
   if (!raw.trim()) return '';
-  if (isBodyHtml(raw)) return raw;
+  if (isBodyHtml(raw)) return ensurePreWrapOnParagraphs(raw);
   return bodyBlocksToHtml(raw, {
     escape: opts?.escape || escHtml,
     fallbackAlign: opts?.fallbackAlign || 'right',

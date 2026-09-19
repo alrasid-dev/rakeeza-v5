@@ -1,3 +1,20 @@
+
+/** Official letter rhythm: blank line after salutation; closing on own line. */
+export function formatOfficialLetterBody(body: string): string {
+  let b = String(body || '').replace(/\r\n/g, '\n');
+  if (!b.trim()) return b;
+  // Ensure blank line after salutation
+  b = b.replace(
+    /(السلام\s+عليكم[^\n]*بعد[^\n]*[:-]?\s*)\n(?!\n)/,
+    '$1\n\n',
+  );
+  // Closing phrases on their own centered-friendly lines
+  b = b.replace(/\n?[ \t]*(والله\s+يحفظكم[^\n]*)/g, '\n\n$1');
+  b = b.replace(/\n?[ \t]*(وتقبلوا[^\n]*)/g, '\n\n$1');
+  b = b.replace(/\n{3,}/g, '\n\n');
+  return b.replace(/^\n+/, '').replace(/\n+$/, '');
+}
+
 /**
  * Paste → reactive document state. Strict JSON maps 1:1 into visible fields.
  * Missing paste values stay empty — never keep seed samples.
@@ -160,7 +177,7 @@ export function buildPasteStatePatch(
         parties: '',
         reasons: '',
         studyFields: '',
-        body: json.body,
+        body: formatOfficialLetterBody(json.body),
         docType: opts.formName || 'إشعار',
       },
       judgmentCard: null,
@@ -187,7 +204,7 @@ export function buildPasteStatePatch(
         parties: json.parties,
         reasons: json.reasons,
         studyFields: json.studyFields,
-        body: json.body,
+        body: formatOfficialLetterBody(json.body),
         docType: opts.formName || 'مذكرة',
       },
       judgmentCard: null,
@@ -213,7 +230,7 @@ export function buildPasteStatePatch(
       parties: json.parties,
       reasons: json.reasons,
       studyFields: '',
-      body: json.body,
+      body: formatOfficialLetterBody(json.body),
       docType: opts.formName || 'خطاب رسمي',
     },
     judgmentCard: null,

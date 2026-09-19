@@ -52,8 +52,8 @@ export function normalizeBodyText(raw: string | null | undefined): string {
   // Preserve leading/trailing spaces on lines — Word-like Space positioning.
   // Only normalize newlines and strip blank lines at the very ends.
   let text = rawStr
-    .replace(/\r\n/g, '\n')
-    .replace(/\u00a0/g, ' ');
+    .replace(/\r\n/g, '\n');
+  // Keep \u00a0 — converting to space collapses Word-like horizontal shifts in preview.
   text = text.replace(/^\n+/, '').replace(/\n+$/, '');
   if (!text.trim()) return '';
   // If the whole body is the same paragraph repeated twice, keep one.
@@ -140,6 +140,7 @@ export default function OfficialPaperPreview({
         fontSizePt: style?.fontSizePt,
         align: style?.align || 'right',
         paperLayout: layout,
+        tableRows: isBriefing || hasStudy ? [] : doc.tableRows,
       },
       // Preview: CSS-var stacks (next/font). PDF/Outlook pass forPdf/forOutlook.
       {},
