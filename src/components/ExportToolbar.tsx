@@ -272,6 +272,22 @@ export default function ExportToolbar({
     }
   }
 
+  async function copyPlainSelectable() {
+    if (!canExport) {
+      setMsg(BLOCK_MSG);
+      onRequestIssue?.();
+      return;
+    }
+    const plain = buildPlainLetter(doc);
+    try {
+      await navigator.clipboard.writeText(plain);
+      markExported();
+      setMsg('تم نسخ النص — يمكن للمستلم لصقه في Word أو البريد أو أي محرر');
+    } catch {
+      setMsg('تعذّر النسخ — اسمح بالوصول للحافظة');
+    }
+  }
+
   async function copyFullLetter() {
     if (!canExport) {
       setMsg(BLOCK_MSG);
@@ -428,13 +444,31 @@ export default function ExportToolbar({
             !canExport
               ? BLOCK_MSG
               : exportedOnce
-                ? 'نسخ الخطاب كامل'
+                ? 'نسخ الخطاب كامل (HTML للـ Outlook)'
                 : 'صدر الخطاب أولاً لتتمكن من النسخ'
           }
         >
           نسخ الخطاب كامل
         </button>
+        <button
+          type="button"
+          className={`text-sm px-4 py-2.5 rounded-xl font-medium border transition ${
+            canExport
+              ? 'btn-outline'
+              : 'border-gray-300 text-gray-400 cursor-not-allowed bg-gray-50 dark:bg-white/5 dark:border-white/10'
+          }`}
+          disabled={!canExport || busy}
+          onClick={() => void copyPlainSelectable()}
+          title="نسخ نص الخطاب فقط — قابل للتحديد واللصق لدى المستلم"
+        >
+          نسخ النص
+        </button>
       </div>
+
+      <p className="text-[11px] text-gray-500 dark:text-white/45 leading-relaxed">
+        بعد الإرسال: يمكن للمستلم تحديد النص من Outlook أو PDF ونسخه (Ctrl+C) ثم لصقه في أي مكان.
+        داخل ركيزة: حدّد من المعاينة للنسخ، أو الصق في خانة المكاتبة بـ Ctrl+V.
+      </p>
 
       {msg && (
         <div

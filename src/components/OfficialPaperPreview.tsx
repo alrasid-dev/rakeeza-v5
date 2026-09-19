@@ -175,6 +175,9 @@ export default function OfficialPaperPreview({
 
   function handleClick(e: MouseEvent<HTMLDivElement>) {
     if (!onFieldClick) return;
+    // Allow copy/paste: if the user selected text, do not jump to the editor field
+    const sel = typeof window !== 'undefined' ? window.getSelection() : null;
+    if (sel && String(sel.toString() || '').trim()) return;
     const el = (e.target as HTMLElement | null)?.closest?.('[data-field]');
     if (!el) return;
     const field = el.getAttribute('data-field');
@@ -190,7 +193,7 @@ export default function OfficialPaperPreview({
       {/* Inject generator styles so preview === PDF/Outlook chrome */}
       <style>{styleCss}</style>
       <div
-        className="official-paper-root official-paper-html-preview shadow-sm rounded-lg overflow-hidden"
+        className="official-paper-root official-paper-html-preview shadow-sm rounded-lg overflow-hidden select-text"
         onClick={handleClick}
         role={onFieldClick ? 'presentation' : undefined}
         dangerouslySetInnerHTML={{ __html: paperHtml }}

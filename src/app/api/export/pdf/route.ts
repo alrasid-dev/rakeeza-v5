@@ -77,6 +77,8 @@ async function renderHtmlToPdf(browser: { newPage: () => Promise<any>; close: ()
       format: 'A4',
       printBackground: true,
       preferCSSPageSize: true,
+      // Keep real text layer so recipients can select/copy (not a flat image)
+      tagged: true,
       margin: { top: '10mm', bottom: '10mm', left: '10mm', right: '10mm' },
     });
     return Buffer.from(pdf);

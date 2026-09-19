@@ -571,6 +571,16 @@ ${metaCss}
   font-size: 11px;
   ${theme.foot}
 }
+
+.paper, .paper td, .paper div, .paper span, .paper p, .paper pre, .body, .meta {
+  -webkit-user-select: text !important;
+  -moz-user-select: text !important;
+  -ms-user-select: text !important;
+  user-select: text !important;
+  cursor: text;
+}
+img, svg, .cc-icon { -webkit-user-select: none; user-select: none; cursor: default; }
+
 @media print {
   .cc-row, .cc-icon { display: inline-block !important; visibility: visible !important; }
 }
