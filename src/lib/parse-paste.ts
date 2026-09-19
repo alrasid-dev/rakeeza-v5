@@ -2,6 +2,7 @@
 
 import { isStudyPaste, parseStudyPaste, studyToFormFields } from '@/lib/parse-study';
 import { suggestFont } from '@/lib/font-suggest';
+import { extractJudgmentCardFromPaste } from '@/lib/judgment-card';
 
 export type TableRow = { name: string; id?: string; extra?: string };
 
@@ -17,6 +18,8 @@ export type ParsedPaste = {
   studyFields: string;
   body: string;
   tableRows: TableRow[];
+  /** Partial/full judgment-card values detected from paste (مصدر الحكم فضيلة الشيخ, …) */
+  judgmentCardFields?: Partial<Record<string, string>>;
   studySections?: import('@/lib/parse-study').StudySections;
   detectedKind?: 'study' | 'letter' | 'table' | 'unknown';
   fontHint?: { family: string; sizePt: number };
@@ -212,6 +215,7 @@ export function parsePaste(raw: string): ParsedPaste {
       studyFields: mapped.studyFields,
       body: dedupeGreetingBody(mapped.body, mapped.subject),
       tableRows: [],
+      judgmentCardFields: extractJudgmentCardFromPaste(text),
       studySections: study,
       detectedKind: 'study',
       fontHint: { family: font.suggestion.family, sizePt: font.suggestion.sizePt },
@@ -345,6 +349,8 @@ export function parsePaste(raw: string): ParsedPaste {
 
   const bodyClean = dedupeGreetingBody(body, subject);
 
+  const judgmentCardFields = extractJudgmentCardFromPaste(text);
+
   return {
     number,
     date,
@@ -356,6 +362,7 @@ export function parsePaste(raw: string): ParsedPaste {
     studyFields: study,
     body: bodyClean,
     tableRows,
+    judgmentCardFields,
     detectedKind: kind,
     fontHint: { family: font.suggestion.family, sizePt: font.suggestion.sizePt },
   };

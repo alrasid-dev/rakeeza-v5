@@ -33,6 +33,7 @@ export type OfficialLetterDoc = {
   courtName?: string | null;
   headerLines?: string[] | null;
   studySections?: StudySections | null;
+  judgmentCard?: { label: string; value: string }[] | null;
   fontFamily?: string | null;
   fontSizePt?: number | null;
   paperLayout?: PaperLayoutId | string | null;
@@ -221,6 +222,24 @@ function layoutTheme(layout: PaperLayoutId) {
         extraChrome: '',
       };
   }
+}
+
+
+function judgmentCardHtml(rows: { label: string; value: string }[]) {
+  if (!rows?.length) return '';
+  const trs = rows
+    .map(
+      (r, i) =>
+        `<tr style="background:${i % 2 ? '#f3f8f5' : '#fff'}">
+          <th style="padding:8px 10px;border:1px solid ${GREEN}55;background:${GREEN}14;color:${GREEN};font-weight:700;width:38%;text-align:right;vertical-align:middle">${esc(r.label)}</th>
+          <td style="padding:8px 10px;border:1px solid ${GREEN}55;text-align:right;vertical-align:middle" dir="auto">${esc(r.value)}</td>
+        </tr>`,
+    )
+    .join('');
+  return `<h3>بطاقة رصد</h3>
+  <table dir="rtl" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;border:1px solid ${GREEN};margin:6px 0 12px;font-size:13px">
+    <tbody>${trs}</tbody>
+  </table>`;
 }
 
 export function buildOfficialLetterHtml(doc: OfficialLetterDoc, opts?: { forPdf?: boolean; embeddedFontCss?: string }) {
@@ -443,6 +462,7 @@ body {
         ? `<h3>النص</h3><div class="body">${pre(String(doc.body).trim())}</div>`
         : ''
     }
+    ${!hasStudy && doc.judgmentCard?.length ? judgmentCardHtml(doc.judgmentCard) : ''}
     ${
       !hasStudy && doc.studyFields
         ? `<h3>الدراسة</h3><div class="body">${pre(doc.studyFields)}</div>`

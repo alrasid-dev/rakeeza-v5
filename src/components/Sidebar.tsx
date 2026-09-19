@@ -9,7 +9,7 @@ import ThemeToggle from '@/components/ThemeToggle';
 type NavLeaf = { href: string; label: string; formSlug?: string };
 type NavGroup = { id: string; label: string; children: NavLeaf[] };
 
-const FORM_ITEMS: { slug: string; name: string }[] = [
+const FORM_ITEMS: { slug: string; name: string; layout?: string }[] = [
   { slug: 'khitab-sadir', name: 'خطاب صادر' },
   { slug: 'muthakkira-dakhiliya', name: 'مذكرة داخلية' },
   { slug: 'taameem-farigh', name: 'تعميم (فارغ)' },
@@ -37,17 +37,28 @@ const FORM_ITEMS: { slug: string; name: string }[] = [
   { slug: 'study-complaint', name: 'نموذج تحليل حكم (شكوى)' },
   { slug: 'email-signature', name: 'التوقيع الرقمي للبريد الإلكتروني' },
   { slug: 'report-cover', name: 'غلاف تقرير / عرض تقديمي' },
+  {
+    slug: 'madkhalat-ahkam',
+    name: 'مدخلات الأحكام بطاقة عرض',
+    layout: 'taameem-circular',
+  },
+  {
+    slug: 'madkhalat-ahkam-hex',
+    name: 'مدخلات الأحكام بطاقة عرض — عصري هندسي',
+    layout: 'modern-hex',
+  },
 ];
 
-function formHref(slug: string, name: string) {
-  return `/documents/new?form=${encodeURIComponent(slug)}&name=${encodeURIComponent(name)}`;
+function formHref(slug: string, name: string, layout?: string) {
+  const base = `/documents/new?form=${encodeURIComponent(slug)}&name=${encodeURIComponent(name)}`;
+  return layout ? `${base}&layout=${encodeURIComponent(layout)}` : base;
 }
 
 const formsGroup: NavGroup = {
   id: 'forms',
   label: 'النماذج',
   children: FORM_ITEMS.map((f) => ({
-    href: formHref(f.slug, f.name),
+    href: formHref(f.slug, f.name, f.layout),
     label: f.name,
     formSlug: f.slug,
   })),

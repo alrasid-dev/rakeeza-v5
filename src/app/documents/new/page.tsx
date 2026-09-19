@@ -16,6 +16,12 @@ import { clearDraft, clearAllDrafts, loadDraft, saveDraft } from '@/lib/draft-st
 import { suggestFont } from '@/lib/font-suggest';
 import { applyPolishFix, findPolishIssues, suggestLegalPhrases, type PolishIssue, type LegalPhraseSuggestion } from '@/lib/arabic-polish';
 import { DEFAULT_PAPER_LAYOUT, normalizePaperLayout, type PaperLayoutId } from '@/lib/paper-layouts';
+import {
+  mergeJudgmentCardFromPaste,
+  normalizeJudgmentCard,
+  parseTemplateFieldsJson,
+  type JudgmentCardRow,
+} from '@/lib/judgment-card';
 import { fontStackFor } from '@/lib/font-stacks';
 import {
   formatHijri,
@@ -26,7 +32,14 @@ import {
   todayHijri,
 } from '@/lib/hijri';
 
-type Template = { id: string; name: string; category: string; bodyHtml?: string; isEmpty?: boolean };
+type Template = {
+  id: string;
+  name: string;
+  category: string;
+  bodyHtml?: string;
+  fieldsJson?: string;
+  isEmpty?: boolean;
+};
 type User = { name: string; role: string };
 
 const EMPTY_FORM = {
@@ -57,6 +70,7 @@ function NewDocumentInner() {
   const [paste, setPaste] = useState('');
   const [form, setForm] = useState({ ...EMPTY_FORM });
   const [tableRows, setTableRows] = useState<TableRow[]>([]);
+  const [judgmentCard, setJudgmentCard] = useState<JudgmentCardRow[] | null>(null);
   const [studySections, setStudySections] = useState<StudySections | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -102,6 +116,8 @@ function NewDocumentInner() {
       try {
         const tr = (draft.form as { tableRowsJson?: string }).tableRowsJson;
         if (tr) setTableRows(JSON.parse(tr));
+        const jc = (draft.form as { judgmentCardJson?: string }).judgmentCardJson;
+        if (jc) setJudgmentCard(normalizeJudgmentCard(JSON.parse(jc)));
         const ss = (draft.form as { studySectionsJson?: string }).studySectionsJson;
         if (ss) setStudySections(JSON.parse(ss));
         const st = (draft.form as { styleJson?: string }).styleJson;
@@ -123,6 +139,7 @@ function NewDocumentInner() {
       setStep(formSlug || templateIdParam ? 2 : 1);
       setTemplateId(templateIdParam || '');
       setTableRows([]);
+      setJudgmentCard(null);
       setStudySections(null);
       setPaperLayout(normalizePaperLayout(layoutParam || DEFAULT_PAPER_LAYOUT));
       setSavedDocId(null);
@@ -173,12 +190,33 @@ function NewDocumentInner() {
   useEffect(() => {
     if (!templateId || !templates.length) return;
     const match = templates.find((t) => t.id === templateId);
-    if (!match?.bodyHtml || match.isEmpty === true) return;
+    if (!match || match.isEmpty === true) return;
+    const meta = parseTemplateFieldsJson(match.fieldsJson);
+    const seed = meta.seed;
+
     setForm((f) => {
-      if (f.body && f.body.trim()) return f;
-      return { ...f, body: match.bodyHtml || '', docType: formName || match.name || f.docType };
+      const next = { ...f, docType: formName || match.name || f.docType };
+      if ((!next.body || !next.body.trim()) && match.bodyHtml) {
+        next.body = match.bodyHtml;
+      }
+      if ((!next.subject || !next.subject.trim()) && seed?.subject) {
+        next.subject = seed.subject;
+      }
+      if ((!next.recipients || !next.recipients.trim()) && seed?.recipients) {
+        next.recipients = seed.recipients;
+      }
+      return next;
     });
-  }, [templateId, templates, formName]);
+
+    if (seed?.judgmentCard?.length) {
+      setJudgmentCard((prev) => (prev && prev.length ? prev : seed.judgmentCard!));
+    }
+
+    // Prefer URL layoutParam; otherwise template defaultPaperLayout
+    if (!layoutParam && meta.defaultPaperLayout) {
+      setPaperLayout(normalizePaperLayout(meta.defaultPaperLayout));
+    }
+  }, [templateId, templates, formName, layoutParam]);
 
   useEffect(() => {
     if (!formSlug || skipSave.current) return;
@@ -191,6 +229,7 @@ function NewDocumentInner() {
           ...form,
           body: normalizeBodyText(form.body),
           tableRowsJson: JSON.stringify(tableRows),
+          judgmentCardJson: JSON.stringify(judgmentCard || []),
           studySectionsJson: JSON.stringify(studySections),
           styleJson: JSON.stringify(style),
           paperLayout,
@@ -199,7 +238,7 @@ function NewDocumentInner() {
       setDraftRestored(true);
     }, 300);
     return () => window.clearTimeout(handle);
-  }, [formSlug, templateId, paste, step, form, tableRows, studySections, style, paperLayout]);
+  }, [formSlug, templateId, paste, step, form, tableRows, judgmentCard, studySections, style, paperLayout]);
 
   useEffect(() => {
     const handle = window.setTimeout(() => {
@@ -229,6 +268,24 @@ function NewDocumentInner() {
       (parsed.subject && parsed.subject.trim()) ||
       (caseNumber ? `دراسة شكوى — ${caseNumber}` : '');
     setTableRows(parsed.tableRows || []);
+    // Fill «مصدر الحكم فضيلة الشيخ» (and other card rows) from smart paste when present
+    setJudgmentCard((prev) => {
+      const extras = { ...(parsed.judgmentCardFields || {}) };
+      // Study paste may carry judge/researcher under researcher
+      const researcher = enrichedStudy?.researcher || parsed.studySections?.researcher;
+      if (researcher && !extras['مصدر الحكم فضيلة الشيخ']) {
+        extras['مصدر الحكم فضيلة الشيخ'] = researcher;
+      }
+      const formation = enrichedStudy?.formation || parsed.studySections?.formation;
+      if (formation && !extras['التشكيل']) extras['التشكيل'] = formation;
+      const caseNumber = enrichedStudy?.caseNumber || parsed.studySections?.caseNumber;
+      if (caseNumber && !extras['رقم القضية']) extras['رقم القضية'] = caseNumber;
+      const deed = enrichedStudy?.deedNumber || parsed.studySections?.deedNumber;
+      if (deed && !extras['رقم الحكم']) extras['رقم الحكم'] = deed;
+      const hasAny = Object.values(extras).some((v) => String(v || '').trim());
+      if (!hasAny && !(prev && prev.length)) return prev;
+      return mergeJudgmentCardFromPaste(prev, paste, extras);
+    });
     setStudySections(enrichedStudy || parsed.studySections || null);
     setDetectedKind(parsed.detectedKind || '');
     if (parsed.fontHint) {
@@ -283,6 +340,7 @@ function NewDocumentInner() {
       dateHijri: todayHijri(),
       docType: formName || 'مكاتبة',
     });
+    setJudgmentCard(null);
     setPaste('');
     setTableRows([]);
     setStudySections(null);
@@ -416,7 +474,7 @@ function NewDocumentInner() {
         templateId: templateId || null,
         issue,
         assignNumber: issue,
-        fields: { tableRows, studySections, style, paperLayout, copyTo: form.copyTo },
+        fields: { tableRows, judgmentCard, studySections, style, paperLayout, copyTo: form.copyTo },
       }),
     });
     const data = await res.json();
@@ -876,6 +934,11 @@ function NewDocumentInner() {
                   تم استخراج {tableRows.length} صف/صفوف من جدول الأسماء والهويات — تظهر في المعاينة.
                 </div>
               )}
+              {judgmentCard && judgmentCard.length > 0 && (
+                <div className="text-xs text-moj-green bg-moj-light rounded-lg p-2">
+                  بطاقة رصد ({judgmentCard.length} صفوف) — تظهر تلقائياً داخل الخطاب تحت النص.
+                </div>
+              )}
               {studySections && (
                 <div className="text-xs text-moj-green bg-moj-light rounded-lg p-2">
                   تم تحليل نموذج الدراسة إلى أقسام (قضية / ملخص / توصية) — المعاينة تعرض نموذجاً مقسماً وليس جدولاً واحداً.
@@ -915,6 +978,7 @@ function NewDocumentInner() {
                   body: previewBody,
                   docType: form.docType,
                   tableRows,
+                  judgmentCard,
                   studySections,
                   paperLayout,
                 }}

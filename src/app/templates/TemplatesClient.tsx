@@ -5,6 +5,12 @@ import { useMemo, useState } from 'react';
 import OfficialPaperPreview from '@/components/OfficialPaperPreview';
 import PaperLayoutPicker from '@/components/PaperLayoutPicker';
 import { DEFAULT_PAPER_LAYOUT, type PaperLayoutId } from '@/lib/paper-layouts';
+import {
+  JUDGMENT_CARD_BODY,
+  JUDGMENT_CARD_RECIPIENTS,
+  JUDGMENT_CARD_SEED,
+  JUDGMENT_CARD_SUBJECT,
+} from '@/lib/judgment-card';
 
 type Tpl = {
   id: string;
@@ -15,7 +21,16 @@ type Tpl = {
   group: string;
 };
 
-const SAMPLE: Record<string, { subject: string; recipients: string; body: string; study?: boolean }> = {
+type SampleDoc = {
+  subject: string;
+  recipients: string;
+  body: string;
+  study?: boolean;
+  judgmentCard?: { label: string; value: string }[];
+  layout?: PaperLayoutId;
+};
+
+const SAMPLE: Record<string, SampleDoc> = {
   'خطاب صادر': {
     subject: 'بشأن تنسيق الإجراءات',
     recipients: 'الأستاذ / …',
@@ -37,13 +52,38 @@ const SAMPLE: Record<string, { subject: string; recipients: string; body: string
     recipients: 'لمن يهمه الأمر',
     body: 'يعتمد التعميم على جميع الأقسام للعمل بموجبه.',
   },
+  'مدخلات الأحكام بطاقة عرض': {
+    subject: JUDGMENT_CARD_SUBJECT,
+    recipients: JUDGMENT_CARD_RECIPIENTS,
+    body: JUDGMENT_CARD_BODY,
+    judgmentCard: JUDGMENT_CARD_SEED,
+    layout: 'taameem-circular',
+  },
+  'مدخلات الأحكام بطاقة عرض — عصري هندسي': {
+    subject: JUDGMENT_CARD_SUBJECT,
+    recipients: JUDGMENT_CARD_RECIPIENTS,
+    body: JUDGMENT_CARD_BODY,
+    judgmentCard: JUDGMENT_CARD_SEED,
+    layout: 'modern-hex',
+  },
 };
 
-const DEFAULT_SAMPLE = {
+const DEFAULT_SAMPLE: SampleDoc = {
   subject: 'معاينة القالب',
   recipients: 'الأستاذ / …',
   body: 'هذه معاينة توضيحية لهوية الورق الرسمي قبل فتح المحرر.',
 };
+
+function openHref(base: string, layout: PaperLayoutId) {
+  try {
+    const u = new URL(base, 'https://rakeeza.local');
+    u.searchParams.set('layout', layout);
+    return `${u.pathname}?${u.searchParams.toString()}`;
+  } catch {
+    const sep = base.includes('?') ? '&' : '?';
+    return `${base}${sep}layout=${encodeURIComponent(layout)}`;
+  }
+}
 
 export default function TemplatesClient({
   groups,
@@ -55,9 +95,11 @@ export default function TemplatesClient({
   const flat = useMemo(() => groups.flatMap((g) => g.items), [groups]);
   const selected = flat.find((t) => t.id === selectedId) || flat[0] || null;
 
-  const sample: { subject: string; recipients: string; body: string; study?: boolean } = selected
+  const sample: SampleDoc = selected
     ? SAMPLE[selected.name] || { ...DEFAULT_SAMPLE, subject: selected.name }
     : DEFAULT_SAMPLE;
+
+  const effectiveLayout: PaperLayoutId = sample.layout || paperLayout;
 
   return (
     <div className="grid lg:grid-cols-5 gap-4">
@@ -78,7 +120,11 @@ export default function TemplatesClient({
                     <button
                       key={t.id}
                       type="button"
-                      onClick={() => setSelectedId(t.id)}
+                      onClick={() => {
+                        setSelectedId(t.id);
+                        const s = SAMPLE[t.name];
+                        if (s?.layout) setPaperLayout(s.layout);
+                      }}
                       className={`text-right card-surface rounded-2xl p-4 sm:p-5 min-h-[7.5rem] flex flex-col justify-between shadow-sm hover:shadow-md transition border min-w-0 ${
                         active
                           ? 'border-moj-green ring-2 ring-moj-green/25 bg-moj-light/40'
@@ -96,7 +142,7 @@ export default function TemplatesClient({
                         )}
                       </div>
                       <Link
-                        href={`${t.href}${t.href.includes('?') ? '&' : '?'}layout=${paperLayout}`}
+                        href={openHref(t.href, SAMPLE[t.name]?.layout || paperLayout)}
                         onClick={(e) => e.stopPropagation()}
                         className="mt-4 w-full inline-flex items-center justify-center rounded-xl bg-moj-green text-white dark:bg-[#2d4a3e] px-4 py-2.5 text-sm font-medium hover:opacity-90 transition"
                       >
@@ -118,12 +164,13 @@ export default function TemplatesClient({
           <>
             <div className="text-xs text-moj-green mb-2 font-semibold">{selected.name}</div>
             <OfficialPaperPreview
-              paperLayout={paperLayout}
+              paperLayout={effectiveLayout}
               doc={{
                 subject: sample.subject,
                 recipients: sample.recipients,
                 body: sample.body || undefined,
-                paperLayout,
+                paperLayout: effectiveLayout,
+                judgmentCard: sample.judgmentCard,
                 studySections: sample.study
                   ? {
                       caseNumber: '٠٠٠٠٠٠٠٠٠٠',
@@ -140,7 +187,10 @@ export default function TemplatesClient({
                   : null,
               }}
             />
-            <Link href={`${selected.href}${selected.href.includes('?') ? '&' : '?'}layout=${paperLayout}`} className="btn-primary w-full mt-3 inline-flex justify-center">
+            <Link
+              href={openHref(selected.href, effectiveLayout)}
+              className="btn-primary w-full mt-3 inline-flex justify-center"
+            >
               فتح المحرر بهذا القالب
             </Link>
           </>

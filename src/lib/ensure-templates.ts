@@ -1,5 +1,11 @@
 import 'server-only';
 import { prisma } from '@/lib/db';
+import {
+  JUDGMENT_CARD_BODY,
+  JUDGMENT_CARD_RECIPIENTS,
+  JUDGMENT_CARD_SEED,
+  JUDGMENT_CARD_SUBJECT,
+} from '@/lib/judgment-card';
 
 const SESSION_NOTICE_BODY = `فضيلة/سعادة: [اسم صاحب الفضيلة/السعادة]،
 
@@ -18,6 +24,20 @@ const URGENT_REFERRAL_BODY = `إلى: [الجهة / الإدارة المحال 
 نسخة إلى: [الجهة / الإدارة للاطلاع].
 
 وتقبلوا وافر التحية والتقدير.`;
+
+const LETTER_KEYS = ['number', 'date', 'subject', 'recipients', 'copyTo', 'body'];
+
+function judgmentFieldsJson(defaultPaperLayout: string) {
+  return JSON.stringify({
+    keys: [...LETTER_KEYS, 'judgmentCard'],
+    defaultPaperLayout,
+    seed: {
+      subject: JUDGMENT_CARD_SUBJECT,
+      recipients: JUDGMENT_CARD_RECIPIENTS,
+      judgmentCard: JUDGMENT_CARD_SEED,
+    },
+  });
+}
 
 /** Soft-migrate template categories + ensure new group templates exist (no wipe). */
 export async function ensureTemplates() {
@@ -90,6 +110,24 @@ export async function ensureTemplates() {
         bodyHtml: URGENT_REFERRAL_BODY,
         isEmpty: false,
       },
+      {
+        name: 'مدخلات الأحكام بطاقة عرض',
+        category: 'letter-official',
+        description:
+          'بطاقة رصد مدخلات الأحكام — تخطيط تعميم دائري كلاسيكي (defaultPaperLayout: taameem-circular)',
+        fieldsJson: judgmentFieldsJson('taameem-circular'),
+        bodyHtml: JUDGMENT_CARD_BODY,
+        isEmpty: false,
+      },
+      {
+        name: 'مدخلات الأحكام بطاقة عرض — عصري هندسي',
+        category: 'letter-official',
+        description:
+          'بطاقة رصد مدخلات الأحكام — تخطيط عصري هندسي (defaultPaperLayout: modern-hex)',
+        fieldsJson: judgmentFieldsJson('modern-hex'),
+        bodyHtml: JUDGMENT_CARD_BODY,
+        isEmpty: false,
+      },
     ];
 
     const maxOrder = await prisma.template.aggregate({ _max: { sortOrder: true } });
@@ -111,11 +149,14 @@ export async function ensureTemplates() {
       } else {
         const patch: Record<string, unknown> = {};
         if (existing.category !== ex.category) patch.category = ex.category;
-        if (!ex.isEmpty && (!existing.bodyHtml || existing.isEmpty)) {
-          patch.bodyHtml = ex.bodyHtml;
-          patch.isEmpty = false;
-          patch.fieldsJson = ex.fieldsJson;
-          patch.description = ex.description;
+        if (!ex.isEmpty) {
+          // Keep filled templates in sync (body + seed meta) without wiping user-created empty shells
+          if (existing.bodyHtml !== ex.bodyHtml || existing.isEmpty) {
+            patch.bodyHtml = ex.bodyHtml;
+            patch.isEmpty = false;
+          }
+          if (existing.fieldsJson !== ex.fieldsJson) patch.fieldsJson = ex.fieldsJson;
+          if (existing.description !== ex.description) patch.description = ex.description;
         }
         if (Object.keys(patch).length) {
           await prisma.template.update({ where: { id: existing.id }, data: patch });

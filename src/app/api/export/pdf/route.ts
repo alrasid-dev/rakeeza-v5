@@ -266,6 +266,7 @@ export async function GET(req: NextRequest) {
     let style: { fontFamily?: string; fontSizePt?: number } | null = null;
     let paperLayout: string | null = null;
     let copyToField = '';
+    let judgmentCard: { label: string; value: string }[] | null = null;
     try {
       const fields = JSON.parse(doc.fieldsJson || '{}') as {
         qrDataUrl?: string;
@@ -273,12 +274,14 @@ export async function GET(req: NextRequest) {
         style?: { fontFamily?: string; fontSizePt?: number };
         paperLayout?: string;
         copyTo?: string;
+        judgmentCard?: { label: string; value: string }[];
       };
       qrDataUrl = fields.qrDataUrl || null;
       studySections = fields.studySections || null;
       style = fields.style || null;
       paperLayout = fields.paperLayout || null;
       copyToField = fields.copyTo || '';
+      judgmentCard = fields.judgmentCard?.length ? fields.judgmentCard : null;
     } catch {
       qrDataUrl = null;
     }
@@ -332,6 +335,7 @@ html, body, .paper, .paper *:not(img):not(svg):not(svg *) {
         qrDataUrl,
         headerLines,
         studySections,
+        judgmentCard,
         fontFamily: style?.fontFamily || 'Traditional Arabic',
         fontSizePt: style?.fontSizePt,
         paperLayout,

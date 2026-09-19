@@ -84,6 +84,7 @@ export default function DocumentDetailPage() {
   const fields = JSON.parse(doc.fieldsJson || '{}') as {
     qrDataUrl?: string;
     tableRows?: { name: string; id?: string; extra?: string }[];
+    judgmentCard?: { label: string; value: string }[];
     studySections?: StudySections;
     style?: DocStyle;
     paperLayout?: PaperLayoutId | string;
@@ -161,6 +162,7 @@ export default function DocumentDetailPage() {
               docType: doc.docType,
               qrDataUrl: fields.qrDataUrl,
               tableRows: fields.tableRows,
+              judgmentCard: fields.judgmentCard,
               studySections: fields.studySections,
               paperLayout,
             }}

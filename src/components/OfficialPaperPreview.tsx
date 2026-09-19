@@ -32,6 +32,7 @@ export type OfficialPaperFields = {
   qrDataUrl?: string | null;
   courtName?: string | null;
   tableRows?: { name: string; id?: string; extra?: string }[];
+  judgmentCard?: { label: string; value: string }[] | null;
   studySections?: StudySections | null;
   paperLayout?: PaperLayoutId | string | null;
 };
@@ -822,6 +823,7 @@ export default function OfficialPaperPreview({
             </div>
           )}
 
+
           {showParties && (
             <Clickable field="parties" onFieldClick={onFieldClick}>
               <SectionTitle accent={chrome.titleAccent}>الأطراف</SectionTitle>
@@ -846,6 +848,28 @@ export default function OfficialPaperPreview({
                 {bodyForPreview}
               </pre>
             </Clickable>
+          )}
+
+          {doc.judgmentCard && doc.judgmentCard.length > 0 && (
+            <div className="mt-3">
+              <SectionTitle accent={chrome.titleAccent}>بطاقة رصد</SectionTitle>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm border border-moj-green">
+                  <tbody>
+                    {doc.judgmentCard.map((r, i) => (
+                      <tr key={i} className="odd:bg-white even:bg-moj-light/40">
+                        <th className="p-2 border border-moj-green/40 bg-moj-green/10 text-moj-green font-bold w-[38%] text-right align-middle">
+                          {r.label}
+                        </th>
+                        <td className="p-2 border border-moj-green/40 text-right align-middle" dir="auto">
+                          {r.value}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           )}
           {showStudyFields && (
             <Clickable field="studyFields" onFieldClick={onFieldClick}>

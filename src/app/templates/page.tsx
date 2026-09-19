@@ -36,6 +36,13 @@ const NAME_TO_FORM: Record<string, string> = {
   'التوقيع الرقمي للبريد الإلكتروني': 'email-signature',
   'غلاف تقرير / عرض تقديمي': 'report-cover',
   'كشف أسماء / Excel': 'excel-names',
+  'مدخلات الأحكام بطاقة عرض': 'madkhalat-ahkam',
+  'مدخلات الأحكام بطاقة عرض — عصري هندسي': 'madkhalat-ahkam-hex',
+};
+
+const NAME_TO_LAYOUT: Record<string, string> = {
+  'مدخلات الأحكام بطاقة عرض': 'taameem-circular',
+  'مدخلات الأحكام بطاقة عرض — عصري هندسي': 'modern-hex',
 };
 
 type GroupKey =
@@ -68,10 +75,12 @@ function resolveGroup(category: string, name: string): GroupKey {
 
 function templateHref(t: { id: string; name: string }) {
   const slug = NAME_TO_FORM[t.name];
+  const layout = NAME_TO_LAYOUT[t.name];
+  const layoutQ = layout ? `&layout=${encodeURIComponent(layout)}` : '';
   if (slug) {
-    return `/documents/new?form=${encodeURIComponent(slug)}&name=${encodeURIComponent(t.name)}`;
+    return `/documents/new?form=${encodeURIComponent(slug)}&name=${encodeURIComponent(t.name)}${layoutQ}`;
   }
-  return `/documents/new?templateId=${encodeURIComponent(t.id)}&name=${encodeURIComponent(t.name)}`;
+  return `/documents/new?templateId=${encodeURIComponent(t.id)}&name=${encodeURIComponent(t.name)}${layoutQ}`;
 }
 
 export default async function TemplatesPage() {

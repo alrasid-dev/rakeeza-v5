@@ -186,15 +186,18 @@ export async function GET(req: NextRequest) {
 
     let qrDataUrl: string | null = null;
     let bodyFont = 'Traditional Arabic';
+    let judgmentCard: { label: string; value: string }[] = [];
     try {
       const fields = JSON.parse(doc.fieldsJson || '{}') as {
         qrDataUrl?: string;
         copyTo?: string;
         style?: { fontFamily?: string };
+        judgmentCard?: { label: string; value: string }[];
       };
       qrDataUrl = fields.qrDataUrl || null;
       (doc as { _copyTo?: string })._copyTo = fields.copyTo || '';
       bodyFont = docxFontName(fields.style?.fontFamily);
+      judgmentCard = Array.isArray(fields.judgmentCard) ? fields.judgmentCard : [];
     } catch {
       qrDataUrl = null;
     }
@@ -411,6 +414,37 @@ export async function GET(req: NextRequest) {
       children.push(new Paragraph({ children: [], spacing: { after: 160 } }));
       children.push(banner('نص المكاتبة', GREEN));
       children.push(...bodyLines(doc.body));
+    }
+
+    if (judgmentCard.length) {
+      children.push(new Paragraph({ children: [], spacing: { after: 160 } }));
+      children.push(banner('بطاقة رصد', GREEN));
+      const labelW = Math.floor(PAGE_W * 0.38);
+      const valueW = PAGE_W - labelW;
+      children.push(
+        new Table({
+          width: { size: PAGE_W, type: WidthType.DXA },
+          rows: judgmentCard.map(
+            (r, i) =>
+              new TableRow({
+                children: [
+                  cell(r.value || '—', {
+                    width: valueW,
+                    fill: i % 2 ? LIGHT : 'FFFFFF',
+                    font: bodyFont,
+                  }),
+                  cell(r.label || '—', {
+                    bold: true,
+                    width: labelW,
+                    fill: LIGHT,
+                    color: GREEN,
+                    font: bodyFont,
+                  }),
+                ],
+              }),
+          ),
+        }),
+      );
     }
 
     if (doc.studyFields && doc.studyFields.trim()) {
