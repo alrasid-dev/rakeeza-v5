@@ -47,6 +47,8 @@ export type OfficialPaperFields = {
   /** Explicit judgment-briefing mode — never inferred from leftover card alone when study present */
   judgmentBriefing?: boolean | null;
   briefingTitle?: string | null;
+  observationText?: string | null;
+  mechanismText?: string | null;
   judgmentPriority?: JudgmentPriority | string | null;
   studySections?: StudySections | null;
   paperLayout?: PaperLayoutId | string | null;
@@ -95,7 +97,7 @@ function HexMotifDecor({ className = '' }: { className?: string }) {
   );
 }
 
-/** modern-hex cliché: cream header — LEFT QR, RIGHT logo + RTL letterhead text (keeps geometric chrome). */
+/** modern-hex cliché: cream + gold — official order LEFT=QR, CENTER=logo, RIGHT=letterhead text. */
 function ModernHexHeader({
   qrDataUrl,
   court,
@@ -106,7 +108,7 @@ function ModernHexHeader({
   return (
     <div
       dir="ltr"
-      className="relative grid grid-cols-[auto_1fr] items-center gap-3 px-5 py-3 border-b border-[#C5A059]/50 bg-[#F9F7F1]/80"
+      className="relative grid grid-cols-[1fr_auto_1fr] items-center gap-3 px-5 py-3 border-b border-[#C5A059]/50 bg-[#F9F7F1]/90"
     >
       <div className="flex justify-start items-center min-w-0 z-[1]">
         {qrDataUrl ? (
@@ -122,19 +124,20 @@ function ModernHexHeader({
           </div>
         )}
       </div>
-      <div className="flex justify-end items-center gap-3 min-w-0 z-[1]" dir="rtl">
-        {/* logo first under RTL → far right; text sits beside it toward center */}
+      <div className="flex justify-center z-[1]">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="/brand/moj-logo-gold.png"
           alt="شعار وزارة العدل"
-          className="w-[4.5rem] h-[4.5rem] shrink-0 rounded-xl border-2 border-moj-gold bg-white object-contain p-1 shadow-sm"
+          className="w-[4.75rem] h-[4.75rem] shrink-0 rounded-xl border-2 border-moj-gold bg-white object-contain p-1 shadow-sm"
         />
+      </div>
+      <div className="flex justify-end z-[1] min-w-0" dir="rtl">
         <div className="text-right min-w-0 leading-snug">
-          <div className="text-[11px] text-moj-green font-semibold">{BRAND.kingdom}</div>
-          <div className="text-[11px] text-moj-green font-semibold">{BRAND.ministry}</div>
-          <div className="text-moj-green font-extrabold text-base mt-0.5 leading-snug">{court}</div>
-          <div className="text-moj-gold text-xs mt-0.5">{BRAND.platform}</div>
+          <div className="text-[12px] text-moj-green font-bold">{BRAND.kingdom}</div>
+          <div className="text-[12px] text-moj-green font-bold">{BRAND.ministry}</div>
+          <div className="text-moj-green font-extrabold text-[15px] mt-0.5 leading-snug">{court}</div>
+          <div className="text-moj-gold text-xs mt-0.5 font-semibold">{BRAND.platform}</div>
         </div>
       </div>
     </div>
@@ -669,15 +672,21 @@ function JudgmentBriefingView({
   card,
   recipients,
   title,
+  observationText,
+  mechanismText,
 }: {
   card: { label: string; value: string }[];
   recipients?: string | null;
   title?: string | null;
+  observationText?: string | null;
+  mechanismText?: string | null;
 }) {
   const address = (recipients && recipients.trim()) || JUDGMENT_CARD_RECIPIENTS;
   const heading = (title && title.trim()) || 'بطاقة عرض';
-  const obs = buildJudgmentObservationParts(card);
-  const mech = buildMechanismParagraph(getJudgmentCardValue(card, MECHANISM_LABEL));
+  const obs = buildJudgmentObservationParts(card, observationText);
+  const mech =
+    (mechanismText && mechanismText.trim()) ||
+    buildMechanismParagraph(getJudgmentCardValue(card, MECHANISM_LABEL));
   return (
     <div className="mt-1 space-y-3 text-sm leading-relaxed text-justify">
       <div className="font-bold">{address}</div>
@@ -921,6 +930,8 @@ export default function OfficialPaperPreview({
               card={doc.judgmentCard}
               recipients={doc.recipients}
               title={doc.briefingTitle}
+              observationText={doc.observationText}
+              mechanismText={doc.mechanismText}
             />
           )}
           {showParties && (

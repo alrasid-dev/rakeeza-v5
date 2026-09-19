@@ -25,6 +25,7 @@ import {
   PROCESSING_MECHANISMS,
   detectBriefingTitle,
   detectJudgmentPriority,
+  extractJudgmentProseFromPaste,
   isBriefingTitle,
   isJudgmentBriefingFormSlug,
   isJudgmentBriefingMeta,
@@ -85,6 +86,8 @@ function NewDocumentInner() {
   const [paste, setPaste] = useState('');
   const [form, setForm] = useState({ ...EMPTY_FORM });
   const [tableRows, setTableRows] = useState<TableRow[]>([]);
+  const [observationText, setObservationText] = useState('');
+  const [mechanismText, setMechanismText] = useState('');
   const [judgmentCard, setJudgmentCard] = useState<JudgmentCardRow[] | null>(null);
   const [briefingTitle, setBriefingTitle] = useState<BriefingTitle>('بطاقة عرض');
   const [judgmentPriority, setJudgmentPriority] = useState<JudgmentPriority>('عادي');
@@ -590,6 +593,10 @@ function NewDocumentInner() {
         fields: {
           tableRows,
           judgmentCard: isBriefing ? judgmentCard : null,
+          observationText: isBriefing ? observationText : undefined,
+
+          mechanismText: isBriefing ? mechanismText : undefined,
+
           briefingTitle: isBriefing ? briefingTitle : undefined,
           judgmentPriority: isBriefing ? judgmentPriority : undefined,
           studySections: isBriefing ? null : studySections,
@@ -668,6 +675,10 @@ function NewDocumentInner() {
     studySections: isBriefing ? null : studySections,
     judgmentCard: isBriefing ? judgmentCard : null,
     judgmentBriefing: isBriefing,
+    observationText: isBriefing ? observationText : undefined,
+
+    mechanismText: isBriefing ? mechanismText : undefined,
+
     briefingTitle: isBriefing ? briefingTitle : undefined,
     judgmentPriority: isBriefing ? judgmentPriority : undefined,
     fontFamily: style.fontFamily,

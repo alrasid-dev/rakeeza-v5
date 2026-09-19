@@ -1,3 +1,4 @@
+import { polishSpelling } from '@/lib/arabic-polish';
 /** Key/value judgment-monitoring card — عرض شف (oral briefing) for court workflow */
 
 export type JudgmentCardRow = { label: string; value: string };
@@ -13,6 +14,7 @@ export const MECHANISM_LABEL_LEGACY = 'المعالجة المقترحة';
 
 export const PROCESSING_MECHANISMS = [
   'إصدار صك مستبدل',
+  'فتح تذكرة إجرائية',
   'رفع تذكرة',
   'تحديد موعد',
   'تنويه',
@@ -403,46 +405,117 @@ export type JudgmentObservationParts = {
   afterRed: string;
 };
 
-/** Observation sentence with «تم رصد» split out for red styling. */
-export function buildJudgmentObservationParts(
-  card: JudgmentCardRow[] | null | undefined,
-): JudgmentObservationParts {
-  const formation = getJudgmentCardValue(card, 'التشكيل') || '……';
-  const caseNo = getJudgmentCardValue(card, 'رقم القضية') || '……';
-  const deed = getJudgmentCardValue(card, 'رقم الحكم') || '……';
-  const source = getJudgmentCardValue(card, JUDGMENT_SOURCE_LABEL) || '……';
-  const note = getJudgmentCardValue(card, 'الرصد');
-  const beforeRed = `تنفيذاً لتوجيه أصحاب الفضيلة أعضاء الدائرة لدى التشكيل ( ${formation} ) `;
-  const afterRed =
-    ` صدور حكم برقم ${deed} في القضية رقم ${caseNo} من فضيلة الشيخ ${source}` +
-    (note ? `، ${note}` : '') +
-    '.';
-  return { beforeRed, red: OBSERVATION_RED, afterRed };
+/** Default observation — court wording; only التشكيل is filled from the table (no رقم حكم/قضية in prose). */
+export function defaultJudgmentObservation(formation: string): string {
+  const f = formation.trim() || '……';
+  return (
+    `تنفيذاً لتوجيه فضيلة الرئيس –وفقه الله- بمتابعة سلامة مدخلات الأحكام نود إفادتكم بأنه عند مراجعة القضية المدونة أدناه المنظورة لدى التشكيل القضائي ( ${f} ) ` +
+    `تم رصد صدور حكم ( غير نهائي ) وقيمة المطالبة في الدعوى دون الخمسين ألف ريال.`
+  );
 }
 
-/** Mechanism paragraph reflecting selected آلية المعالجة المقترحة. */
+/**
+ * Split observation for styling: everything from «تم رصد» through the end of the
+ * observation (i.e. until before «وفي حال اقتضى الأمر») is RED; the rest is black.
+ * Does not invent رقم حكم/قضية — those stay in the table only.
+ */
+export function buildJudgmentObservationParts(
+  card: JudgmentCardRow[] | null | undefined,
+  observationOverride?: string | null,
+): JudgmentObservationParts {
+  const formation = getJudgmentCardValue(card, 'التشكيل') || '……';
+  let text = String(observationOverride || '').trim();
+  if (text) {
+    try {
+      text = polishSpelling(text);
+    } catch {
+      /* keep raw if polish unavailable */
+    }
+  } else {
+    text = defaultJudgmentObservation(formation);
+  }
+  // If paste included the mechanism paragraph, keep observation only
+  const mechAt = text.search(/وفي\s*حال\s*اقتضى\s*الأمر/);
+  if (mechAt >= 0) text = text.slice(0, mechAt).trim();
+  // Sync formation in ( … ) when card has a value
+  if (formation && formation !== '……') {
+    text = text.replace(
+      /لدى\s*التشكيل\s*القضائي\s*\(\s*[^)]*?\s*\)/,
+      `لدى التشكيل القضائي ( ${formation} )`,
+    );
+  }
+  const redAt = text.indexOf(OBSERVATION_RED);
+  if (redAt < 0) return { beforeRed: text, red: '', afterRed: '' };
+  return {
+    beforeRed: text.slice(0, redAt),
+    red: text.slice(redAt),
+    afterRed: '',
+  };
+}
+
+/** Extract observation + mechanism from a pasted letter (as-is, spelling polish only). */
+export function extractJudgmentProseFromPaste(raw: string): {
+  observation?: string;
+  mechanismText?: string;
+} {
+  let text = String(raw || '').replace(/\r\n/g, '\n').trim();
+  if (!text) return {};
+  try {
+    text = polishSpelling(text);
+  } catch {
+    /* ignore */
+  }
+  // Drop address/salutation lines if present
+  text = text
+    .replace(/^[\s\S]*?(?=تنفيذاً)/, '')
+    .replace(/لإطلاع فضيلتكم[\s\S]*$/m, '')
+    .trim();
+  const mechAt = text.search(/وفي\s*حال\s*اقتضى\s*الأمر/);
+  if (mechAt < 0) {
+    if (/تم\s*رصد/.test(text)) return { observation: text };
+    return {};
+  }
+  return {
+    observation: text.slice(0, mechAt).trim(),
+    mechanismText: text.slice(mechAt).replace(/لإطلاع فضيلتكم[\s\S]*$/m, '').trim(),
+  };
+}
+
+/** Steps shown after «تكون عبر الخطوات التالية:» — same style as the court original. */
+export const MECHANISM_STEPS: Record<string, string> = {
+  'إصدار صك مستبدل':
+    'جلسة مداولة أو مرافعة – نطق بالحكم – اختيار حكم مستبدل – تحديد الحكم من القائمة.',
+  'فتح تذكرة إجرائية':
+    'تسجيل الملاحظة – فتح تذكرة إجرائية – إرفاق المستندات – متابعة الإغلاق.',
+  'رفع تذكرة':
+    'تسجيل الملاحظة – رفع تذكرة – إرفاق المستندات – متابعة الإغلاق.',
+  'تحديد موعد':
+    'تحديد الموعد – إشعار المعنيين – حضور الجلسة – استكمال اللازم.',
+  'تنويه':
+    'الاطلاع على ما رُصد – التأكد من سلامة المدخلات – اتخاذ ما يلزم.',
+  'تنبيه':
+    'الاطلاع بصفة عاجلة – تصحيح المدخلات – إفادة الجهة المختصة.',
+};
+
+/**
+ * Keep the court's original phrasing; only swap the mechanism name.
+ * «وفي حال اقتضى الأمر {آلية} فإن المعالجة التقنية ب{آلية} تكون عبر الخطوات التالية: (…)»
+ */
 export function buildMechanismParagraph(mechanismRaw: string): string {
   const detected = detectProcessingMechanism(mechanismRaw);
-  const m = detected || String(mechanismRaw || '').trim();
-  switch (m) {
-    case 'إصدار صك مستبدل':
-      return (
-        'وفي حال اقتضى الأمر إصدار صك مستبدل يُراعى: (١) التحقق من سلامة بيانات الحكم والمدخلات، ' +
-        '(٢) استكمال مسوغات الاستبدال وفق الإجراءات المتبعة، (٣) رفع ما يلزم للاعتماد.'
-      );
-    case 'رفع تذكرة':
-      return 'ونقترح رفع تذكرة حيال ما رُصد لاتخاذ ما يلزم وفق النظام.';
-    case 'تحديد موعد':
-      return 'ونقترح تحديد موعد للنظر فيما رُصد واتخاذ اللازم.';
-    case 'تنويه':
-      return 'وننوه إلى ما رُصد أعلاه لاتخاذ ما ترونه مناسباً.';
-    case 'تنبيه':
-      return 'وننبّه إلى ما رُصد أعلاه لاتخاذ اللازم بصفة عاجلة.';
-    default:
-      if (/تنبيه/.test(m)) return 'وننبّه إلى ما رُصد أعلاه لاتخاذ اللازم بصفة عاجلة.';
-      if (/تنويه/.test(m)) return 'وننوه إلى ما رُصد أعلاه لاتخاذ ما ترونه مناسباً.';
-      return m ? `والمقترح: ${m}.` : '';
-  }
+  const m = detected || String(mechanismRaw || '').trim() || 'إصدار صك مستبدل';
+  const steps =
+    MECHANISM_STEPS[m] ||
+    MECHANISM_STEPS['إصدار صك مستبدل'];
+  return (
+    `وفي حال اقتضى الأمر ${m} فإن المعالجة التقنية ب${m} تكون عبر الخطوات التالية:\n` +
+    `(${steps})`
+  );
+}
+
+/** Full mechanism text for the table cell (same wording, single line for KV display). */
+export function buildMechanismTableValue(mechanismRaw: string): string {
+  return buildMechanismParagraph(mechanismRaw).replace(/\n/g, ' ');
 }
 
 function escHtml(s: string) {
@@ -459,13 +532,17 @@ export function buildJudgmentBriefingBlockHtml(opts: {
   card: JudgmentCardRow[];
   title?: string | null;
   green?: string;
+  observationText?: string | null;
+  mechanismText?: string | null;
 }): string {
   if (!opts.card?.length) return '';
   const GREEN = opts.green || '#006C35';
   const address = String(opts.recipients || JUDGMENT_CARD_RECIPIENTS).trim();
   const title = String(opts.title || 'بطاقة عرض').trim() || 'بطاقة عرض';
-  const obs = buildJudgmentObservationParts(opts.card);
-  const mech = buildMechanismParagraph(getJudgmentCardValue(opts.card, MECHANISM_LABEL));
+  const obs = buildJudgmentObservationParts(opts.card, opts.observationText);
+  const mech =
+    (opts.mechanismText && opts.mechanismText.trim()) ||
+    buildMechanismParagraph(getJudgmentCardValue(opts.card, MECHANISM_LABEL));
   const cells = opts.card
     .map(
       (r, i) =>
