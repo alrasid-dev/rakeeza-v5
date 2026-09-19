@@ -242,13 +242,19 @@ export function courtPresidentHonorificFromTitle(title?: string | null): string 
   return null;
 }
 
-/** Strip «المكلف / مكلف» so the acting toggle can re-apply it cleanly. */
+/** Strip every «المكلف / مكلف» occurrence (Arabic has no reliable \b). */
 export function stripActingMarker(line: string): string {
   return String(line || '')
-    .replace(/\s*المكلف\b/g, '')
-    .replace(/\s*مكلف\b/g, '')
+    .replace(/المكلف/g, '')
+    .replace(/مكلف/g, '')
     .replace(/\s{2,}/g, ' ')
+    .replace(/\s+([\/،,])/g, ' $1')
+    .replace(/\s+/g, ' ')
     .trim();
+}
+
+export function lineHasActingMarker(line: string): boolean {
+  return /مكلف/.test(String(line || ''));
 }
 
 /** Append «المكلف» to a role line (before سلمه الله or before / name). */

@@ -379,6 +379,8 @@ ${fontFace}
 ${pageCss}
 * { box-sizing: border-box; }
 body {
+  overflow-wrap: anywhere;
+  word-break: break-word;
   font-family: ${font};
   color: #111;
   background: #fff;
@@ -419,7 +421,7 @@ body {
   ${theme.meta}
 }
 .meta .label { color: ${GREEN}; font-weight: 700; }
-.section { padding: 4px 18px 10px; }
+.section { padding: 4px 18px 10px; overflow: hidden; max-width: 100%; overflow-wrap: anywhere; }
 .section h3 {
   margin: 12px 0 6px;
   color: ${GREEN};

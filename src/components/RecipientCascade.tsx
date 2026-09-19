@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { addressEmployee, addressEmployees, applyActingMarker } from '@/lib/honorific';
+import { addressEmployee, addressEmployees, applyActingMarker, lineHasActingMarker, stripActingMarker } from '@/lib/honorific';
 
 type OrgUnit = { id: string; name: string };
 type Employee = {
@@ -33,8 +33,11 @@ export default function RecipientCascade({
   const [multiDept, setMultiDept] = useState(false);
   const [empOpen, setEmpOpen] = useState(false);
   const [deptOpen, setDeptOpen] = useState(false);
-  /** Opt-in: append «المكلف» to the address line when pressed. */
-  const [acting, setActing] = useState(false);
+  /** Opt-in only — never forced. Synced from current «إلى» text. */
+  const [acting, setActing] = useState(() => lineHasActingMarker(value));
+  useEffect(() => {
+    setActing(lineHasActingMarker(value));
+  }, [value]);
   const empWrapRef = useRef<HTMLDivElement>(null);
   const deptWrapRef = useRef<HTMLDivElement>(null);
 
@@ -130,10 +133,17 @@ export default function RecipientCascade({
     const next = !acting;
     setActing(next);
     if (selectedEmpIds.length || selectedDeptIds.length) {
+      // Rebuild from employees/depts so we never stack «المكلف»
       emitSelection(selectedEmpIds, selectedDeptIds, next);
-    } else if (value.trim()) {
-      onChange(applyActingMarker(value, next));
+      return;
     }
+    // Manual / seeded line: strip all then optionally add once
+    const base = stripActingMarker(value);
+    if (!base.trim()) {
+      onChange(next ? 'فضيلة رئيس المحكمة المكلف سلمه الله' : '');
+      return;
+    }
+    onChange(applyActingMarker(base, next));
   }
 
   function toggleEmp(id: string) {
@@ -231,18 +241,17 @@ export default function RecipientCascade({
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
-            title="اضغط لإضافة أو إزالة «المكلف» من سطر الإرسال"
+            title="اختياري: إضافة أو إزالة كلمة المكلف فقط"
             onClick={toggleActing}
-            className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition ${
+            className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[11px] font-semibold transition ${
               acting
-                ? 'border-moj-gold bg-moj-gold/20 text-moj-green'
-                : 'border-gray-300 bg-white text-gray-600 hover:border-moj-gold'
+                ? 'border-moj-gold bg-moj-gold/15 text-moj-green'
+                : 'border-dashed border-gray-300 bg-transparent text-gray-500 hover:border-moj-green'
             }`}
           >
-            <span aria-hidden>🏷️</span>
-            <span>{acting ? 'مكلف ✓' : 'مكلف؟'}</span>
+            <span>{acting ? 'مكلف (مفعّل)' : 'إضافة: مكلف'}</span>
           </button>
-          <span className="text-[10px] text-gray-500">اختر المنصب من الدليل، ثم فعّل «مكلف» إن لزم</span>
+          <span className="text-[10px] text-gray-500">اختياري — ليس إلزامياً</span>
         </div>
       )}
 

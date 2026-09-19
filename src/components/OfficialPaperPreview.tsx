@@ -839,16 +839,26 @@ export default function OfficialPaperPreview({
       <style>{`@media print { .cc-row, .cc-icon { display: inline-block !important; visibility: visible !important; } }
 .official-paper-root, .official-paper-root *:not(img):not(svg):not(svg *) { font-family: inherit !important; }
 .official-paper-root .paper-meta,
-.official-paper-root .paper-body,
+.official-paper-root .paper-body {
+  font-size: inherit !important;
+  line-height: 1.75;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  max-width: 100%;
+}
 .official-paper-root .paper-meta *,
 .official-paper-root .paper-body *:not(img):not(svg):not(svg *) {
   font-size: inherit !important;
-  line-height: 1.7;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.official-paper-root .paper-body {
+  overflow: hidden;
 }
 `}</style>
       <div
         dir="rtl"
-        className={`official-paper-root bg-white text-gray-900 rounded-lg overflow-hidden shadow-sm min-w-[min(100%,20rem)] max-w-full [&_pre]:text-gray-900 [&_pre]:opacity-100 relative ${className}`}
+        className={`official-paper-root bg-white text-gray-900 rounded-lg overflow-hidden shadow-sm min-w-[min(100%,20rem)] max-w-full box-border [&_pre]:text-gray-900 [&_pre]:opacity-100 relative ${className}`}
         style={{ border: chrome.paperBorder, background: chrome.paperBg || '#fff', ...letterFontStyle }}
         data-paper-layout={layout}
       >
@@ -895,8 +905,7 @@ export default function OfficialPaperPreview({
           </Clickable>
           {doc.copyTo?.trim() ? (
             <Clickable field="copyTo" onFieldClick={onFieldClick} className="sm:col-span-2 cc-row">
-              <span className="text-moj-green font-bold inline-flex items-center gap-1">
-                <CcIcon />
+              <span className="text-moj-green font-bold">
                 نسخة إلى:{' '}
               </span>
               {doc.copyTo}

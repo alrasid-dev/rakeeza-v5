@@ -32,7 +32,7 @@ export const JUDGMENT_CARD_SEED: JudgmentCardRow[] = [
   { label: MECHANISM_LABEL, value: 'إصدار صك مستبدل' },
 ];
 
-export const JUDGMENT_CARD_RECIPIENTS = 'فضيلة رئيس المحكمة المكلف سلمه الله';
+export const JUDGMENT_CARD_RECIPIENTS = 'فضيلة رئيس المحكمة سلمه الله';
 export const JUDGMENT_CARD_SUBJECT = 'بشأن متابعة سلامة مدخلات الأحكام';
 
 /** Briefing card has no letter body — content lives in the smart table. */
