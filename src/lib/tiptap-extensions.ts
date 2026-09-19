@@ -12,9 +12,10 @@ import { TableRow } from '@tiptap/extension-table-row';
 import { TableCell } from '@tiptap/extension-table-cell';
 import { TableHeader } from '@tiptap/extension-table-header';
 import { TextStyleKit } from '@tiptap/extension-text-style';
+import { createBodyLinterExtension } from '@/lib/tiptap-linter-extension';
 
-export function createBodyExtensions(opts?: { placeholder?: string }) {
-  return [
+export function createBodyExtensions(opts?: { placeholder?: string; enableLinter?: boolean }) {
+  const list = [
     StarterKit.configure({
       heading: { levels: [1, 2, 3] },
       codeBlock: false,
@@ -38,4 +39,8 @@ export function createBodyExtensions(opts?: { placeholder?: string }) {
       placeholder: opts?.placeholder || 'نص المكاتبة…',
     }),
   ];
+  if (opts?.enableLinter) {
+    list.push(createBodyLinterExtension());
+  }
+  return list;
 }

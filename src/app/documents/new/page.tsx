@@ -29,6 +29,16 @@ import { enrichStudySections } from '@/lib/study-display';
 import { clearDraft, clearAllDrafts, loadDraft, saveDraft } from '@/lib/draft-store';
 import { suggestFont } from '@/lib/font-suggest';
 import { applyPolishFix, findPolishIssues, suggestLegalPhrases, type PolishIssue, type LegalPhraseSuggestion } from '@/lib/arabic-polish';
+import {
+  LINTER_DEBOUNCE_MS,
+  acceptLinterSuggestion,
+  dismissSuggestion,
+  locateSuggestionsInEditor,
+  rejectLinterSuggestion,
+  scanBodySuggestions,
+  type LinterSuggestion,
+} from '@/lib/body-linter';
+import LetterAssistantPanel from '@/components/LetterAssistantPanel';
 import { DEFAULT_PAPER_LAYOUT, normalizePaperLayout, type PaperLayoutId } from '@/lib/paper-layouts';
 import {
   BRIEFING_TITLES,
@@ -153,6 +163,8 @@ function NewDocumentInner() {
   >([]);
   const [polishIssues, setPolishIssues] = useState<PolishIssue[]>([]);
   const [legalPhrases, setLegalPhrases] = useState<LegalPhraseSuggestion[]>([]);
+  const [bodyLinterSuggestions, setBodyLinterSuggestions] = useState<LinterSuggestion[]>([]);
+  const [linterDismissed, setLinterDismissed] = useState<Set<string>>(() => new Set());
   const [style, setStyle] = useState<DocStyle>({
     fontFamily: 'Traditional Arabic',
     fontSizePt: 16,
@@ -376,14 +388,18 @@ function NewDocumentInner() {
     return () => window.clearTimeout(handle);
   }, [formSlug, templateId, paste, step, form, tableRows, judgmentCard, briefingTitle, judgmentPriority, studySections, style, paperLayout]);
 
+  // Background linter: exactly LINTER_DEBOUNCE_MS (1500) after last body/field change
   useEffect(() => {
     const handle = window.setTimeout(() => {
       const blob = [form.body, form.reasons, form.studyFields, form.subject, form.parties, form.recipients, form.copyTo].join('\n');
       setPolishIssues(findPolishIssues(blob));
       setLegalPhrases(suggestLegalPhrases(form.body || form.reasons || blob));
-    }, 500);
+      const scanned = scanBodySuggestions(form.body || '', linterDismissed);
+      const located = locateSuggestionsInEditor(bodyEditorRef.current?.getEditor() || null, scanned.suggestions);
+      setBodyLinterSuggestions(located);
+    }, LINTER_DEBOUNCE_MS);
     return () => window.clearTimeout(handle);
-  }, [form.body, form.reasons, form.studyFields, form.subject, form.parties, form.recipients, form.copyTo]);
+  }, [form.body, form.reasons, form.studyFields, form.subject, form.parties, form.recipients, form.copyTo, linterDismissed]);
 
   /** Smart paste: judgment template → briefing; else study → study; else ordinary letter. */
   function applyPaste() {
@@ -566,6 +582,8 @@ function NewDocumentInner() {
     setFontCorrections([]);
     setPolishIssues([]);
     setLegalPhrases([]);
+    setBodyLinterSuggestions([]);
+    setLinterDismissed(new Set());
     setSavedDocId(null);
     setDraftRestored(false);
     setStep(formSlug || templateIdParam ? 2 : 1);
@@ -622,6 +640,23 @@ function NewDocumentInner() {
     });
   }
 
+  function acceptBodyLinter(s: LinterSuggestion) {
+    const ed = bodyEditorRef.current?.getEditor() || null;
+    const result = acceptLinterSuggestion(ed, s, form.body);
+    if (!result.ok) return;
+    // TipTap onUpdate will sync form.body when usedChain; else apply plain fallback
+    if (!result.usedChain && result.nextText != null) {
+      setForm((f) => ({ ...f, body: result.nextText! }));
+    }
+    setBodyLinterSuggestions((prev) => dismissSuggestion(prev, s.id));
+    setLinterDismissed((prev) => rejectLinterSuggestion(prev, s.id));
+  }
+
+  function rejectBodyLinter(s: LinterSuggestion) {
+    setBodyLinterSuggestions((prev) => dismissSuggestion(prev, s.id));
+    setLinterDismissed((prev) => rejectLinterSuggestion(prev, s.id));
+  }
+
   function renderPolishIssueRow(iss: PolishIssue, i: number, compact = false) {
     const isAdd = iss.kind === 'add';
     const sugEmpty = !iss.suggestion.trim() || iss.suggestion === '—' || iss.suggestion === '-';
@@ -654,13 +689,26 @@ function NewDocumentInner() {
             <span className="font-bold text-emerald-700 dark:text-emerald-400">«{sugLabel}»</span>
           </>
         )}
-        <button
-          type="button"
-          className="btn-primary text-[11px] py-0.5 px-2 mr-auto"
-          onClick={() => acceptPolishIssue(iss)}
-        >
-          اعتمد التعديل
-        </button>
+        <div className="flex gap-1 mr-auto">
+          <button
+            type="button"
+            className="btn-outline text-[11px] py-0.5 px-2"
+            onClick={() => {
+              const id = `${iss.type}|${iss.kind || 'replace'}|${iss.found}→${iss.suggestion}`;
+              setPolishIssues((prev) => prev.filter((p) => !(p.found === iss.found && p.suggestion === iss.suggestion && p.type === iss.type)));
+              setLinterDismissed((prev) => rejectLinterSuggestion(prev, id));
+            }}
+          >
+            رفض
+          </button>
+          <button
+            type="button"
+            className="btn-primary text-[11px] py-0.5 px-2"
+            onClick={() => acceptPolishIssue(iss)}
+          >
+            اعتمد التعديل
+          </button>
+        </div>
       </li>
     );
   }
@@ -978,6 +1026,10 @@ function NewDocumentInner() {
               تراجع
             </button>
           </div>
+          <LetterAssistantPanel
+            getEditor={() => bodyEditorRef.current?.getEditor() || null}
+            className="mb-0"
+          />
           <div className="rounded-xl border-2 border-moj-gold bg-[#fff8e8] dark:bg-[#2a2418] p-3 space-y-2 shadow-md ring-2 ring-moj-gold/40">
             <div className="text-sm font-bold text-moj-green flex items-center gap-2">
               <span className="inline-block h-2.5 w-2.5 rounded-full bg-moj-gold animate-pulse" />
@@ -1049,13 +1101,30 @@ function NewDocumentInner() {
                               </span>
                             </>
                           )}
-                          <button
-                            type="button"
-                            className="btn-primary text-[11px] py-0.5 px-2 mr-auto"
-                            onClick={() => acceptLegalPhrase(ph)}
-                          >
-                            اعتمد التعديل
-                          </button>
+                          <div className="flex gap-1 mr-auto">
+                            <button
+                              type="button"
+                              className="btn-outline text-[11px] py-0.5 px-2"
+                              onClick={() => {
+                                setLegalPhrases((prev) =>
+                                  prev.filter(
+                                    (p) => !(p.found === ph.found && p.suggestion === ph.suggestion),
+                                  ),
+                                );
+                                const id = `judicial|${ph.kind || 'replace'}|${ph.found}→${ph.suggestion}`;
+                                setLinterDismissed((d) => rejectLinterSuggestion(d, id));
+                              }}
+                            >
+                              رفض
+                            </button>
+                            <button
+                              type="button"
+                              className="btn-primary text-[11px] py-0.5 px-2"
+                              onClick={() => acceptLegalPhrase(ph)}
+                            >
+                              اعتمد التعديل
+                            </button>
+                          </div>
                         </li>
                       );
                     })}
@@ -1322,6 +1391,9 @@ function NewDocumentInner() {
                       style={style}
                       minHeight={200}
                       placeholder="نص بطاقة العرض (التحية → الخاتمة) — حدّد ثم نسّق من الشريط"
+                      linterSuggestions={bodyLinterSuggestions}
+                      onAcceptLinter={acceptBodyLinter}
+                      onRejectLinter={rejectBodyLinter}
                     />
                   </div>
                 </div>
@@ -1393,6 +1465,9 @@ function NewDocumentInner() {
                       style={style}
                       minHeight={140}
                       placeholder="نص المكاتبة — حدّد كلمة ثم اللون / الوسط / الجدول من الشريط"
+                      linterSuggestions={bodyLinterSuggestions}
+                      onAcceptLinter={acceptBodyLinter}
+                      onRejectLinter={rejectBodyLinter}
                     />
                   </div>
                 </>

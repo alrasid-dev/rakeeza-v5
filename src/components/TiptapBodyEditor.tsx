@@ -16,16 +16,20 @@ import {
 } from '@/lib/body-html-bridge';
 import {
   applyAiBodyCommand,
-  parseLocalStyleCommand,
   type AiBodyCommand,
   type AiCommandResult,
 } from '@/lib/tiptap-ai-commands';
+import { handleAssistantUtterance } from '@/lib/assistant-tools';
+import type { LinterSuggestion } from '@/lib/body-linter';
 import type { DocStyle } from '@/components/StyleToolbar';
 import { fontStackFor, tiptapFontFamilyCss } from '@/lib/font-stacks';
+import LinterSuggestionTooltip from '@/components/LinterSuggestionTooltip';
 
 export type TiptapBodyEditorHandle = {
   getEditor: () => Editor | null;
   applyCommand: (cmd: AiBodyCommand) => AiCommandResult;
+  /** Local NL → tool call → chain (no LLM). */
+  runAssistant: (utterance: string) => AiCommandResult;
   focus: () => void;
 };
 
@@ -39,6 +43,10 @@ type Props = {
   /** Show local style-command input (no LLM). */
   showCommandBar?: boolean;
   onCommandResult?: (result: AiCommandResult) => void;
+  /** Background linter suggestions (inline highlights). */
+  linterSuggestions?: LinterSuggestion[];
+  onAcceptLinter?: (s: LinterSuggestion) => void;
+  onRejectLinter?: (s: LinterSuggestion) => void;
 };
 
 function normalizeHtml(html: string): string {
@@ -58,6 +66,9 @@ const TiptapBodyEditor = forwardRef<TiptapBodyEditorHandle, Props>(function Tipt
     minHeight = 160,
     showCommandBar = true,
     onCommandResult,
+    linterSuggestions = [],
+    onAcceptLinter,
+    onRejectLinter,
   },
   ref,
 ) {
@@ -65,10 +76,19 @@ const TiptapBodyEditor = forwardRef<TiptapBodyEditorHandle, Props>(function Tipt
   const lastEmittedRef = useRef('');
   const [cmdText, setCmdText] = useState('');
   const [cmdMsg, setCmdMsg] = useState('');
+  const [activeLinterId, setActiveLinterId] = useState<string | null>(null);
+  const onActivateRef = useRef<(id: string) => void>(() => {});
+
+  onActivateRef.current = (id: string) => {
+    setActiveLinterId(id);
+  };
 
   const editor = useEditor({
     immediatelyRender: false,
-    extensions: createBodyExtensions({ placeholder }),
+    extensions: createBodyExtensions({
+      enableLinter: true,
+      placeholder,
+    }),
     content: markersToEditorHtml(value, style?.align || 'right'),
     editorProps: {
       attributes: {
@@ -89,6 +109,18 @@ const TiptapBodyEditor = forwardRef<TiptapBodyEditorHandle, Props>(function Tipt
       });
     },
   });
+
+  // Wire linter activate callback once editor exists
+  useEffect(() => {
+    if (!editor || editor.isDestroyed) return;
+    editor.storage.bodyLinter.onActivate = (id: string) => onActivateRef.current(id);
+  }, [editor]);
+
+  // Sync linter decorations
+  useEffect(() => {
+    if (!editor || editor.isDestroyed) return;
+    editor.commands.setLinterSuggestions(linterSuggestions);
+  }, [editor, linterSuggestions]);
 
   // External value → editor (paste / undo / draft load). Not used for style ops.
   useEffect(() => {
@@ -114,22 +146,41 @@ const TiptapBodyEditor = forwardRef<TiptapBodyEditorHandle, Props>(function Tipt
         onCommandResult?.(result);
         return result;
       },
+      runAssistant: (utterance) => {
+        const result = handleAssistantUtterance(editor, utterance);
+        onCommandResult?.(result);
+        return result;
+      },
       focus: () => editor?.chain().focus().run(),
     }),
     [editor, onCommandResult],
   );
 
   const runLocalCommand = () => {
-    const parsed = parseLocalStyleCommand(cmdText);
-    if (!parsed) {
-      setCmdMsg('أمر غير مفهوم — مثال: ميّز كلمة السلام | وسط فقرة وبعد | لون العنوان أخضر | جدول 2x3');
-      return;
-    }
-    const result = applyAiBodyCommand(editor, parsed);
-    setCmdMsg(result.message);
+    const result = handleAssistantUtterance(editor, cmdText);
+    setCmdMsg(
+      result.toolCall
+        ? `${result.message} [${result.toolCall.name}]`
+        : result.message,
+    );
     onCommandResult?.(result);
     if (result.ok) setCmdText('');
   };
+
+  const activeSuggestion =
+    activeLinterId != null
+      ? linterSuggestions.find((s) => s.id === activeLinterId) || null
+      : null;
+
+  // Auto-show first suggestion tooltip when new suggestions arrive and none active
+  useEffect(() => {
+    if (activeLinterId && linterSuggestions.some((s) => s.id === activeLinterId)) return;
+    if (linterSuggestions.length > 0) {
+      setActiveLinterId(linterSuggestions[0].id);
+    } else {
+      setActiveLinterId(null);
+    }
+  }, [linterSuggestions, activeLinterId]);
 
   const shellStyle: CSSProperties = {
     fontFamily: fontStackFor(style?.fontFamily || 'Traditional Arabic'),
@@ -146,7 +197,7 @@ const TiptapBodyEditor = forwardRef<TiptapBodyEditorHandle, Props>(function Tipt
             className="input py-1 text-xs flex-1 min-w-[10rem]"
             dir="rtl"
             value={cmdText}
-            placeholder='ميّز كلمة السلام — وسط فقرة وبعد — لون العنوان أخضر'
+            placeholder='make this title gold — ميّز كلمة السلام — وسّط الفقرة — align right'
             onChange={(e) => setCmdText(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
@@ -163,7 +214,45 @@ const TiptapBodyEditor = forwardRef<TiptapBodyEditorHandle, Props>(function Tipt
           )}
         </div>
       )}
+      {(onAcceptLinter || onRejectLinter) && activeSuggestion && (
+        <div className="px-2 pt-2">
+          <LinterSuggestionTooltip
+            suggestion={activeSuggestion}
+            onAccept={(s) => {
+              onAcceptLinter?.(s);
+              setActiveLinterId(null);
+            }}
+            onReject={(s) => {
+              onRejectLinter?.(s);
+              setActiveLinterId(null);
+            }}
+            onClose={() => setActiveLinterId(null)}
+          />
+        </div>
+      )}
       <EditorContent editor={editor} style={shellStyle} className="px-3 py-2" />
+      {linterSuggestions.length > 0 && (
+        <div className="px-2 pb-1.5 flex flex-wrap gap-1 border-t border-moj-gold/20 bg-amber-50/50 dark:bg-amber-950/20">
+          <span className="text-[10px] text-amber-900 dark:text-amber-100 font-bold py-0.5">
+            تدقيق خلفي ({linterSuggestions.length})
+          </span>
+          {linterSuggestions.slice(0, 6).map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              className={`text-[10px] px-1.5 py-0.5 rounded border ${
+                activeLinterId === s.id
+                  ? 'border-moj-gold bg-moj-gold/20'
+                  : 'border-amber-300/60 bg-white/70 dark:bg-black/20'
+              }`}
+              onClick={() => setActiveLinterId(s.id)}
+              title={s.message}
+            >
+              {s.kind === 'add' ? `+ ${s.suggestion.slice(0, 18)}` : s.found}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 });

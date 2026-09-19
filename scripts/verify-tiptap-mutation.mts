@@ -94,7 +94,7 @@ const BODY_MARKER_SRC = `السلام عليكم ورحمة الله وبركا�
     document.body.appendChild(element);
     const opts = {
       element,
-      extensions: createBodyExtensions(),
+      extensions: createBodyExtensions({ enableLinter: false }),
       content,
     };
     try {
