@@ -249,6 +249,9 @@ function judgmentBriefingHtml(
     green: GREEN,
     observationText: doc.observationText,
     mechanismText: doc.mechanismText,
+    // Prefer editable body (Word-like) — includes salutation/closing when user typed them
+    letterBody: doc.body,
+    fallbackAlign: (doc.align as 'right' | 'center' | 'left') || 'right',
   });
 }
 
@@ -369,7 +372,15 @@ ${embeddedBlock}`;
             <div style="color:${GOLD};font-size:11px;margin-top:3px;mso-line-height-rule:exactly">${esc(BRAND.platform)}</div>
           </div>`;
   const brandRow = layout === 'modern-hex'
-    ? `<div style="position:relative;background:#F9F7F1">
+    ? (opts?.forOutlook
+      ? `<table class="brand-row" dir="ltr" width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse:collapse;border-bottom:1px solid ${GOLD};table-layout:fixed;background:#F9F7F1">
+    <tr>
+      <td width="33%" valign="middle" align="left" style="padding:14px 18px;background:#F9F7F1">${qr.replace('border:1px solid', 'border:1.5px dashed').replace('border:1px dashed', 'border:1.5px dashed')}</td>
+      <td width="34%" valign="middle" align="center" style="padding:14px 8px;background:#F9F7F1">${emblem}${underLogoLabel ? `<div style="margin-top:6px;font-size:10px;font-weight:800;color:${GREEN};border:1px solid ${GOLD};padding:2px 10px;background:#fff">${esc(underLogoLabel)}</div>` : ''}</td>
+      <td width="33%" valign="middle" align="right" style="padding:14px 6px 14px 10px;background:#F9F7F1">${hexText}</td>
+    </tr>
+  </table>`
+      : `<div style="position:relative;background:#F9F7F1">
   ${hexDecorSafe}
   <table class="brand-row" dir="ltr" width="100%" cellpadding="0" cellspacing="0" role="presentation" style="position:relative;z-index:1;border-collapse:collapse;border-bottom:1px solid ${GOLD}80;table-layout:fixed;background:transparent">
     <tr>
@@ -378,7 +389,7 @@ ${embeddedBlock}`;
       <td width="33%" valign="middle" align="right" style="padding:14px 6px 14px 10px">${hexText}</td>
     </tr>
   </table>
-</div>`
+</div>`)
     : `
   <table class="brand-row" dir="ltr" width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse:collapse;border-bottom:2px solid ${GOLD};table-layout:fixed">
     <tr>
@@ -400,28 +411,33 @@ ${embeddedBlock}`;
     `<span class="label" style="color:${GREEN};font-weight:700">${esc(t)}</span>`;
 
   // Outlook Word engine: table meta (no CSS grid). Preview/PDF may use grid.
+  // Outlook ignores margin on tables — pad via outer td; inline theme colors (no border-radius).
   const metaBoxOutlook = `
-  <table class="meta" dir="rtl" width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin:14px 0;border-collapse:collapse;font-size:${size}px;${theme.meta}">
+  <table dir="rtl" width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse:collapse">
+    <tr><td style="padding:14px 18px">
+  <table class="meta" dir="rtl" width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse:collapse;font-size:${size}px;background:#E6F2EB;border:1px solid ${GREEN}">
     <tr>
-      <td width="50%" valign="top" data-field="number" style="padding:8px 14px;cursor:pointer">${metaLabel('الرقم:')} <span dir="ltr">${esc(doc.number || '—')}</span></td>
-      <td width="50%" valign="top" data-field="dateGregorian" style="padding:8px 14px;cursor:pointer">${metaLabel('التاريخ:')} ${esc(officialDateDisplay(doc.dateHijri, doc.dateGregorian))}</td>
+      <td width="50%" valign="top" data-field="number" style="padding:8px 14px;font-family:${font};font-size:${size}px">${metaLabel('الرقم:')} <span dir="ltr">${esc(doc.number || '—')}</span></td>
+      <td width="50%" valign="top" data-field="dateGregorian" style="padding:8px 14px;font-family:${font};font-size:${size}px">${metaLabel('التاريخ:')} ${esc(officialDateDisplay(doc.dateHijri, doc.dateGregorian))}</td>
     </tr>
     <tr>
-      <td colspan="2" data-field="recipients" style="padding:6px 14px;cursor:pointer">${metaLabel('إلى:')} ${esc(doc.recipients || '—')}</td>
+      <td colspan="2" data-field="recipients" style="padding:6px 14px;font-family:${font};font-size:${size}px">${metaLabel('إلى:')} ${esc(doc.recipients || '—')}</td>
     </tr>
     ${
       doc.copyTo?.trim()
-        ? `<tr><td colspan="2" class="cc-row" data-field="copyTo" style="padding:6px 14px;cursor:pointer">${metaLabel('نسخة إلى:')} ${esc(doc.copyTo)}</td></tr>`
+        ? `<tr><td colspan="2" class="cc-row" data-field="copyTo" style="padding:6px 14px;font-family:${font};font-size:${size}px">${metaLabel('نسخة إلى:')} ${esc(doc.copyTo)}</td></tr>`
         : ''
     }
     ${
       doc.attachments?.trim()
-        ? `<tr><td colspan="2" style="padding:6px 14px">${metaLabel('مرفقات:')} ${esc(doc.attachments)}</td></tr>`
+        ? `<tr><td colspan="2" style="padding:6px 14px;font-family:${font};font-size:${size}px">${metaLabel('مرفقات:')} ${esc(doc.attachments)}</td></tr>`
         : ''
     }
     <tr>
-      <td colspan="2" data-field="subject" style="padding:6px 14px 10px;cursor:pointer">${metaLabel('الموضوع:')} ${esc(previewSubject)}</td>
+      <td colspan="2" data-field="subject" style="padding:6px 14px 10px;font-family:${font};font-size:${size}px">${metaLabel('الموضوع:')} ${esc(previewSubject)}</td>
     </tr>
+  </table>
+    </td></tr>
   </table>`;
 
   const metaBoxGrid = `
@@ -445,10 +461,16 @@ ${embeddedBlock}`;
   const metaBox = opts?.forOutlook ? metaBoxOutlook : metaBoxGrid;
 
   const sectionPad = layout === 'modern-hex' ? 'padding:4px 28px 10px' : 'padding:4px 18px 10px';
-  const bodySection = `
-  <div class="section" style="${sectionPad}">
+  // Do not .trim() body — leading spaces are Word-like horizontal positioning
+  const bodyHtml = doc.body
+    ? bodyBlocksToHtml(String(doc.body), {
+        escape: esc,
+        fallbackAlign: (doc.align as 'right' | 'center' | 'left') || 'right',
+      })
+    : '';
+  const bodyInner = `
     ${hasStudy && study ? `<div data-field="studyFields" style="cursor:pointer">${studyHtml(study)}</div>` : ''}
-    ${isBriefing && doc.judgmentCard?.length ? `<div data-field="body" style="cursor:pointer">${judgmentBriefingHtml(doc, doc.judgmentCard)}</div>` : ''}
+    ${isBriefing && doc.judgmentCard?.length ? `<div data-field="body" style="cursor:pointer;font-family:${font};font-size:${size}px">${judgmentBriefingHtml(doc, doc.judgmentCard)}</div>` : ''}
     ${
       !hasStudy && !isBriefing && doc.parties
         ? `<div data-field="parties" style="cursor:pointer"><h3 style="margin:12px 0 6px;color:${GREEN};font-size:13px;border-bottom:1px solid ${GOLD};padding-bottom:2px">الأطراف</h3><div class="body">${pre(doc.parties)}</div></div>`
@@ -460,20 +482,25 @@ ${embeddedBlock}`;
         : ''
     }
     ${
-      !hasStudy && !isBriefing && doc.body
-        ? `<div class="body" data-field="body" style="cursor:pointer">${bodyBlocksToHtml(String(doc.body).trim(), { escape: esc, fallbackAlign: (doc.align as 'right'|'center'|'left') || 'right' })}</div>`
+      !hasStudy && !isBriefing && bodyHtml
+        ? `<div class="body" data-field="body" style="cursor:pointer;font-family:${font};font-size:${size}px">${bodyHtml}</div>`
         : ''
     }
     ${
       !hasStudy && !isBriefing && doc.studyFields
         ? `<div data-field="studyFields" style="cursor:pointer"><h3 style="margin:12px 0 6px;color:${GREEN};font-size:13px;border-bottom:1px solid ${GOLD};padding-bottom:2px">الدراسة</h3><div class="body">${pre(doc.studyFields)}</div></div>`
         : ''
-    }
-  </div>`;
+    }`;
+  const bodySection = opts?.forOutlook
+    ? `<table dir="rtl" width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse:collapse"><tr><td class="section" style="${sectionPad};font-family:${font};font-size:${size}px;color:#111">${bodyInner}</td></tr></table>`
+    : `<div class="section" style="${sectionPad}">${bodyInner}</div>`;
 
-  const footInner = theme.extraChrome
-    ? theme.extraChrome + `<div style="padding:8px 18px;text-align:center;color:#555;font-size:11px">${esc(footer)}</div>`
-    : esc(footer);
+  // Outlook Word engine mangles position:absolute SVG footers — solid bar + text only
+  const footInner = opts?.forOutlook
+    ? `<div style="padding:10px 18px;text-align:center;color:${layout === 'modern-hex' ? '#f5f5f5' : '#555'};font-size:11px;font-family:${font};background:${layout === 'modern-hex' ? '#1B4332' : 'transparent'}">${esc(footer)}</div>`
+    : theme.extraChrome
+      ? theme.extraChrome + `<div style="padding:8px 18px;text-align:center;color:#555;font-size:11px">${esc(footer)}</div>`
+      : esc(footer);
 
   const topRule = isUrgent
     ? `<div class="bismillah" style="position:relative;min-height:28px"><span style="display:inline-block;margin:4px 12px;background:#c00000;color:#fff;font-size:11px;font-weight:700;padding:2px 10px;border-radius:999px">⚠ عاجل</span></div>`
@@ -485,7 +512,10 @@ ${embeddedBlock}`;
   ${brandRow}
   ${metaBox}
   ${bodySection}
-  <div class="foot" style="margin-top:18px;padding:10px 18px;text-align:center;color:#555;font-size:11px;${theme.foot}">${footInner}</div>`;
+  ${opts?.forOutlook
+    ? `<table dir="rtl" width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse:collapse;margin:0"><tr><td class="foot" style="padding:0;border-top:2px solid ${GOLD};${layout === 'modern-hex' ? 'background:#1B4332;color:#f5f5f5;' : 'background:#fafcfb;color:#555;'}">${footInner}</td></tr></table>`
+    : `<div class="foot" style="margin-top:18px;padding:10px 18px;text-align:center;color:#555;font-size:11px;${theme.foot}">${footInner}</div>`
+  }`;
 
   const paperHtml = opts?.forOutlook
     ? `<table class="paper" data-paper-layout="${esc(layout)}" width="700" cellpadding="0" cellspacing="0" role="presentation" dir="rtl" style="width:700px;max-width:700px;margin:0 auto;border-collapse:collapse;border:${theme.paperBorder};background:${theme.paperBg};font-family:${font};font-size:${size}px;line-height:1.85;color:#111">

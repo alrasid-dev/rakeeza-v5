@@ -26,6 +26,7 @@ import {
   JUDGMENT_CARD_SUBJECT,
   MECHANISM_LABEL,
   PROCESSING_MECHANISMS,
+  defaultJudgmentLetterBody,
   detectBriefingTitle,
   detectJudgmentPriority,
   extractJudgmentProseFromPaste,
@@ -204,10 +205,19 @@ function NewDocumentInner() {
       setTemplateId(templateIdParam || '');
       setTableRows([]);
       if (isJudgmentBriefingFormSlug(formSlug)) {
-        setJudgmentCard(JUDGMENT_CARD_SEED.map((r) => ({ ...r })));
+        const seedCard = JUDGMENT_CARD_SEED.map((r) => ({ ...r }));
+        setJudgmentCard(seedCard);
         setBriefingTitle('بطاقة عرض');
         setJudgmentPriority('عادي');
         setStudySections(null);
+        setObservationText('');
+        setMechanismText('');
+        setForm((f) => ({
+          ...f,
+          body: defaultJudgmentLetterBody(seedCard),
+          subject: JUDGMENT_CARD_SUBJECT,
+          recipients: JUDGMENT_CARD_RECIPIENTS,
+        }));
       } else {
         setJudgmentCard(null);
         setBriefingTitle('بطاقة عرض');
@@ -305,6 +315,20 @@ function NewDocumentInner() {
           prev && prev.length ? prev : JUDGMENT_CARD_SEED.map((r) => ({ ...r })),
         );
       }
+      setForm((f) =>
+        f.body.trim()
+          ? f
+          : {
+              ...f,
+              body: defaultJudgmentLetterBody(
+                seed?.judgmentCard?.length
+                  ? seed.judgmentCard!
+                  : JUDGMENT_CARD_SEED.map((r) => ({ ...r })),
+              ),
+              subject: f.subject || seed?.subject || JUDGMENT_CARD_SUBJECT,
+              recipients: f.recipients || seed?.recipients || JUDGMENT_CARD_RECIPIENTS,
+            },
+      );
     } else {
       // Switching away from judgment: clear card so leftover state cannot force briefing
       setJudgmentCard(null);
@@ -376,10 +400,20 @@ function NewDocumentInner() {
       setTableRows([]);
       setStudySections(null);
       setDetectedKind('briefing');
-      setJudgmentCard((prev) => {
-        const extras = { ...(parsed.judgmentCardFields || {}) };
-        return mergeJudgmentCardFromPaste(prev, paste, extras);
-      });
+      const mergedCard = mergeJudgmentCardFromPaste(
+        judgmentCard,
+        paste,
+        { ...(parsed.judgmentCardFields || {}) },
+      );
+      setJudgmentCard(mergedCard);
+      const prose = extractJudgmentProseFromPaste(paste);
+      if (prose.observation) setObservationText(prose.observation);
+      if (prose.mechanismText) setMechanismText(prose.mechanismText);
+      const letterBody =
+        (parsed.body && parsed.body.trim()) ||
+        (prose.observation || prose.mechanismText
+          ? defaultJudgmentLetterBody(mergedCard, prose.observation, prose.mechanismText)
+          : defaultJudgmentLetterBody(mergedCard));
       const nextSubject =
         (parsed.subject && parsed.subject.trim()) ||
         form.subject ||
@@ -397,7 +431,7 @@ function NewDocumentInner() {
         parties: '',
         reasons: '',
         studyFields: '',
-        body: '',
+        body: letterBody,
         dateGregorian: (() => {
           const raw = parsed.date || '';
           if (raw && looksLikeHijri(raw)) return todayGregorianISO();
@@ -633,8 +667,7 @@ function NewDocumentInner() {
         fields: {
           tableRows,
           judgmentCard: isBriefing ? judgmentCard : null,
-          observationText: isBriefing ? observationText : undefined,
-
+          observationText: isBriefing ? (observationText || form.body) : undefined,
           mechanismText: isBriefing ? mechanismText : undefined,
 
           briefingTitle: isBriefing ? briefingTitle : undefined,
@@ -692,7 +725,7 @@ function NewDocumentInner() {
     isJudgmentBriefingMeta(activeMeta) || isJudgmentBriefingFormSlug(formSlug);
 
   const title = formName || 'مكاتبة جديدة';
-  const previewBody = isBriefing ? '' : normalizeBodyText(form.body);
+  const previewBody = normalizeBodyText(form.body);
   const editorFontStyle: React.CSSProperties = {
     fontFamily: fontStackFor(style.fontFamily),
     fontSize: style.fontSizePt ? `${style.fontSizePt}pt` : undefined,
@@ -784,7 +817,7 @@ function NewDocumentInner() {
     studySections: isBriefing ? null : studySections,
     judgmentCard: isBriefing ? judgmentCard : null,
     judgmentBriefing: isBriefing,
-    observationText: isBriefing ? observationText : undefined,
+    observationText: isBriefing ? (observationText || form.body) : undefined,
 
     mechanismText: isBriefing ? mechanismText : undefined,
 
@@ -1234,8 +1267,25 @@ function NewDocumentInner() {
                     </table>
                   </div>
                   <p className="text-[11px] text-gray-500 dark:text-white/40">
-                    لا يُعرض قسم الأطراف ولا نص المكاتبة في المعاينة أو التصدير لهذا القالب.
+                    الجدول أعلاه للحقول — ونص الخطاب أدناه قابل للتحرير مثل Word (مسافات + يمين/وسط/يسار).
                   </p>
+                  <div>
+                    <label className="label">نص بطاقة العرض (التحية → الخاتمة)</label>
+                    <p className="text-[10px] text-gray-500 mb-1">
+                      حدّد سطراً ثم يمين/وسط/يسار من شريط التنسيق. اضغط Space في بداية السطر لإزاحة أفقية مثل Word.
+                      التحية والخاتمة جزء من النص — ليست قفلًا تلقائياً.
+                    </p>
+                    <textarea
+                      ref={(el) => {
+                        fieldRefs.current.body = el;
+                      }}
+                      className="input min-h-[200px] whitespace-pre-wrap"
+                      style={editorFontStyle}
+                      value={form.body}
+                      dir="rtl"
+                      onChange={(e) => setBodyField(e.target.value)}
+                    />
+                  </div>
                 </div>
               ) : (
                 <>
@@ -1295,8 +1345,8 @@ function NewDocumentInner() {
                       </div>
                     )}
                     <p className="text-[10px] text-gray-500 mb-1">
-                      حدّد سطراً أو فقرة ثم اضغط يمين / وسط / يسار من شريط التنسيق أعلاه.
-                      التحية والخاتمة تُوسَّطان تلقائياً، وباقي النص يمين.
+                      حدّد سطراً أو فقرة ثم يمين / وسط / يسار من شريط التنسيق.
+                      Space في بداية السطر يزيح النص أفقياً مثل Word. التحية/الخاتمة تُوسَّطان افتراضياً ويمكن تغييرهما.
                     </p>
                     <textarea
                       ref={(el) => {
@@ -1364,6 +1414,8 @@ function NewDocumentInner() {
                   judgmentBriefing: isBriefing,
                   briefingTitle: isBriefing ? briefingTitle : undefined,
                   judgmentPriority: isBriefing ? judgmentPriority : undefined,
+                  observationText: isBriefing ? (observationText || previewBody) : undefined,
+                  mechanismText: isBriefing ? mechanismText : undefined,
                   studySections: isBriefing ? null : studySections,
                   paperLayout,
                 }}

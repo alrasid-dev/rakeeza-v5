@@ -44,33 +44,35 @@ export type OfficialPaperFields = {
 
 /** Collapse accidental duplicated consecutive blocks (old+new paste ghost). */
 export function normalizeBodyText(raw: string | null | undefined): string {
-  const text = String(raw ?? '')
+  // Preserve leading/trailing spaces on lines — Word-like Space positioning.
+  // Only normalize newlines and strip blank lines at the very ends.
+  let text = String(raw ?? '')
     .replace(/\r\n/g, '\n')
-    .replace(/\u00a0/g, ' ')
-    .trim();
-  if (!text) return '';
+    .replace(/\u00a0/g, ' ');
+  text = text.replace(/^\n+/, '').replace(/\n+$/, '');
+  if (!text.trim()) return '';
   // If the whole body is the same paragraph repeated twice, keep one.
   const half = Math.floor(text.length / 2);
   if (text.length >= 40 && text.length % 2 === 0) {
-    const a = text.slice(0, half).trim();
-    const b = text.slice(half).trim();
-    if (a && a === b) return a;
+    const a = text.slice(0, half).replace(/^\n+|\n+$/g, '');
+    const b = text.slice(half).replace(/^\n+|\n+$/g, '');
+    if (a.trim() && a === b) return a;
   }
-  const parts = text.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean);
+  const parts = text.split(/\n{2,}/).filter((p) => p.trim());
   if (parts.length >= 2 && parts.length % 2 === 0) {
     const mid = parts.length / 2;
     const left = parts.slice(0, mid).join('\n\n');
     const right = parts.slice(mid).join('\n\n');
     if (left === right) return left;
   }
-  // Deduplicate consecutive identical lines
+  // Deduplicate consecutive identical lines (ignore pure-space twins)
   const lines = text.split('\n');
   const out: string[] = [];
   for (const line of lines) {
     if (out.length && out[out.length - 1] === line && line.trim().length > 20) continue;
     out.push(line);
   }
-  return out.join('\n').trim();
+  return out.join('\n').replace(/^\n+/, '').replace(/\n+$/, '');
 }
 
 
@@ -116,7 +118,8 @@ export default function OfficialPaperPreview({
         parties: isBriefing || hasStudy ? '' : doc.parties,
         reasons: isBriefing || hasStudy ? '' : doc.reasons,
         studyFields: isBriefing || hasStudy ? '' : doc.studyFields,
-        body: isBriefing || hasStudy ? '' : bodyOnce,
+        // Briefing: body is the editable letter (salutation→closing); study clears body.
+        body: hasStudy ? '' : bodyOnce,
         docType: doc.docType,
         footer: doc.footer || 'للاستخدام الداخلي فقط',
         qrDataUrl: doc.qrDataUrl,
@@ -125,7 +128,7 @@ export default function OfficialPaperPreview({
         judgmentCard: doc.judgmentCard,
         judgmentBriefing: doc.judgmentBriefing,
         briefingTitle: doc.briefingTitle,
-        observationText: doc.observationText,
+        observationText: doc.observationText || (isBriefing ? bodyOnce : null),
         mechanismText: doc.mechanismText,
         judgmentPriority: doc.judgmentPriority,
         fontFamily: style?.fontFamily || 'Traditional Arabic',

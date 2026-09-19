@@ -151,20 +151,29 @@ export function applyAlignToRange(
 }
 
 /** HTML for export — one div per block. */
+/** Turn leading ASCII spaces into NBSP so Outlook/Word keep horizontal shift. */
+export function leadingSpacesToNbsp(s: string): string {
+  return String(s || '').replace(/^( +)/gm, (m) => '\u00a0'.repeat(m.length));
+}
+
 export function bodyBlocksToHtml(
   body: string,
   opts?: { fallbackAlign?: ParaAlign; escape: (s: string) => string },
 ): string {
-  const esc = opts?.escape || ((s: string) => s);
+  const baseEsc = opts?.escape || ((s: string) => s);
+  const esc = (s: string) => baseEsc(s).replace(/\u00a0/g, '&nbsp;');
   const blocks = parseBodyBlocks(body, opts?.fallbackAlign || 'right');
   if (!blocks.length) return '';
   return blocks
     .map((b) => {
-      if (!b.text.trim()) return '<div style="height:0.6em"></div>';
+      // Keep blank / space-only lines as vertical gaps (Word-like)
+      if (!b.text.replace(/[ \u00a0]/g, '').trim()) {
+        return '<div style="height:0.6em;mso-line-height-rule:exactly;font-size:8pt">&nbsp;</div>';
+      }
       const align = cssTextAlign(b.align);
-      const html = inlineNodesToHtml(b.text, esc);
-      // align= for Outlook/Word; text-align for browsers/PDF
-      return `<p align="${align}" style="text-align:${align};margin:0 0 0.55em;white-space:pre-wrap">${html}</p>`;
+      const html = inlineNodesToHtml(leadingSpacesToNbsp(b.text), esc);
+      // align= for Outlook/Word; text-align + pre-wrap for browsers/PDF; NBSP for leading spaces
+      return `<p align="${align}" style="text-align:${align};margin:0 0 0.55em;white-space:pre-wrap;mso-line-height-rule:exactly">${html}</p>`;
     })
     .join('');
 }

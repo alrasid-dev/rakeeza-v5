@@ -19,6 +19,24 @@ const sample = {
 const combos = [
   { paperLayout: 'modern-hex', fontFamily: 'Traditional Arabic', tag: 'hex-amiri' },
   { paperLayout: 'classic-green', fontFamily: 'Sakkal Majalla', tag: 'classic-scheh' },
+  {
+    paperLayout: 'classic-green',
+    fontFamily: 'Traditional Arabic',
+    tag: 'briefing-spaces',
+    judgmentBriefing: true,
+    judgmentCard: [
+      { label: 'التشكيل', value: 'الثالثة عشر' },
+      { label: 'رقم القضية', value: '4772814332' },
+      { label: 'مصدر الحكم فضيلة الشيخ', value: 'أحمد' },
+      { label: 'رقم الحكم', value: '4830350652' },
+      { label: 'الرصد', value: 'إختيار الحكم غير نهائي' },
+      { label: 'آلية المعالجة المقترحة', value: 'إصدار صك مستبدل' },
+    ],
+    body:
+      'السلام عليكم ورحمة الله وبركاته وبعد:-\n\n' +
+      '  تنفيذاً لتوجيه فضيلة الرئيس تم رصد صدور حكم.\n\n' +
+      'لإطلاع فضيلتكم والله يحفظكم',
+  },
 ];
 
 const outDir = path.join(process.cwd(), 'tmp');
@@ -28,7 +46,18 @@ let outlookAll = '';
 let pdfAll = '';
 
 for (const c of combos) {
-  const doc = { ...sample, paperLayout: c.paperLayout, fontFamily: c.fontFamily };
+  const doc = {
+    ...sample,
+    paperLayout: c.paperLayout,
+    fontFamily: c.fontFamily,
+    ...(c.judgmentBriefing
+      ? {
+          judgmentBriefing: true,
+          judgmentCard: c.judgmentCard,
+          body: c.body,
+        }
+      : {}),
+  };
   const outlook = buildLetterHtml({ ...doc, origin: 'https://example.com' });
   const pdf = buildOfficialLetterHtml(doc, { forPdf: true });
   outlookAll += `\n<!-- ${c.tag} -->\n` + outlook;

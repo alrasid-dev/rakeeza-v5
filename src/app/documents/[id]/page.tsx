@@ -170,7 +170,7 @@ export default function DocumentDetailPage() {
               parties: fields.judgmentBriefing ? '' : doc.parties,
               reasons: fields.judgmentBriefing ? '' : doc.reasons,
               studyFields: fields.judgmentBriefing ? '' : doc.studyFields,
-              body: fields.judgmentBriefing ? '' : bodyOnce,
+              body: bodyOnce,
               docType: doc.docType,
               qrDataUrl: fields.qrDataUrl,
               tableRows: fields.judgmentBriefing ? [] : fields.tableRows,
@@ -178,6 +178,8 @@ export default function DocumentDetailPage() {
               judgmentBriefing: Boolean(fields.judgmentBriefing),
               briefingTitle: fields.briefingTitle,
               judgmentPriority: fields.judgmentPriority,
+              observationText: fields.observationText || (fields.judgmentBriefing ? bodyOnce : undefined),
+              mechanismText: fields.mechanismText,
               studySections: fields.judgmentBriefing ? null : fields.studySections,
               paperLayout,
             }}

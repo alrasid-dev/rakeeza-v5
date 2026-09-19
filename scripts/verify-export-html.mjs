@@ -60,11 +60,20 @@ function verifyOnce(passLabel) {
     { type: 'has', value: 'width="700"' },
     { type: 're', re: /fonts\.googleapis\.com/ },
     { type: 'has', value: 'class="meta"' },
+    { type: 'has', value: 'white-space:pre-wrap' },
+    { type: 'has', value: 'data:image/png;base64' },
+    { type: 'not', value: 'display: grid' },
   ]);
 
   const outlookHtml = fs.readFileSync(outlook, 'utf8');
   if (/\.meta\s*\{[^}]*display:\s*grid/.test(outlookHtml)) {
     outlookFails.push('Outlook HTML still uses CSS grid for .meta');
+  }
+  if (/position:\s*absolute/i.test(outlookHtml) && /polygon points/i.test(outlookHtml)) {
+    outlookFails.push('Outlook HTML still has absolute SVG decor');
+  }
+  if (!/&nbsp;|\\u00a0|white-space:pre-wrap/.test(outlookHtml)) {
+    outlookFails.push('Outlook HTML missing pre-wrap / nbsp for Word-like spaces');
   }
 
   const pdfFails = assertFile(pdf, [

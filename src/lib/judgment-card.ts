@@ -1,4 +1,5 @@
 import { polishSpelling } from '@/lib/arabic-polish';
+import { bodyBlocksToHtml } from '@/lib/body-align';
 /** Key/value judgment-monitoring card — عرض شف (oral briefing) for court workflow */
 
 export type JudgmentCardRow = { label: string; value: string };
@@ -529,10 +530,71 @@ function escHtml(s: string) {
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+    .replace(/"/g, '&quot;')
+    .replace(/\u00a0/g, '&nbsp;');
 }
 
-/** Full judgment briefing block HTML: preamble → closing → titled KV table. No «عرض شف». */
+/** Default full editable letter: salutation + observation + mechanism + closing. */
+export function defaultJudgmentLetterBody(
+  card: JudgmentCardRow[] | null | undefined,
+  observationOverride?: string | null,
+  mechanismOverride?: string | null,
+): string {
+  const obs = buildJudgmentObservationParts(card, observationOverride);
+  const obsText = `${obs.beforeRed}${obs.red}${obs.afterRed}`.trim();
+  const mech =
+    (mechanismOverride && mechanismOverride.trim()) ||
+    buildMechanismParagraph(getJudgmentCardValue(card, MECHANISM_LABEL));
+  return [JUDGMENT_SALUTATION, '', obsText, '', mech, '', JUDGMENT_CLOSING].join('\n');
+}
+
+/**
+ * Resolve briefing letter prose for Word-like editing.
+ * Prefer explicit letterBody / observation that already contains the full letter —
+ * never re-inject locked salutation/closing when the user already typed them.
+ */
+export function resolveBriefingLetterBody(opts: {
+  letterBody?: string | null;
+  observationText?: string | null;
+  mechanismText?: string | null;
+  card: JudgmentCardRow[];
+}): string {
+  const raw = String(opts.letterBody || opts.observationText || '').replace(/\r\n/g, '\n');
+  if (raw.trim()) {
+    // If observation-only (no greeting) but mechanism separate — compose without locking align
+    const hasGreeting = /السلام\s*عليكم/.test(raw);
+    const hasClosing = /لإطلاع\s*فضيلتكم|والله\s*يحفظكم/.test(raw);
+    if (hasGreeting || hasClosing) return raw.replace(/\n+$/, '');
+    const mech =
+      (opts.mechanismText && opts.mechanismText.trim()) ||
+      (/وفي\s*حال\s*اقتضى\s*الأمر/.test(raw)
+        ? ''
+        : buildMechanismParagraph(getJudgmentCardValue(opts.card, MECHANISM_LABEL)));
+    const parts = [JUDGMENT_SALUTATION, '', raw.trim()];
+    if (mech) parts.push('', mech);
+    parts.push('', JUDGMENT_CLOSING);
+    return parts.join('\n');
+  }
+  return defaultJudgmentLetterBody(opts.card, opts.observationText, opts.mechanismText);
+}
+
+/** Highlight «تم رصد…» in red when the user has not already colored the span. */
+function applyObservationRedHtml(html: string): string {
+  if (!html || html.includes('color:#c00000') || html.includes('color:#C00000')) return html;
+  // Only plain text nodes path — operate on escaped HTML string once
+  const marker = OBSERVATION_RED;
+  const idx = html.indexOf(marker);
+  if (idx < 0) return html;
+  // From تم رصد to end of this paragraph (before closing </p> handled by caller per-block)
+  return (
+    html.slice(0, idx) +
+    `<span style="color:#c00000;font-weight:700">` +
+    html.slice(idx) +
+    `</span>`
+  );
+}
+
+/** Full judgment briefing block HTML: editable letter (pre-wrap + align) → KV table. */
 export function buildJudgmentBriefingBlockHtml(opts: {
   recipients?: string | null;
   card: JudgmentCardRow[];
@@ -540,16 +602,29 @@ export function buildJudgmentBriefingBlockHtml(opts: {
   green?: string;
   observationText?: string | null;
   mechanismText?: string | null;
+  /** Full editable letter body (preferred). When set, no locked auto center blocks. */
+  letterBody?: string | null;
+  fallbackAlign?: 'right' | 'center' | 'left' | null;
 }): string {
   if (!opts.card?.length) return '';
   const GREEN = opts.green || '#006C35';
-  // «إلى» is only in the letterhead meta — do not repeat recipients in the body.
   void opts.recipients;
   void opts.title;
-  const obs = buildJudgmentObservationParts(opts.card, opts.observationText);
-  const mech =
-    (opts.mechanismText && opts.mechanismText.trim()) ||
-    buildMechanismParagraph(getJudgmentCardValue(opts.card, MECHANISM_LABEL));
+  const letter = resolveBriefingLetterBody({
+    letterBody: opts.letterBody,
+    observationText: opts.observationText,
+    mechanismText: opts.mechanismText,
+    card: opts.card,
+  });
+  let proseHtml = bodyBlocksToHtml(letter, {
+    escape: escHtml,
+    fallbackAlign: opts.fallbackAlign || 'right',
+  });
+  // Auto-red for تم رصد inside generated paragraphs (Word color tools still override)
+  proseHtml = proseHtml.replace(
+    /(<p\b[^>]*>)([\s\S]*?)(<\/p>)/gi,
+    (_m, open, inner, close) => `${open}${applyObservationRedHtml(inner)}${close}`,
+  );
   const cells = opts.card
     .map(
       (r, i) =>
@@ -559,12 +634,9 @@ export function buildJudgmentBriefingBlockHtml(opts: {
         </tr>`,
     )
     .join('');
-  return `<div class="judgment-briefing" style="margin:4px 0 12px;line-height:1.9;text-align:justify">
-  <p align="center" style="margin:0 0 8px;text-align:center;font-weight:600">${escHtml(JUDGMENT_SALUTATION)}</p>
-  <div style="margin-bottom:8px;text-align:right">${escHtml(obs.beforeRed)}<span style="color:#c00000;font-weight:700">${escHtml(obs.red)}</span>${escHtml(obs.afterRed)}</div>
-  ${mech ? `<div style="margin-bottom:8px;text-align:right">${escHtml(mech)}</div>` : ''}
-  <p align="center" style="margin:0 0 12px;text-align:center;font-weight:700">${escHtml(JUDGMENT_CLOSING)}</p>
-  <table dir="rtl" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;border:1px solid ${GREEN};margin:6px 0 4px;font-size:13px">
+  return `<div class="judgment-briefing" style="margin:4px 0 12px;line-height:1.9">
+  ${proseHtml}
+  <table dir="rtl" width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse:collapse;border:1px solid ${GREEN};margin:6px 0 4px;font-size:13px">
     <tbody>${cells}</tbody>
   </table>
 </div>`;

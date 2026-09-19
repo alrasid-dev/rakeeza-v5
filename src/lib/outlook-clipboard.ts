@@ -66,18 +66,14 @@ export type OutlookLetterDoc = OfficialLetterDoc & {
 };
 
 /**
- * Rewrite src="/…" and relative brand paths to absolute https URLs,
- * and swap data-URI emblems for hosted PNG (Outlook often strips data-URIs).
+ * Rewrite src="/…" relative paths to absolute https URLs for Outlook.
+ * Keep data:image URIs — Word/Outlook paste preserves embedded emblems;
+ * remote https often shows as broken until "Download images".
  */
 export function absolutizeHtmlForOutlook(html: string, origin: string): string {
   const base = String(origin || '').replace(/\/$/, '');
   if (!base) return html;
   let out = html;
-  // Hosted emblem instead of giant data-URI
-  out = out.replace(
-    /src="data:image\/png;base64,[^"]+"/gi,
-    `src="${esc(`${base}/brand/moj-logo-gold.png`)}"`,
-  );
   out = out.replace(/src="\/([^"]+)"/gi, (_m, path: string) => `src="${esc(`${base}/${path}`)}"`);
   return out;
 }
