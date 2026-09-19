@@ -12,7 +12,7 @@ import { researcherRoleLabel, preparerRoleLabel } from '@/lib/honorific';
 import { formatClaimAmount, normalizeFormationOrdinal } from '@/lib/arabic-normalize';
 import { enrichStudySections, hasStudyContent, studyDisplayMeta } from '@/lib/study-display';
 import { BRAND } from '@/lib/brand';
-import { fontStackFor } from '@/lib/font-stacks';
+import { exportFontStack, fontStackFor, googleFontsImportCss } from '@/lib/font-stacks';
 import { bodyBlocksToHtml } from '@/lib/body-align';
 import {
   buildJudgmentBriefingBlockHtml,
@@ -252,7 +252,13 @@ function judgmentBriefingHtml(
   });
 }
 
-export function buildOfficialLetterHtml(doc: OfficialLetterDoc, opts?: { forPdf?: boolean; embeddedFontCss?: string }) {
+export type OfficialLetterHtmlOpts = {
+  forPdf?: boolean;
+  forOutlook?: boolean;
+  embeddedFontCss?: string;
+};
+
+export function buildOfficialLetterHtml(doc: OfficialLetterDoc, opts?: OfficialLetterHtmlOpts) {
   const layout = normalizePaperLayout(doc.paperLayout);
   const theme = layoutTheme(layout);
   const court = doc.courtName || 'المحكمة العمالية بالرياض';
@@ -260,8 +266,13 @@ export function buildOfficialLetterHtml(doc: OfficialLetterDoc, opts?: { forPdf?
     doc.headerLines?.filter(Boolean) ||
     ['المملكة العربية السعودية', 'وزارة العدل', court];
   const footer = doc.footer || 'للاستخدام الداخلي فقط';
-  const font = fontStackFor(doc.fontFamily);
+  const useExportFonts = Boolean(opts?.forPdf || opts?.forOutlook);
+  const font = useExportFonts ? exportFontStack(doc.fontFamily) : fontStackFor(doc.fontFamily);
   const size = doc.fontSizePt || 14;
+  const gfImport = useExportFonts
+    ? googleFontsImportCss([String(doc.fontFamily || 'Traditional Arabic')])
+    : '';
+
   const pageCss = opts?.forPdf
     ? `@page { size: A4; margin: 12mm; }
 body { margin: 0; color: #111; }
@@ -269,9 +280,10 @@ body { margin: 0; color: #111; }
 .paper { color: #111 !important; }
 .bismillah, .bismillah * { color: #fff !important; font-weight: 400 !important; }`
     : '';
-  const fontFace =
-    opts?.embeddedFontCss ||
-    (opts?.forPdf
+
+  const embeddedBlock = opts?.embeddedFontCss
+    ? opts.embeddedFontCss
+    : opts?.forPdf
       ? `@font-face {
   font-family: 'Noto Naskh Arabic';
   font-style: normal;
@@ -279,14 +291,22 @@ body { margin: 0; color: #111; }
   src: url('/fonts/NotoNaskhArabic-Regular.ttf') format('truetype');
   font-display: block;
 }`
-      : `@import url('https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;700&display=swap');`);
+      : '';
+
+  // Preview (browser): next/font vars + light Google fallback. Export: concrete stacks + GF import + embeds.
+  const fontFace = useExportFonts
+    ? `${gfImport}
+${embeddedBlock}`
+    : `@import url('https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;700&display=swap');
+${embeddedBlock}`;
 
   const qr = doc.qrDataUrl
     ? `<img src="${esc(doc.qrDataUrl)}" alt="QR" style="width:72px;height:72px;border:1px solid ${GOLD};border-radius:6px;background:#fff;display:block" />`
-    : `<div style="width:72px;height:72px;border:1px dashed ${GOLD};border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;color:${GREEN};background:#fff">QR</div>`;
+    : `<div style="width:72px;height:72px;border:1px dashed ${GOLD};border-radius:6px;text-align:center;line-height:72px;font-size:10px;color:${GREEN};background:#fff">QR</div>`;
 
+  // Outlook: hosted PNG path (absolutized by caller). PDF: data-URI emblem.
   const emblemInner = opts?.forPdf ? EMBLEM_IMG : EMBLEM_IMG_FILE;
-  const emblem = `<div style="width:64px;height:64px;border:1.5px solid ${GOLD};border-radius:12px;background:#fff;overflow:hidden;display:flex;align-items:center;justify-content:center">${emblemInner}</div>`;
+  const emblem = `<div style="width:64px;height:64px;border:1.5px solid ${GOLD};border-radius:12px;background:#fff;overflow:hidden;text-align:center">${emblemInner}</div>`;
 
   const study = doc.studySections
     ? enrichStudySections(doc.studySections, {
@@ -337,7 +357,6 @@ body { margin: 0; color: #111; }
     : '';
 
   // Official Saudi letterhead (physical LTR): LEFT=QR, CENTER=emblem, RIGHT=kingdom/ministry/court
-  // modern-hex: same official order on cream geometric chrome
   const hexText = `
           <div style="text-align:right;line-height:1.35;min-width:0" dir="rtl">
             <div class="court" style="font-size:12px;color:${GREEN};font-weight:700">${esc(BRAND.kingdom)}</div>
@@ -373,6 +392,127 @@ body { margin: 0; color: #111; }
     </tr>
   </table>`;
 
+  const metaLabel = (t: string) =>
+    `<span class="label" style="color:${GREEN};font-weight:700">${esc(t)}</span>`;
+
+  // Outlook Word engine: table meta (no CSS grid). Preview/PDF may use grid.
+  const metaBoxOutlook = `
+  <table class="meta" dir="rtl" width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin:14px 0;border-collapse:collapse;font-size:${size}px;${theme.meta}">
+    <tr>
+      <td width="50%" valign="top" data-field="number" style="padding:8px 14px;cursor:pointer">${metaLabel('الرقم:')} <span dir="ltr">${esc(doc.number || '—')}</span></td>
+      <td width="50%" valign="top" data-field="dateGregorian" style="padding:8px 14px;cursor:pointer">${metaLabel('التاريخ:')} ${esc(officialDateDisplay(doc.dateHijri, doc.dateGregorian))}</td>
+    </tr>
+    <tr>
+      <td colspan="2" data-field="recipients" style="padding:6px 14px;cursor:pointer">${metaLabel('إلى:')} ${esc(doc.recipients || '—')}</td>
+    </tr>
+    ${
+      doc.copyTo?.trim()
+        ? `<tr><td colspan="2" class="cc-row" data-field="copyTo" style="padding:6px 14px;cursor:pointer">${metaLabel('نسخة إلى:')} ${esc(doc.copyTo)}</td></tr>`
+        : ''
+    }
+    ${
+      doc.attachments?.trim()
+        ? `<tr><td colspan="2" style="padding:6px 14px">${metaLabel('مرفقات:')} ${esc(doc.attachments)}</td></tr>`
+        : ''
+    }
+    <tr>
+      <td colspan="2" data-field="subject" style="padding:6px 14px 10px;cursor:pointer">${metaLabel('الموضوع:')} ${esc(previewSubject)}</td>
+    </tr>
+  </table>`;
+
+  const metaBoxGrid = `
+  <div class="meta">
+    <div data-field="number" style="cursor:pointer"><span class="label">الرقم:</span> <span dir="ltr">${esc(doc.number || '—')}</span></div>
+    <div data-field="dateGregorian" style="cursor:pointer"><span class="label">التاريخ:</span> ${esc(officialDateDisplay(doc.dateHijri, doc.dateGregorian))}</div>
+    <div data-field="recipients" style="grid-column:1/-1;cursor:pointer"><span class="label">إلى:</span> ${esc(doc.recipients || '—')}</div>
+    ${
+      doc.copyTo?.trim()
+        ? `<div class="cc-row" data-field="copyTo" style="grid-column:1/-1;display:inline-block;cursor:pointer"><span class="label"><span class="cc-icon" style="display:inline-block;visibility:visible;margin-inline-end:4px">⧉</span>نسخة إلى:</span> ${esc(doc.copyTo)}</div>`
+        : ''
+    }
+    ${
+      doc.attachments?.trim()
+        ? `<div style="grid-column:1/-1"><span class="label">مرفقات:</span> ${esc(doc.attachments)}</div>`
+        : ''
+    }
+    <div data-field="subject" style="grid-column:1/-1;cursor:pointer"><span class="label">الموضوع:</span> ${esc(previewSubject)}</div>
+  </div>`;
+
+  const metaBox = opts?.forOutlook ? metaBoxOutlook : metaBoxGrid;
+
+  const sectionPad = layout === 'modern-hex' ? 'padding:4px 28px 10px' : 'padding:4px 18px 10px';
+  const bodySection = `
+  <div class="section" style="${sectionPad}">
+    ${hasStudy && study ? `<div data-field="studyFields" style="cursor:pointer">${studyHtml(study)}</div>` : ''}
+    ${isBriefing && doc.judgmentCard?.length ? `<div data-field="body" style="cursor:pointer">${judgmentBriefingHtml(doc, doc.judgmentCard)}</div>` : ''}
+    ${
+      !hasStudy && !isBriefing && doc.parties
+        ? `<div data-field="parties" style="cursor:pointer"><h3 style="margin:12px 0 6px;color:${GREEN};font-size:13px;border-bottom:1px solid ${GOLD};padding-bottom:2px">الأطراف</h3><div class="body">${pre(doc.parties)}</div></div>`
+        : ''
+    }
+    ${
+      !hasStudy && !isBriefing && doc.reasons
+        ? `<div data-field="reasons" style="cursor:pointer"><h3 style="margin:12px 0 6px;color:${GREEN};font-size:13px;border-bottom:1px solid ${GOLD};padding-bottom:2px">الأسباب</h3><div class="body">${pre(doc.reasons)}</div></div>`
+        : ''
+    }
+    ${
+      !hasStudy && !isBriefing && doc.body
+        ? `<div class="body" data-field="body" style="cursor:pointer">${bodyBlocksToHtml(String(doc.body).trim(), { escape: esc, fallbackAlign: (doc.align as 'right'|'center'|'left') || 'right' })}</div>`
+        : ''
+    }
+    ${
+      !hasStudy && !isBriefing && doc.studyFields
+        ? `<div data-field="studyFields" style="cursor:pointer"><h3 style="margin:12px 0 6px;color:${GREEN};font-size:13px;border-bottom:1px solid ${GOLD};padding-bottom:2px">الدراسة</h3><div class="body">${pre(doc.studyFields)}</div></div>`
+        : ''
+    }
+  </div>`;
+
+  const footInner = theme.extraChrome
+    ? theme.extraChrome + `<div style="padding:8px 18px;text-align:center;color:#555;font-size:11px">${esc(footer)}</div>`
+    : esc(footer);
+
+  const topRule = isUrgent
+    ? `<div class="bismillah" style="position:relative;min-height:28px"><span style="display:inline-block;margin:4px 12px;background:#c00000;color:#fff;font-size:11px;font-weight:700;padding:2px 10px;border-radius:999px">⚠ عاجل</span></div>`
+    : `<div style="border-bottom:3px solid ${GOLD};height:0;line-height:0;font-size:0">&nbsp;</div>`;
+
+  // Outlook: single outer table width ~700 for MSO Word HTML engine
+  const paperInner = `
+  ${topRule}
+  ${brandRow}
+  ${metaBox}
+  ${bodySection}
+  <div class="foot" style="margin-top:18px;padding:10px 18px;text-align:center;color:#555;font-size:11px;${theme.foot}">${footInner}</div>`;
+
+  const paperHtml = opts?.forOutlook
+    ? `<table class="paper" data-paper-layout="${esc(layout)}" width="700" cellpadding="0" cellspacing="0" role="presentation" dir="rtl" style="width:700px;max-width:700px;margin:0 auto;border-collapse:collapse;border:${theme.paperBorder};background:${theme.paperBg};font-family:${font};font-size:${size}px;line-height:1.85;color:#111">
+  <tr><td style="padding:0;font-family:${font};font-size:${size}px;color:#111;background:${theme.paperBg}">
+  ${paperInner}
+  </td></tr>
+</table>`
+    : `<div class="paper" data-paper-layout="${esc(layout)}">
+  ${paperInner}
+</div>`;
+
+  const metaCss = opts?.forOutlook
+    ? `.meta { font-size: ${size}px; }
+.meta .label { color: ${GREEN}; font-weight: 700; }`
+    : `.meta {
+  margin: 14px 18px;
+  padding: 10px 14px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 16px;
+  font-size: ${size}px;
+  ${theme.meta}
+}
+.meta .label { color: ${GREEN}; font-weight: 700; }`;
+
+  const inheritRule = opts?.forOutlook
+    ? ''
+    : `.paper, .paper *:not(img):not(svg):not(svg *) {
+  font-family: inherit;
+}`;
+
   return `<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -389,6 +529,7 @@ body {
   background: #fff;
   font-size: ${size}px;
   line-height: 1.85;
+  margin: 0;
 }
 .paper {
   max-width: 210mm;
@@ -400,9 +541,7 @@ body {
   font-family: ${font};
   position: relative;
 }
-.paper, .paper *:not(img):not(svg):not(svg *) {
-  font-family: inherit;
-}
+${inheritRule}
 .bismillah {
   color: #fff;
   text-align: center;
@@ -414,16 +553,7 @@ body {
 .brand-row { width: 100%; }
 .brand-row .court { color: ${GREEN}; font-weight: 800; }
 .brand-row .sub { color: ${GOLD}; font-size: 12px; margin-top: 2px; }
-.meta {
-  margin: 14px 18px;
-  padding: 10px 14px;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px 16px;
-  font-size: ${size}px;
-  ${theme.meta}
-}
-.meta .label { color: ${GREEN}; font-weight: 700; }
+${metaCss}
 .section { padding: 4px 18px 10px; overflow: hidden; max-width: 100%; overflow-wrap: anywhere; }
 .section h3 {
   margin: 12px 0 6px;
@@ -447,51 +577,7 @@ body {
 </style>
 </head>
 <body>
-<div class="paper" data-paper-layout="${esc(layout)}">
-  ${isUrgent ? `<div class="bismillah" style="position:relative;min-height:28px">${`<span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);display:inline-flex;align-items:center;gap:4px;background:#c00000;color:#fff;font-size:11px;font-weight:700;padding:2px 10px;border-radius:999px">⚠ عاجل</span>`}</div>` : `<div style="border-bottom:3px solid ${GOLD};height:0"></div>`}
-  ${brandRow}
-  <div class="meta">
-    <div><span class="label">الرقم:</span> <span dir="ltr">${esc(doc.number || '—')}</span></div>
-    <div><span class="label">التاريخ:</span> ${esc(officialDateDisplay(doc.dateHijri, doc.dateGregorian))}</div>
-    <div style="grid-column:1/-1"><span class="label">إلى:</span> ${esc(doc.recipients || '—')}</div>
-    ${
-      doc.copyTo?.trim()
-        ? `<div class="cc-row" style="grid-column:1/-1;display:inline-block"><span class="label"><span class="cc-icon" style="display:inline-block;visibility:visible;margin-inline-end:4px">⧉</span>نسخة إلى:</span> ${esc(doc.copyTo)}</div>`
-        : ''
-    }
-    ${
-      doc.attachments?.trim()
-        ? `<div style="grid-column:1/-1"><span class="label">مرفقات:</span> ${esc(doc.attachments)}</div>`
-        : ''
-    }
-    <div style="grid-column:1/-1"><span class="label">الموضوع:</span> ${esc(previewSubject)}</div>
-  </div>
-  <div class="section" style="${layout === 'modern-hex' ? 'padding-inline:28px' : ''}">
-    ${hasStudy && study ? studyHtml(study) : ''}
-    ${isBriefing && doc.judgmentCard?.length ? judgmentBriefingHtml(doc, doc.judgmentCard) : ''}
-    ${
-      !hasStudy && !isBriefing && doc.parties
-        ? `<h3>الأطراف</h3><div class="body">${pre(doc.parties)}</div>`
-        : ''
-    }
-    ${
-      !hasStudy && !isBriefing && doc.reasons
-        ? `<h3>الأسباب</h3><div class="body">${pre(doc.reasons)}</div>`
-        : ''
-    }
-    ${
-      !hasStudy && !isBriefing && doc.body
-        ? `<div class="body">${bodyBlocksToHtml(String(doc.body).trim(), { escape: esc, fallbackAlign: (doc.align as 'right'|'center'|'left') || 'right' })}</div>`
-        : ''
-    }
-    ${
-      !hasStudy && !isBriefing && doc.studyFields
-        ? `<h3>الدراسة</h3><div class="body">${pre(doc.studyFields)}</div>`
-        : ''
-    }
-  </div>
-  <div class="foot">${theme.extraChrome ? theme.extraChrome + `<div style="padding:8px 18px;text-align:center;color:#555;font-size:11px">${esc(footer)}</div>` : esc(footer)}</div>
-</div>
+${paperHtml}
 </body>
 </html>`;
 }

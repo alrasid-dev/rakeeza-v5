@@ -9,6 +9,12 @@ import { attachmentDisposition } from '@/lib/download-headers';
 import { officialDateDisplay } from '@/lib/hijri';
 import { wrapArabicLines } from '@/lib/arabic-pdf-text';
 import { loadEmblemPng, BRAND } from '@/lib/brand-assets';
+import {
+  exportFontStack,
+  googleFontsImportCss,
+  pdfEmbeddedFamily,
+} from '@/lib/font-stacks';
+import { normalizePaperLayout } from '@/lib/paper-layouts';
 import { jsPDF } from 'jspdf';
 import QRCode from 'qrcode';
 
@@ -128,6 +134,65 @@ function loadArabicFontBase64(): string {
   return fs.readFileSync(fontPath).toString('base64');
 }
 
+/** Optional TTFs under public/fonts — Amiri / Scheherazade preferred when present. */
+function loadOptionalFontBase64(fileName: string): string | null {
+  const fontPath = path.join(process.cwd(), 'public', 'fonts', fileName);
+  if (!fs.existsSync(fontPath)) return null;
+  return fs.readFileSync(fontPath).toString('base64');
+}
+
+function buildPdfEmbeddedFontCss(fontFamilyId?: string | null): string {
+  const faces: string[] = [];
+  const noto = loadArabicFontBase64();
+  faces.push(`@font-face {
+  font-family: 'Noto Naskh Arabic';
+  font-style: normal;
+  font-weight: 100 900;
+  src: url(data:font/ttf;base64,${noto}) format('truetype');
+  font-display: block;
+}`);
+  // If download failed previously, map PDF to Noto but keep selected family name in export stack
+  // so Chromium can still resolve via Google Fonts @import when available.
+  const amiri = loadOptionalFontBase64('Amiri-Regular.ttf');
+  if (amiri) {
+    faces.push(`@font-face {
+  font-family: 'Amiri';
+  font-style: normal;
+  font-weight: 400;
+  src: url(data:font/ttf;base64,${amiri}) format('truetype');
+  font-display: block;
+}`);
+  }
+  const scheh = loadOptionalFontBase64('ScheherazadeNew-Regular.ttf');
+  if (scheh) {
+    faces.push(`@font-face {
+  font-family: 'Scheherazade New';
+  font-style: normal;
+  font-weight: 400;
+  src: url(data:font/ttf;base64,${scheh}) format('truetype');
+  font-display: block;
+}`);
+  }
+
+  const stack = exportFontStack(fontFamilyId);
+  const preferred = pdfEmbeddedFamily(fontFamilyId);
+  const gf = googleFontsImportCss([String(fontFamilyId || 'Traditional Arabic')]);
+  return `${gf}
+${faces.join('\n')}
+html, body, .paper, .paper * {
+  font-family: ${stack} !important;
+  font-weight: 400 !important;
+  -webkit-font-smoothing: antialiased;
+}
+/* Prefer embedded face first when mapped */
+.paper, .paper *:not(img):not(svg):not(svg *) {
+  font-family: '${preferred}', ${stack} !important;
+}
+.paper { color: #111 !important; }
+.bismillah, .bismillah * { color: #fff !important; }
+`;
+}
+
 /**
  * jsPDF fallback — logical Arabic ONLY (no reshape/bidi).
  * Reshape+bidi + Noto Naskh caused letter-spaced reversed glyphs in production
@@ -147,6 +212,7 @@ function pdfViaJsPdf(doc: {
   footer: string;
   headerLines: string[];
   qrDataUrl?: string | null;
+  paperLayout?: string | null;
 }): Buffer {
   const pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
   const fontB64 = loadArabicFontBase64();
@@ -180,10 +246,20 @@ function pdfViaJsPdf(doc: {
     }
   };
 
-  // Top gold rule (basmala removed)
-  pdf.setFillColor(197, 160, 89);
+  // Top gold rule (basmala removed) — GREEN/GOLD match classic theme
+  const GREEN_RGB: [number, number, number] = [0, 108, 53];
+  const GOLD_RGB: [number, number, number] = [197, 160, 89];
+  pdf.setFillColor(...GOLD_RGB);
   pdf.rect(10, 8, 190, 1.5, 'F');
+  pdf.setDrawColor(...GREEN_RGB);
+  pdf.setLineWidth(0.4);
+  pdf.rect(10, 10, 190, 277);
   y = 14;
+  const layoutName = normalizePaperLayout(doc.paperLayout);
+  pdf.setFont('NotoNaskhArabic', 'normal');
+  pdf.setFontSize(8);
+  pdf.setTextColor(...GOLD_RGB);
+  pdf.text(`layout:${layoutName}`, 14, 11);
 
   // LEFT=QR, CENTER=emblem, RIGHT=kingdom text (official letterhead)
   if (doc.qrDataUrl) {
@@ -303,23 +379,8 @@ export async function GET(req: NextRequest) {
       .map((l) => l.trim())
       .filter(Boolean);
 
-    const fontB64 = loadArabicFontBase64();
-    // Embed Noto as a reliable Arabic glyph fallback; letter HTML still applies the user-selected stack.
-    const embeddedFontCss = `@font-face {
-  font-family: 'Noto Naskh Arabic';
-  font-style: normal;
-  font-weight: 100 900;
-  src: url(data:font/ttf;base64,${fontB64}) format('truetype');
-  font-display: block;
-}
-html, body {
-  font-family: 'Noto Naskh Arabic', 'Traditional Arabic', Tahoma, serif;
-  font-weight: 400 !important;
-  -webkit-font-smoothing: antialiased;
-}
-.paper { color: #111 !important; }
-.bismillah, .bismillah * { color: #fff !important; }
-`;
+    const selectedFont = style?.fontFamily || 'Traditional Arabic';
+    const embeddedFontCss = buildPdfEmbeddedFontCss(selectedFont);
 
     // Chromium HTML path: logical Arabic + dir=rtl — NO reshape/bidi
     const html = buildOfficialLetterHtml(
@@ -343,7 +404,7 @@ html, body {
         judgmentBriefing,
         briefingTitle: briefingTitleField || undefined,
         judgmentPriority: judgmentPriorityField || undefined,
-        fontFamily: style?.fontFamily || 'Traditional Arabic',
+        fontFamily: selectedFont,
         fontSizePt: style?.fontSizePt,
         paperLayout,
       },
@@ -368,6 +429,7 @@ html, body {
         footer: letterhead?.footer || 'للاستخدام الداخلي فقط',
         headerLines,
         qrDataUrl,
+        paperLayout,
       });
     }
 

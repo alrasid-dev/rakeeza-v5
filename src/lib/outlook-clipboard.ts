@@ -5,7 +5,7 @@ import {
 import { officialDateDisplay } from '@/lib/hijri';
 import { BRAND } from '@/lib/brand';
 import { bodyBlocksToHtml } from '@/lib/body-align';
-import { fontStackFor } from '@/lib/font-stacks';
+import { exportFontStack, fontStackFor } from '@/lib/font-stacks';
 
 /** Client helper: copy Outlook-friendly full official letter HTML — same layout as preview/PDF */
 
@@ -79,12 +79,11 @@ export function absolutizeHtmlForOutlook(html: string, origin: string): string {
     `src="${esc(`${base}/brand/moj-logo-gold.png`)}"`,
   );
   out = out.replace(/src="\/([^"]+)"/gi, (_m, path: string) => `src="${esc(`${base}/${path}`)}"`);
-  // Ensure QR uses public API when we only have a number placeholder — handled by caller
   return out;
 }
 
 /**
- * Full official template for Outlook paste — SAME generator as PDF/preview (paperLayout).
+ * Full official template for Outlook paste — table-based chrome + export font stacks.
  * Images rewritten to absolute https for Outlook.
  */
 export function buildLetterHtml(doc: OutlookLetterDoc) {
@@ -101,42 +100,69 @@ export function buildLetterHtml(doc: OutlookLetterDoc) {
     qrDataUrl = `${origin}/api/public/qr?text=${encodeURIComponent(String(doc.number))}`;
   }
 
-  const html = buildOfficialLetterHtml({
-    number: doc.number,
-    subject: doc.subject,
-    dateGregorian: doc.dateGregorian,
-    dateHijri: doc.dateHijri,
-    recipients: doc.recipients,
-    copyTo: doc.copyTo,
-    attachments: doc.attachments,
-    parties: doc.parties,
-    reasons: doc.reasons,
-    studyFields: doc.studyFields,
-    body: doc.body,
-    docType: doc.docType,
-    footer: doc.footer || 'للاستخدام الداخلي فقط',
-    courtName: doc.courtName,
-    headerLines: doc.headerLines,
-    qrDataUrl,
-    studySections: doc.studySections,
-    judgmentCard: doc.judgmentCard,
-    judgmentBriefing: doc.judgmentBriefing,
-    briefingTitle: doc.briefingTitle || doc.underLogoLabel,
-    observationText: doc.observationText,
-    mechanismText: doc.mechanismText,
-    judgmentPriority: doc.judgmentPriority,
-    fontFamily: doc.fontFamily,
-    fontSizePt: doc.fontSizePt,
-    align: doc.align,
-    paperLayout: doc.paperLayout,
-  });
+  let html = buildOfficialLetterHtml(
+    {
+      number: doc.number,
+      subject: doc.subject,
+      dateGregorian: doc.dateGregorian,
+      dateHijri: doc.dateHijri,
+      recipients: doc.recipients,
+      copyTo: doc.copyTo,
+      attachments: doc.attachments,
+      parties: doc.parties,
+      reasons: doc.reasons,
+      studyFields: doc.studyFields,
+      body: doc.body,
+      docType: doc.docType,
+      footer: doc.footer || 'للاستخدام الداخلي فقط',
+      courtName: doc.courtName,
+      headerLines: doc.headerLines,
+      qrDataUrl,
+      studySections: doc.studySections,
+      judgmentCard: doc.judgmentCard,
+      judgmentBriefing: doc.judgmentBriefing,
+      briefingTitle: doc.briefingTitle || doc.underLogoLabel,
+      observationText: doc.observationText,
+      mechanismText: doc.mechanismText,
+      judgmentPriority: doc.judgmentPriority,
+      fontFamily: doc.fontFamily,
+      fontSizePt: doc.fontSizePt,
+      align: doc.align,
+      paperLayout: doc.paperLayout,
+    },
+    { forOutlook: true },
+  );
 
-  return absolutizeHtmlForOutlook(html, origin);
+  // Keep <style>/@import from generator; wrap body paper in outer 700px MSO table
+  const styleMatch = html.match(/<style>[\s\S]*?<\/style>/i);
+  const styles = styleMatch ? styleMatch[0] : '';
+  const bodyInner = html
+    .replace(/^[\s\S]*?<body[^>]*>/i, '')
+    .replace(/<\/body>[\s\S]*$/i, '');
+  const baseTag = origin ? `<base href="${esc(origin)}/" />` : '';
+
+  const wrapped = `<!DOCTYPE html>
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8"/>
+${baseTag}
+${styles}
+</head>
+<body style="margin:0;padding:0;background:#ffffff">
+<!--[if mso]><table role="presentation" width="700" cellpadding="0" cellspacing="0"><tr><td><![endif]-->
+<table role="presentation" width="700" cellpadding="0" cellspacing="0" style="width:700px;max-width:700px;margin:0 auto;border-collapse:collapse">
+  <tr><td style="padding:0">${bodyInner}</td></tr>
+</table>
+<!--[if mso]></td></tr></table><![endif]-->
+</body>
+</html>`;
+
+  return absolutizeHtmlForOutlook(wrapped, origin);
 }
 
 /** Legacy table-based letter — kept only if official HTML fails; prefer buildLetterHtml. */
 export function buildSimpleLetterHtml(doc: OutlookLetterDoc) {
-  const letterFont = fontStackFor(doc.fontFamily);
+  const letterFont = exportFontStack(doc.fontFamily) || fontStackFor(doc.fontFamily);
   const letterSize = doc.fontSizePt ? `${doc.fontSizePt}pt` : '15pt';
   const court = doc.courtName || 'المحكمة العمالية بالرياض';
   const GREEN = '#006C35';
