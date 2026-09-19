@@ -17,6 +17,31 @@ export const FONT_OPTIONS: { id: string; label: string; stack: string }[] = [
     stack: 'var(--font-noto-naskh), "Noto Naskh Arabic", "Amiri", serif',
   },
   {
+    id: 'Lateef',
+    label: 'Lateef',
+    stack: 'var(--font-lateef), "Lateef", "Noto Naskh Arabic", serif',
+  },
+  {
+    id: 'Noto Kufi Arabic',
+    label: 'Noto Kufi Arabic',
+    stack: 'var(--font-noto-kufi), "Noto Kufi Arabic", Tahoma, sans-serif',
+  },
+  {
+    id: 'Reem Kufi',
+    label: 'Reem Kufi',
+    stack: 'var(--font-reem-kufi), "Reem Kufi", Tahoma, sans-serif',
+  },
+  {
+    id: 'Changa',
+    label: 'Changa',
+    stack: 'var(--font-changa), "Changa", Tahoma, sans-serif',
+  },
+  {
+    id: 'Almarai',
+    label: 'Almarai',
+    stack: 'var(--font-almarai), "Almarai", Tahoma, sans-serif',
+  },
+  {
     id: 'IBM Plex Sans Arabic',
     label: 'IBM Plex Sans Arabic',
     stack: 'var(--font-ibm-plex-ar), "IBM Plex Sans Arabic", Tahoma, sans-serif',
@@ -54,6 +79,11 @@ export function docxFontName(id?: string | null): string {
     'Traditional Arabic': 'Traditional Arabic',
     'Sakkal Majalla': 'Sakkal Majalla',
     'Noto Naskh Arabic': 'Noto Naskh Arabic',
+    Lateef: 'Lateef',
+    'Noto Kufi Arabic': 'Noto Kufi Arabic',
+    'Reem Kufi': 'Reem Kufi',
+    Changa: 'Changa',
+    Almarai: 'Almarai',
     'IBM Plex Sans Arabic': 'IBM Plex Sans Arabic',
     Cairo: 'Cairo',
     Tajawal: 'Tajawal',

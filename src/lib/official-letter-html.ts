@@ -297,14 +297,24 @@ body { margin: 0; color: #111; }
     : '';
 
   // Official Saudi letterhead (physical LTR): LEFT=QR, CENTER=emblem, RIGHT=kingdom/ministry/court
-  // modern-hex cliché: LEFT=QR, RIGHT=MOJ logo in gold-bordered white box (no phone-screenshot emblem)
+  // modern-hex: LEFT=QR, RIGHT=logo + RTL letterhead text (same geometric cream chrome)
+  const hexLetterhead = `
+        <div style="display:inline-flex;align-items:center;gap:12px;direction:rtl;max-width:100%">
+          ${emblem}
+          <div style="text-align:right;line-height:1.35;min-width:0">
+            <div class="court" style="font-size:12px;color:${GREEN};font-weight:700">${esc(BRAND.kingdom)}</div>
+            <div class="court" style="font-size:12px;color:${GREEN};font-weight:700">${esc(BRAND.ministry)}</div>
+            <div class="court" style="font-size:15px;color:${GREEN};font-weight:800;margin-top:2px">${esc(court)}</div>
+            <div class="sub" style="color:${GOLD};font-size:11px;margin-top:2px">${esc(BRAND.platform)}</div>
+          </div>
+        </div>`;
   const brandRow = layout === 'modern-hex'
     ? `<div style="position:relative;background:#F9F7F1">
   ${hexDecor}
   <table class="brand-row" dir="ltr" width="100%" cellpadding="0" cellspacing="0" role="presentation" style="position:relative;z-index:1;border-collapse:collapse;border-bottom:1px solid ${GOLD}80;table-layout:fixed;background:transparent">
     <tr>
-      <td width="50%" valign="middle" align="left" style="padding:14px 18px">${qr.replace('border:1px solid', 'border:1.5px dashed').replace('border:1px dashed', 'border:1.5px dashed')}</td>
-      <td width="50%" valign="middle" align="right" style="padding:14px 18px">${emblem}</td>
+      <td width="28%" valign="middle" align="left" style="padding:14px 18px">${qr.replace('border:1px solid', 'border:1.5px dashed').replace('border:1px dashed', 'border:1.5px dashed')}</td>
+      <td width="72%" valign="middle" align="right" style="padding:14px 18px">${hexLetterhead}</td>
     </tr>
   </table>
 </div>`

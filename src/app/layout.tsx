@@ -1,5 +1,17 @@
 import type { Metadata, Viewport } from 'next';
-import { Amiri, Cairo, IBM_Plex_Sans_Arabic, Noto_Naskh_Arabic, Scheherazade_New, Tajawal } from 'next/font/google';
+import {
+  Almarai,
+  Amiri,
+  Cairo,
+  Changa,
+  IBM_Plex_Sans_Arabic,
+  Lateef,
+  Noto_Kufi_Arabic,
+  Noto_Naskh_Arabic,
+  Reem_Kufi,
+  Scheherazade_New,
+  Tajawal,
+} from 'next/font/google';
 import './globals.css';
 import PwaRegister from '@/components/PwaRegister';
 import ThemeProvider from '@/components/ThemeProvider';
@@ -46,6 +58,41 @@ const tajawal = Tajawal({
   display: 'swap',
 });
 
+const lateef = Lateef({
+  subsets: ['arabic'],
+  variable: '--font-lateef',
+  weight: ['400', '700'],
+  display: 'swap',
+});
+
+const notoKufi = Noto_Kufi_Arabic({
+  subsets: ['arabic'],
+  variable: '--font-noto-kufi',
+  weight: ['400', '500', '600', '700'],
+  display: 'swap',
+});
+
+const reemKufi = Reem_Kufi({
+  subsets: ['arabic'],
+  variable: '--font-reem-kufi',
+  weight: ['400', '500', '600', '700'],
+  display: 'swap',
+});
+
+const changa = Changa({
+  subsets: ['arabic'],
+  variable: '--font-changa',
+  weight: ['400', '500', '600', '700'],
+  display: 'swap',
+});
+
+const almarai = Almarai({
+  subsets: ['arabic'],
+  variable: '--font-almarai',
+  weight: ['400', '700'],
+  display: 'swap',
+});
+
 export const metadata: Metadata = {
   title: 'ركيزة — مكتبة المخاطبات والتعاميم',
   description: 'ركيزة — مكتبة المخاطبات والتعاميم — المحكمة العمالية بالرياض — v5.0.0',
@@ -59,12 +106,26 @@ export const viewport: Viewport = {
 
 const themeBoot = `(function(){try{var t=localStorage.getItem('rakeeza-theme');if(t==='dark'||(!t&&window.matchMedia('(prefers-color-scheme: dark)').matches)){document.documentElement.classList.add('dark');}}catch(e){}})();`;
 
+const fontVars = [
+  notoNaskh.variable,
+  amiri.variable,
+  scheherazade.variable,
+  ibmPlex.variable,
+  cairo.variable,
+  tajawal.variable,
+  lateef.variable,
+  notoKufi.variable,
+  reemKufi.variable,
+  changa.variable,
+  almarai.variable,
+].join(' ');
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html
       lang="ar"
       dir="rtl"
-      className={`${notoNaskh.variable} ${amiri.variable} ${scheherazade.variable} ${ibmPlex.variable} ${cairo.variable} ${tajawal.variable}`}
+      className={fontVars}
       suppressHydrationWarning
     >
       <head>
@@ -77,6 +138,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             --font-ibm-stack: var(--font-ibm-plex-ar), "IBM Plex Sans Arabic", Tahoma, sans-serif;
             --font-cairo-stack: var(--font-cairo), "Cairo", Tahoma, sans-serif;
             --font-tajawal-stack: var(--font-tajawal), "Tajawal", Tahoma, sans-serif;
+            --font-lateef-stack: var(--font-lateef), "Lateef", serif;
+            --font-noto-kufi-stack: var(--font-noto-kufi), "Noto Kufi Arabic", sans-serif;
+            --font-reem-kufi-stack: var(--font-reem-kufi), "Reem Kufi", sans-serif;
+            --font-changa-stack: var(--font-changa), "Changa", sans-serif;
+            --font-almarai-stack: var(--font-almarai), "Almarai", sans-serif;
           }
         `}</style>
       </head>

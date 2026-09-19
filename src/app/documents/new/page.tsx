@@ -311,13 +311,23 @@ function NewDocumentInner() {
   function acceptPolishIssue(issue: PolishIssue) {
     const next = { ...form };
     let applied = false;
-    for (const key of POLISH_FIELDS) {
-      const val = next[key] || '';
-      if (!val.includes(issue.found)) continue;
-      const fixed = applyPolishFix(val, issue.found, issue.suggestion);
-      if (fixed === val) continue;
-      next[key] = fixed;
-      applied = true;
+    const kind = issue.kind;
+    if (kind === 'add') {
+      const base = next.body || '';
+      const fixed = applyPolishFix(base, issue.found, issue.suggestion, 'add');
+      if (fixed !== base) {
+        next.body = fixed;
+        applied = true;
+      }
+    } else {
+      for (const key of POLISH_FIELDS) {
+        const val = next[key] || '';
+        if (!val.includes(issue.found)) continue;
+        const fixed = applyPolishFix(val, issue.found, issue.suggestion, kind);
+        if (fixed === val) continue;
+        next[key] = fixed;
+        applied = true;
+      }
     }
     if (!applied) return;
     setForm(next);
@@ -332,12 +342,14 @@ function NewDocumentInner() {
       found: phrase.found,
       suggestion: phrase.suggestion,
       message: phrase.message,
+      kind: phrase.kind,
     });
   }
 
   function renderPolishIssueRow(iss: PolishIssue, i: number, compact = false) {
+    const isAdd = iss.kind === 'add';
     const sugEmpty = !iss.suggestion.trim() || iss.suggestion === '—' || iss.suggestion === '-';
-    const sugLabel = sugEmpty ? 'حذف' : iss.suggestion;
+    const sugLabel = isAdd ? iss.suggestion : sugEmpty ? 'حذف' : iss.suggestion;
     return (
       <li
         key={`${iss.type}-${iss.found}-${iss.suggestion}-${i}`}
@@ -345,16 +357,27 @@ function NewDocumentInner() {
       >
         <span
           className={`rounded px-1.5 py-0.5 font-bold ${
-            iss.type === 'spelling'
-              ? 'bg-amber-200 text-amber-950 dark:bg-amber-400/30 dark:text-amber-50'
-              : 'bg-orange-200 text-orange-950 dark:bg-orange-400/30 dark:text-orange-50'
+            isAdd
+              ? 'bg-emerald-200 text-emerald-950 dark:bg-emerald-400/30 dark:text-emerald-50'
+              : iss.type === 'spelling'
+                ? 'bg-amber-200 text-amber-950 dark:bg-amber-400/30 dark:text-amber-50'
+                : 'bg-orange-200 text-orange-950 dark:bg-orange-400/30 dark:text-orange-50'
           }`}
         >
-          {iss.type === 'spelling' ? 'إملائي' : 'صياغي'}
+          {isAdd ? 'إضافة' : iss.type === 'spelling' ? 'إملائي' : 'صياغي'}
         </span>
-        <span className="font-bold text-red-700 dark:text-red-300">«{iss.found}»</span>
-        <span className="text-moj-gold font-bold">← اقترح:</span>
-        <span className="font-bold text-emerald-700 dark:text-emerald-400">«{sugLabel}»</span>
+        {isAdd ? (
+          <>
+            <span className="text-moj-gold font-bold">اقترح إضافة:</span>
+            <span className="font-bold text-emerald-700 dark:text-emerald-400">«{sugLabel}»</span>
+          </>
+        ) : (
+          <>
+            <span className="font-bold text-red-700 dark:text-red-300">«{iss.found}»</span>
+            <span className="text-moj-gold font-bold">← اقترح:</span>
+            <span className="font-bold text-emerald-700 dark:text-emerald-400">«{sugLabel}»</span>
+          </>
+        )}
         <button
           type="button"
           className="btn-primary text-[11px] py-0.5 px-2 mr-auto"
@@ -557,9 +580,6 @@ function NewDocumentInner() {
               <span className="inline-block h-2.5 w-2.5 rounded-full bg-moj-gold animate-pulse" />
               التدقيق والصياغة القضائية
             </div>
-            <div className="text-xs text-gray-700 dark:text-white/70">
-              مقترحات بصيغة قانونية مختصرة — النص لا يتغيّر إلا عند «اعتمد التعديل».
-            </div>
             <div
               dir="rtl"
               className={`rounded-lg border px-3 py-2 space-y-1.5 ${
@@ -596,18 +616,36 @@ function NewDocumentInner() {
                 {legalPhrases.length > 0 ? (
                   <ul className="space-y-1.5">
                     {legalPhrases.map((ph, i) => {
+                      const isAdd = ph.kind === 'add';
                       const sugEmpty = !ph.suggestion.trim() || ph.suggestion === '—' || ph.suggestion === '-';
                       return (
                         <li
                           key={`lp-${ph.found}-${ph.suggestion}-${i}`}
                           className="flex flex-wrap items-center gap-1.5 rounded-lg border border-moj-green/25 bg-white/90 dark:bg-black/20 px-2 py-1.5 text-xs"
                         >
-                          <span className="rounded px-1.5 py-0.5 font-bold bg-moj-green/15 text-moj-green">صياغة</span>
-                          <span className="font-bold text-red-700 dark:text-red-300">«{ph.found}»</span>
-                          <span className="text-moj-gold font-bold">← اقترح:</span>
-                          <span className="font-bold text-emerald-700 dark:text-emerald-400">
-                            «{sugEmpty ? 'حذف' : ph.suggestion}»
+                          <span
+                            className={`rounded px-1.5 py-0.5 font-bold ${
+                              isAdd ? 'bg-emerald-200 text-emerald-950' : 'bg-moj-green/15 text-moj-green'
+                            }`}
+                          >
+                            {isAdd ? 'إضافة' : ph.kind === 'delete' ? 'حذف' : 'صياغة'}
                           </span>
+                          {isAdd ? (
+                            <>
+                              <span className="text-moj-gold font-bold">اقترح إضافة:</span>
+                              <span className="font-bold text-emerald-700 dark:text-emerald-400">
+                                «{ph.suggestion}»
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <span className="font-bold text-red-700 dark:text-red-300">«{ph.found}»</span>
+                              <span className="text-moj-gold font-bold">← اقترح:</span>
+                              <span className="font-bold text-emerald-700 dark:text-emerald-400">
+                                «{sugEmpty ? 'حذف' : ph.suggestion}»
+                              </span>
+                            </>
+                          )}
                           <button
                             type="button"
                             className="btn-primary text-[11px] py-0.5 px-2 mr-auto"

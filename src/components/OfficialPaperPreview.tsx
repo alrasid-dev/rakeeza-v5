@@ -79,16 +79,18 @@ function HexMotifDecor({ className = '' }: { className?: string }) {
   );
 }
 
-/** modern-hex cliché: basmala bar + RIGHT logo box + LEFT QR + cream paper (matches hex-cliche-ref). */
+/** modern-hex cliché: cream header — LEFT QR, RIGHT logo + RTL letterhead text (keeps geometric chrome). */
 function ModernHexHeader({
   qrDataUrl,
+  court,
 }: {
   qrDataUrl?: string | null;
+  court: string;
 }) {
   return (
     <div
       dir="ltr"
-      className="relative grid grid-cols-[1fr_auto] items-center gap-3 px-5 py-3 border-b border-[#C5A059]/50 bg-[#F9F7F1]/80"
+      className="relative grid grid-cols-[auto_1fr] items-center gap-3 px-5 py-3 border-b border-[#C5A059]/50 bg-[#F9F7F1]/80"
     >
       <div className="flex justify-start items-center min-w-0 z-[1]">
         {qrDataUrl ? (
@@ -104,13 +106,20 @@ function ModernHexHeader({
           </div>
         )}
       </div>
-      <div className="flex justify-end z-[1]" dir="rtl">
+      <div className="flex justify-end items-center gap-3 min-w-0 z-[1]" dir="rtl">
+        {/* logo first under RTL → far right; text sits beside it toward center */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="/brand/moj-logo-gold.png"
           alt="شعار وزارة العدل"
           className="w-[4.5rem] h-[4.5rem] shrink-0 rounded-xl border-2 border-moj-gold bg-white object-contain p-1 shadow-sm"
         />
+        <div className="text-right min-w-0 leading-snug">
+          <div className="text-[11px] text-moj-green font-semibold">{BRAND.kingdom}</div>
+          <div className="text-[11px] text-moj-green font-semibold">{BRAND.ministry}</div>
+          <div className="text-moj-green font-extrabold text-base mt-0.5 leading-snug">{court}</div>
+          <div className="text-moj-gold text-xs mt-0.5">{BRAND.platform}</div>
+        </div>
       </div>
     </div>
   );
@@ -731,7 +740,7 @@ export default function OfficialPaperPreview({
         </div>
 
         {chrome.modernHex ? (
-          <ModernHexHeader qrDataUrl={doc.qrDataUrl} />
+          <ModernHexHeader qrDataUrl={doc.qrDataUrl} court={court} />
         ) : (
           <BrandHeader
             court={court}

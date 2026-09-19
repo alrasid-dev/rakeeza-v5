@@ -224,17 +224,23 @@ export function proofreadReport(before: string, after: string): string {
   return `تم التدقيق محلياً (إملاء وصياغة قضائية خفيفة).${tip} راجع النص قبل الاعتماد.`;
 }
 
+export type PolishKind = 'replace' | 'delete' | 'add';
+
 export type PolishIssue = {
   type: 'spelling' | 'style';
   found: string;
   suggestion: string;
   message: string;
+  kind?: PolishKind;
 };
 
 export type LegalPhraseSuggestion = {
   found: string;
   suggestion: string;
   message: string;
+  /** replace/delete existing phrase, or append formal closing/element */
+  kind?: PolishKind;
+  label?: string;
 };
 
 const STYLE_MARKERS: { found: string; suggestion: string; message: string }[] = [
@@ -243,6 +249,7 @@ const STYLE_MARKERS: { found: string; suggestion: string; message: string }[] = 
   { found: 'علشان', suggestion: 'من أجل', message: 'صيغة عامية — يُفضّل «من أجل»' },
   { found: 'عشان', suggestion: 'من أجل', message: 'صيغة عامية — يُفضّل «من أجل»' },
   { found: 'يعني', suggestion: 'أي', message: 'صيغة غير رسمية — يُفضّل «أي»' },
+  { found: 'ما فيه', suggestion: 'لا يوجد', message: 'صيغة عامية — يُفضّل «لا يوجد»' },
 ];
 
 /** Informal / weak openings → concise formal judicial phrasing */
@@ -355,11 +362,26 @@ function shouldSkipAmbiguousName(raw: string, found: string, suggestion: string)
  * Short formal rewrite proposals for common informal/weak openings.
  * Returns 1–3 concise suggestions when body text contains matchable phrases.
  */
+const FORMAL_CLOSINGS = [
+  'والله الموفق',
+  'والله يحفظكم',
+  'وتقبلوا وافر التحية',
+  'وتفضلوا بقبول فائق الاحترام',
+  'أعانكم الله',
+] as const;
+
+const DEFAULT_ADD_CLOSING = 'وتقبلوا وافر التحية والتقدير،،،';
+
+function hasFormalClosing(text: string): boolean {
+  return FORMAL_CLOSINGS.some((c) => text.includes(c)) || /وتقبلوا|وتفضلوا/.test(text);
+}
+
 export function suggestLegalPhrases(text: string): LegalPhraseSuggestion[] {
   const raw = String(text || '');
   if (!raw.trim()) return [];
   const out: LegalPhraseSuggestion[] = [];
   const seen = new Set<string>();
+
   for (const rule of LEGAL_PHRASE_RULES) {
     if (!raw.includes(rule.found) && !hasArabicWord(raw, rule.found)) continue;
     // require word-ish presence for short tokens
@@ -367,16 +389,42 @@ export function suggestLegalPhrases(text: string): LegalPhraseSuggestion[] {
     if (rule.found.length > 4 && !raw.includes(rule.found)) continue;
     if (isProtectedBlessingHit(raw, rule.found)) continue;
     if (rule.found === 'والله' || (rule.suggestion === '—' && /والله/.test(rule.found))) continue;
-    const key = `${rule.found}→${rule.suggestion}`;
+    const isDelete = !rule.suggestion.trim() || rule.suggestion === '—' || rule.suggestion === '-';
+    const kind: PolishKind = isDelete ? 'delete' : 'replace';
+    const key = `${kind}:${rule.found}→${rule.suggestion}`;
     if (seen.has(key)) continue;
     seen.add(key);
     out.push({
       found: rule.found,
       suggestion: rule.suggestion,
       message: rule.message,
+      kind,
+      label: isDelete ? `اقترح حذف: ${rule.found}` : `اقترح استبدال: ${rule.found}`,
     });
     if (out.length >= 3) break;
   }
+
+  // Context-aware ADD: short/informal body missing a formal closing → append, don't blanket-delete
+  const isStudy = /رقم القضية|ملخص الدعوى|التوصية|دارس القضية|معد الدراسة/.test(raw);
+  if (
+    !isStudy &&
+    raw.trim().length >= 25 &&
+    !hasFormalClosing(raw) &&
+    out.length < 4
+  ) {
+    const key = 'add:[ختام]';
+    if (!seen.has(key)) {
+      seen.add(key);
+      out.push({
+        found: '[ختام]',
+        suggestion: DEFAULT_ADD_CLOSING,
+        message: 'يُفضّل إضافة ختام رسمي للمكاتبة',
+        kind: 'add',
+        label: `اقترح إضافة: ${DEFAULT_ADD_CLOSING}`,
+      });
+    }
+  }
+
   return out;
 }
 
@@ -540,12 +588,27 @@ export function findPolishIssues(text: string): PolishIssue[] {
 /** Apply one issue fix: replace the first occurrence of `found` with `suggestion`.
  *  If suggestion is empty or «—», remove the word and collapse surrounding spaces.
  */
-export function applyPolishFix(text: string, found: string, suggestion: string): string {
+export function applyPolishFix(
+  text: string,
+  found: string,
+  suggestion: string,
+  kind?: PolishKind,
+): string {
   const src = String(text || '');
+  const trimmedSug = String(suggestion || '').trim();
   const needle = String(found || '');
+
+  // Append formal element (add suggestions)
+  if (kind === 'add' || needle === '[ختام]' || needle === '[إضافة]') {
+    if (!trimmedSug || trimmedSug === '—' || trimmedSug === '-') return src;
+    if (!src.trim()) return trimmedSug;
+    if (src.includes(trimmedSug)) return src;
+    return `${src.replace(/\s+$/, '')}\n\n${trimmedSug}`;
+  }
+
   if (!src || !needle) return src;
   // For علي→على, prefer first non-name-like occurrence
-  if (needle === 'علي' && String(suggestion).trim() === 'على') {
+  if (needle === 'علي' && trimmedSug === 'على') {
     let i = 0;
     while ((i = src.indexOf('علي', i)) !== -1) {
       if (!isNameLikeAli(src, i)) {
@@ -559,8 +622,7 @@ export function applyPolishFix(text: string, found: string, suggestion: string):
   if (idx === -1) return src;
   const before = src.slice(0, idx);
   const after = src.slice(idx + needle.length);
-  const trimmedSug = String(suggestion || '').trim();
-  const isDelete = !trimmedSug || trimmedSug === '—' || trimmedSug === '-';
+  const isDelete = kind === 'delete' || !trimmedSug || trimmedSug === '—' || trimmedSug === '-';
   if (isDelete) {
     const left = before.replace(/[ \t]+$/, '');
     const right = after.replace(/^[ \t]+/, '');

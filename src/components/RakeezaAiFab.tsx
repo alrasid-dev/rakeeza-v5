@@ -62,8 +62,10 @@ export default function RakeezaAiFab() {
 
   return (
     <div
-      className="fixed z-50 print:hidden font-arabic bottom-[max(1.25rem,env(safe-area-inset-bottom))] left-[max(1rem,env(safe-area-inset-left))] sm:bottom-5 sm:left-5"
+      className="fixed z-[100] print:hidden font-arabic bottom-[max(1.25rem,env(safe-area-inset-bottom))] left-[max(1rem,env(safe-area-inset-left))] sm:bottom-6 sm:left-6 pointer-events-auto"
       dir="rtl"
+      data-rakeeza-ai-fab="1"
+      aria-hidden={false}
     >
       {open && (
         <div className="mb-3 w-[min(100vw-2rem,22rem)] max-h-[min(70vh,calc(100dvh-8rem))] flex flex-col rounded-3xl border border-moj-gold/40 bg-white dark:bg-[var(--surface)] dark:border-white/15 shadow-2xl overflow-hidden">
@@ -158,7 +160,7 @@ export default function RakeezaAiFab() {
       >
         <span className="absolute inset-0 rounded-full animate-ping bg-moj-gold/30 pointer-events-none" />
         <img src="/rakeeza-ai-icon.svg" alt="ركيزة Ai" className="relative w-10 h-10 sm:w-12 sm:h-12 mx-auto drop-shadow-lg" />
-        <span className="absolute -top-1 -right-1 text-[10px] font-bold bg-moj-gold text-white rounded-full px-1.5 py-0.5 shadow">
+        <span className="absolute -top-1 -right-1 text-[10px] font-bold bg-moj-gold text-white rounded-full px-1.5 py-0.5 shadow print:hidden pointer-events-none">
           Ai
         </span>
       </button>
