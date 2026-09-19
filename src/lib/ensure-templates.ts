@@ -115,7 +115,7 @@ export async function ensureTemplates() {
       {
         name: 'مدخلات الأحكام بطاقة عرض',
         category: 'letter-official',
-        description: 'عرض شف — بطاقة رصد مدخلات الأحكام (تعميم دائري)',
+        description: 'بطاقة رصد مدخلات الأحكام مع ديباجة آلية المعالجة (تعميم دائري)',
         fieldsJson: judgmentFieldsJson('taameem-circular'),
         bodyHtml: JUDGMENT_CARD_BODY,
         isEmpty: false,
@@ -123,7 +123,7 @@ export async function ensureTemplates() {
       {
         name: 'مدخلات الأحكام بطاقة عرض — عصري هندسي',
         category: 'letter-official',
-        description: 'عرض شف — بطاقة رصد مدخلات الأحكام (عصري هندسي)',
+        description: 'بطاقة رصد مدخلات الأحكام مع ديباجة آلية المعالجة (عصري هندسي)',
         fieldsJson: judgmentFieldsJson('modern-hex'),
         bodyHtml: JUDGMENT_CARD_BODY,
         isEmpty: false,

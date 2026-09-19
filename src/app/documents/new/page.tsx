@@ -17,16 +17,25 @@ import { suggestFont } from '@/lib/font-suggest';
 import { applyPolishFix, findPolishIssues, suggestLegalPhrases, type PolishIssue, type LegalPhraseSuggestion } from '@/lib/arabic-polish';
 import { DEFAULT_PAPER_LAYOUT, normalizePaperLayout, type PaperLayoutId } from '@/lib/paper-layouts';
 import {
+  BRIEFING_TITLES,
+  JUDGMENT_CARD_RECIPIENTS,
+  JUDGMENT_CARD_SEED,
   JUDGMENT_CARD_SUBJECT,
   MECHANISM_LABEL,
   PROCESSING_MECHANISMS,
+  detectBriefingTitle,
+  detectJudgmentPriority,
+  isBriefingTitle,
+  isJudgmentBriefingFormSlug,
   isJudgmentBriefingMeta,
   isKnownMechanism,
   mergeJudgmentCardFromPaste,
   normalizeJudgmentCard,
   parseTemplateFieldsJson,
   setJudgmentCardValue,
+  type BriefingTitle,
   type JudgmentCardRow,
+  type JudgmentPriority,
 } from '@/lib/judgment-card';
 import { fontStackFor } from '@/lib/font-stacks';
 import {
@@ -77,6 +86,8 @@ function NewDocumentInner() {
   const [form, setForm] = useState({ ...EMPTY_FORM });
   const [tableRows, setTableRows] = useState<TableRow[]>([]);
   const [judgmentCard, setJudgmentCard] = useState<JudgmentCardRow[] | null>(null);
+  const [briefingTitle, setBriefingTitle] = useState<BriefingTitle>('بطاقة عرض');
+  const [judgmentPriority, setJudgmentPriority] = useState<JudgmentPriority>('عادي');
   const [studySections, setStudySections] = useState<StudySections | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -124,6 +135,10 @@ function NewDocumentInner() {
         if (tr) setTableRows(JSON.parse(tr));
         const jc = (draft.form as { judgmentCardJson?: string }).judgmentCardJson;
         if (jc) setJudgmentCard(normalizeJudgmentCard(JSON.parse(jc)));
+        const bt = (draft.form as { briefingTitle?: string }).briefingTitle;
+        if (bt && isBriefingTitle(bt)) setBriefingTitle(bt);
+        const jp = (draft.form as { judgmentPriority?: string }).judgmentPriority;
+        if (jp === 'عاجل' || jp === 'عادي') setJudgmentPriority(jp);
         const ss = (draft.form as { studySectionsJson?: string }).studySectionsJson;
         if (ss) setStudySections(JSON.parse(ss));
         const st = (draft.form as { styleJson?: string }).styleJson;
@@ -145,8 +160,17 @@ function NewDocumentInner() {
       setStep(formSlug || templateIdParam ? 2 : 1);
       setTemplateId(templateIdParam || '');
       setTableRows([]);
-      setJudgmentCard(null);
-      setStudySections(null);
+      if (isJudgmentBriefingFormSlug(formSlug)) {
+        setJudgmentCard(JUDGMENT_CARD_SEED.map((r) => ({ ...r })));
+        setBriefingTitle('بطاقة عرض');
+        setJudgmentPriority('عادي');
+        setStudySections(null);
+      } else {
+        setJudgmentCard(null);
+        setBriefingTitle('بطاقة عرض');
+        setJudgmentPriority('عادي');
+        setStudySections(null);
+      }
       setPaperLayout(normalizePaperLayout(layoutParam || DEFAULT_PAPER_LAYOUT));
       setSavedDocId(null);
       setDraftRestored(false);
@@ -200,16 +224,23 @@ function NewDocumentInner() {
     const meta = parseTemplateFieldsJson(match.fieldsJson);
     const seed = meta.seed;
 
-    const briefing = isJudgmentBriefingMeta(meta);
+    const briefing =
+      isJudgmentBriefingMeta(meta) || isJudgmentBriefingFormSlug(formSlug);
 
     setForm((f) => {
       const next = { ...f, docType: formName || match.name || f.docType };
       if (briefing) {
-        // عرض شف: content lives in the table — never inject letter body prose
+        // Judgment briefing: content lives in preamble + table — never inject letter body
         next.body = '';
         next.parties = '';
         next.reasons = '';
         next.studyFields = '';
+        if (!next.recipients?.trim()) {
+          next.recipients = seed?.recipients || JUDGMENT_CARD_RECIPIENTS;
+        }
+        if (!next.subject?.trim()) {
+          next.subject = seed?.subject || JUDGMENT_CARD_SUBJECT;
+        }
       } else if ((!next.body || !next.body.trim()) && match.bodyHtml) {
         next.body = match.bodyHtml;
       }
@@ -222,18 +253,25 @@ function NewDocumentInner() {
       return next;
     });
 
-    if (seed?.judgmentCard?.length) {
-      setJudgmentCard((prev) => (prev && prev.length ? prev : seed.judgmentCard!));
-    } else if (briefing) {
-      // ensure card exists for briefing templates even if seed missing
-      setJudgmentCard((prev) => (prev && prev.length ? prev : null));
+    if (briefing) {
+      setStudySections(null);
+      if (seed?.judgmentCard?.length) {
+        setJudgmentCard((prev) => (prev && prev.length ? prev : seed.judgmentCard!));
+      } else {
+        setJudgmentCard((prev) =>
+          prev && prev.length ? prev : JUDGMENT_CARD_SEED.map((r) => ({ ...r })),
+        );
+      }
+    } else {
+      // Switching away from judgment: clear card so leftover state cannot force briefing
+      setJudgmentCard(null);
     }
 
     // Prefer URL layoutParam; otherwise template defaultPaperLayout
     if (!layoutParam && meta.defaultPaperLayout) {
       setPaperLayout(normalizePaperLayout(meta.defaultPaperLayout));
     }
-  }, [templateId, templates, formName, layoutParam]);
+  }, [templateId, templates, formName, layoutParam, formSlug]);
 
   useEffect(() => {
     if (!formSlug || skipSave.current) return;
@@ -247,6 +285,8 @@ function NewDocumentInner() {
           body: normalizeBodyText(form.body),
           tableRowsJson: JSON.stringify(tableRows),
           judgmentCardJson: JSON.stringify(judgmentCard || []),
+          briefingTitle,
+          judgmentPriority,
           studySectionsJson: JSON.stringify(studySections),
           styleJson: JSON.stringify(style),
           paperLayout,
@@ -255,7 +295,7 @@ function NewDocumentInner() {
       setDraftRestored(true);
     }, 300);
     return () => window.clearTimeout(handle);
-  }, [formSlug, templateId, paste, step, form, tableRows, judgmentCard, studySections, style, paperLayout]);
+  }, [formSlug, templateId, paste, step, form, tableRows, judgmentCard, briefingTitle, judgmentPriority, studySections, style, paperLayout]);
 
   useEffect(() => {
     const handle = window.setTimeout(() => {
@@ -266,78 +306,120 @@ function NewDocumentInner() {
     return () => window.clearTimeout(handle);
   }, [form.body, form.reasons, form.studyFields, form.subject, form.parties, form.recipients, form.copyTo]);
 
-  /** Smart paste REPLACES fields — never merges/appends with previous body */
+  /** Smart paste: judgment template → briefing; else study → study; else ordinary letter. */
   function applyPaste() {
     const parsed = parsePaste(paste);
     const tpl = templates.find((t) => t.id === templateId);
-    const briefing = isJudgmentBriefingMeta(parseTemplateFieldsJson(tpl?.fieldsJson)) || Boolean(judgmentCard?.length);
-    const nextBody = briefing ? '' : normalizeBodyText(parsed.body || '');
-    const enrichedStudy = briefing
-      ? null
-      : parsed.studySections
-        ? enrichStudySections(parsed.studySections, {
-            subject: parsed.subject,
-            parties: parsed.parties,
-            reasons: parsed.reasons,
-            studyFields: parsed.studyFields,
-            body: nextBody,
-            recipients: parsed.recipients,
-          })
-        : null;
-    const caseNumber = (enrichedStudy?.caseNumber || parsed.studySections?.caseNumber || '').replace(/\s+/g, '');
-    const seedMeta = parseTemplateFieldsJson(tpl?.fieldsJson).seed;
-    const nextSubject = briefing
-      ? (parsed.subject && parsed.subject.trim()) ||
+    const meta = parseTemplateFieldsJson(tpl?.fieldsJson);
+    const seedMeta = meta.seed;
+    const templateIsBriefing =
+      isJudgmentBriefingMeta(meta) || isJudgmentBriefingFormSlug(formSlug);
+
+    // Required detection order — never force briefing from leftover judgmentCard alone
+    const studyDetected =
+      !templateIsBriefing &&
+      (parsed.detectedKind === 'study' || Boolean(parsed.studySections));
+    const briefing = templateIsBriefing;
+
+    if (briefing) {
+      const detectedTitle =
+        detectBriefingTitle(paste) ||
+        detectBriefingTitle(parsed.subject || '') ||
+        briefingTitle;
+      if (detectedTitle) setBriefingTitle(detectedTitle);
+      const detectedPri = detectJudgmentPriority(paste) || detectJudgmentPriority(parsed.subject || '');
+      if (detectedPri) setJudgmentPriority(detectedPri);
+
+      setTableRows([]);
+      setStudySections(null);
+      setDetectedKind('briefing');
+      setJudgmentCard((prev) => {
+        const extras = { ...(parsed.judgmentCardFields || {}) };
+        return mergeJudgmentCardFromPaste(prev, paste, extras);
+      });
+      const nextSubject =
+        (parsed.subject && parsed.subject.trim()) ||
         form.subject ||
         seedMeta?.subject ||
-        JUDGMENT_CARD_SUBJECT
-      : (parsed.subject && parsed.subject.trim()) ||
-        (caseNumber ? `دراسة شكوى — ${caseNumber}` : '');
-    setTableRows(briefing ? [] : parsed.tableRows || []);
-    // Fill «مصدر الحكم فضيلة الشيخ» + آلية المعالجة المقترحة from smart paste
-    setJudgmentCard((prev) => {
-      const extras = { ...(parsed.judgmentCardFields || {}) };
-      const researcher = enrichedStudy?.researcher || parsed.studySections?.researcher;
-      if (researcher && !extras['مصدر الحكم فضيلة الشيخ']) {
-        extras['مصدر الحكم فضيلة الشيخ'] = researcher;
-      }
-      const formation = enrichedStudy?.formation || parsed.studySections?.formation;
-      if (formation && !extras['التشكيل']) extras['التشكيل'] = formation;
-      const caseNo = enrichedStudy?.caseNumber || parsed.studySections?.caseNumber;
-      if (caseNo && !extras['رقم القضية']) extras['رقم القضية'] = caseNo;
-      const deed = enrichedStudy?.deedNumber || parsed.studySections?.deedNumber;
-      if (deed && !extras['رقم الحكم']) extras['رقم الحكم'] = deed;
-      const hasAny = Object.values(extras).some((v) => String(v || '').trim()) || Boolean(paste.trim());
-      if (!hasAny && !(prev && prev.length) && !briefing) return prev;
-      return mergeJudgmentCardFromPaste(prev, paste, extras);
-    });
-    setStudySections(briefing ? null : enrichedStudy || parsed.studySections || null);
-    setDetectedKind(briefing ? 'briefing' : parsed.detectedKind || '');
-    if (parsed.fontHint && !briefing) {
+        JUDGMENT_CARD_SUBJECT;
+      setFontCorrections([]);
+      setForm({
+        ...EMPTY_FORM,
+        subject: nextSubject,
+        recipients:
+          (parsed.recipients && parsed.recipients.trim()) ||
+          form.recipients ||
+          seedMeta?.recipients ||
+          JUDGMENT_CARD_RECIPIENTS,
+        parties: '',
+        reasons: '',
+        studyFields: '',
+        body: '',
+        dateGregorian: (() => {
+          const raw = parsed.date || '';
+          if (raw && looksLikeHijri(raw)) return todayGregorianISO();
+          if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+          return todayGregorianISO();
+        })(),
+        dateHijri: (() => {
+          const raw = parsed.date || '';
+          if (raw && looksLikeHijri(raw)) return normalizeHijriDisplay(raw);
+          if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return formatHijri(raw);
+          return todayHijri();
+        })(),
+        docType: formName || form.docType || 'مدخلات الأحكام بطاقة عرض',
+      });
+      setSavedDocId(null);
+      setStep(3);
+      return;
+    }
+
+    // Clear judgment card whenever leaving briefing path
+    setJudgmentCard(null);
+
+    const nextBody = normalizeBodyText(parsed.body || '');
+    const enrichedStudy = studyDetected && parsed.studySections
+      ? enrichStudySections(parsed.studySections, {
+          subject: parsed.subject,
+          parties: parsed.parties,
+          reasons: parsed.reasons,
+          studyFields: parsed.studyFields,
+          body: nextBody,
+          recipients: parsed.recipients,
+        })
+      : studyDetected
+        ? parsed.studySections || null
+        : null;
+    const caseNumber = (enrichedStudy?.caseNumber || parsed.studySections?.caseNumber || '').replace(/\s+/g, '');
+    const nextSubject = studyDetected
+      ? (parsed.subject && parsed.subject.trim()) ||
+        (caseNumber ? `دراسة شكوى — ${caseNumber}` : '')
+      : (parsed.subject && parsed.subject.trim()) || '';
+
+    setTableRows(parsed.tableRows || []);
+    setStudySections(studyDetected ? enrichedStudy || parsed.studySections || null : null);
+    setDetectedKind(studyDetected ? 'study' : parsed.detectedKind || 'letter');
+    if (parsed.fontHint) {
       setStyle((s) => ({
         ...s,
         fontFamily: parsed.fontHint!.family,
         fontSizePt: parsed.fontHint!.sizePt,
       }));
     }
-    if (!briefing) {
-      if (parsed.detectedKind === 'study') {
-        setPaperLayout('study-report');
-      } else if (parsed.detectedKind === 'letter' && /تعميم/.test(parsed.subject || paste)) {
-        setPaperLayout('taameem-circular');
-      }
+    if (studyDetected) {
+      setPaperLayout('study-report');
+    } else if (parsed.detectedKind === 'letter' && /تعميم/.test(parsed.subject || paste)) {
+      setPaperLayout('taameem-circular');
     }
     const { corrections } = suggestFont(form.docType || formName, nextBody);
     setFontCorrections(corrections);
     setForm({
       ...EMPTY_FORM,
       subject: nextSubject,
-      recipients:
-        (parsed.recipients && parsed.recipients.trim()) ||
-        (briefing ? form.recipients || seedMeta?.recipients || '' : ''),
-      parties: briefing ? '' : parsed.parties || '',
-      reasons: briefing ? '' : parsed.reasons || '',
-      studyFields: briefing ? '' : parsed.studyFields || '',
+      recipients: (parsed.recipients && parsed.recipients.trim()) || '',
+      parties: parsed.parties || '',
+      reasons: parsed.reasons || '',
+      studyFields: studyDetected ? parsed.studyFields || '' : '',
       body: nextBody,
       dateGregorian: (() => {
         const raw = parsed.date || '';
@@ -351,11 +433,9 @@ function NewDocumentInner() {
         if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return formatHijri(raw);
         return todayHijri();
       })(),
-      docType: briefing
-        ? formName || form.docType || 'مدخلات الأحكام بطاقة عرض'
-        : parsed.detectedKind === 'study'
-          ? formName || 'نموذج تحليل حكم (شكوى)'
-          : formName || form.docType || 'مكاتبة',
+      docType: studyDetected
+        ? formName || 'نموذج تحليل حكم (شكوى)'
+        : formName || form.docType || 'مكاتبة',
     });
     setSavedDocId(null);
     setStep(3);
@@ -372,6 +452,8 @@ function NewDocumentInner() {
       docType: formName || 'مكاتبة',
     });
     setJudgmentCard(null);
+    setBriefingTitle('بطاقة عرض');
+    setJudgmentPriority('عادي');
     setPaste('');
     setTableRows([]);
     setStudySections(null);
@@ -505,7 +587,17 @@ function NewDocumentInner() {
         templateId: templateId || null,
         issue,
         assignNumber: issue,
-        fields: { tableRows, judgmentCard, studySections, style, paperLayout, copyTo: form.copyTo, judgmentBriefing: isBriefing },
+        fields: {
+          tableRows,
+          judgmentCard: isBriefing ? judgmentCard : null,
+          briefingTitle: isBriefing ? briefingTitle : undefined,
+          judgmentPriority: isBriefing ? judgmentPriority : undefined,
+          studySections: isBriefing ? null : studySections,
+          style,
+          paperLayout,
+          copyTo: form.copyTo,
+          judgmentBriefing: isBriefing,
+        },
       }),
     });
     const data = await res.json();
@@ -550,7 +642,7 @@ function NewDocumentInner() {
   const activeTpl = templates.find((t) => t.id === templateId);
   const activeMeta = parseTemplateFieldsJson(activeTpl?.fieldsJson);
   const isBriefing =
-    isJudgmentBriefingMeta(activeMeta) || Boolean(judgmentCard && judgmentCard.length > 0);
+    isJudgmentBriefingMeta(activeMeta) || isJudgmentBriefingFormSlug(formSlug);
 
   const title = formName || 'مكاتبة جديدة';
   const previewBody = isBriefing ? '' : normalizeBodyText(form.body);
@@ -574,8 +666,10 @@ function NewDocumentInner() {
     docType: form.docType,
     paperLayout,
     studySections: isBriefing ? null : studySections,
-    judgmentCard,
+    judgmentCard: isBriefing ? judgmentCard : null,
     judgmentBriefing: isBriefing,
+    briefingTitle: isBriefing ? briefingTitle : undefined,
+    judgmentPriority: isBriefing ? judgmentPriority : undefined,
     fontFamily: style.fontFamily,
     fontSizePt: style.fontSizePt,
   };
@@ -902,9 +996,47 @@ function NewDocumentInner() {
               </div>
 
               {isBriefing ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="label">نوع البطاقة / العنوان</label>
+                    <select
+                      className="input"
+                      value={briefingTitle}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        if (isBriefingTitle(v)) setBriefingTitle(v);
+                      }}
+                    >
+                      {BRIEFING_TITLES.map((t) => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="label">الأولوية</label>
+                    <select
+                      className="input"
+                      value={judgmentPriority}
+                      onChange={(e) =>
+                        setJudgmentPriority(e.target.value === 'عاجل' ? 'عاجل' : 'عادي')
+                      }
+                    >
+                      <option value="عادي">عادي</option>
+                      <option value="عاجل">عاجل</option>
+                    </select>
+                    {judgmentPriority === 'عاجل' && (
+                      <div className="mt-1 text-xs font-bold text-red-700 flex items-center gap-1">
+                        <span aria-hidden>⚠</span> عاجل — يظهر في كليشيه الورق
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : null}
+
+              {isBriefing ? (
                 <div className="space-y-2" ref={(el) => { fieldRefs.current.judgmentCard = el; }}>
                   <div className="flex items-center justify-between gap-2">
-                    <label className="label mb-0">بطاقة رصد — عرض شف</label>
+                    <label className="label mb-0">بطاقة رصد مدخلات الأحكام</label>
                     <span className="text-[11px] text-moj-green/80">توزَّع الحقول تلقائياً في الجدول</span>
                   </div>
                   <div className="overflow-x-auto rounded-lg border border-moj-green/40">
@@ -1042,7 +1174,7 @@ function NewDocumentInner() {
               )}
               {isBriefing && judgmentCard && judgmentCard.length > 0 && (
                 <div className="text-xs text-moj-green bg-moj-light rounded-lg p-2">
-                  عرض شف — بطاقة رصد ({judgmentCard.length} صفوف) تظهر تحت بيانات الخطاب مباشرة.
+                  {briefingTitle} ({judgmentCard.length} صفوف) مع ديباجة آلية المعالجة تظهر تحت بيانات الخطاب.
                 </div>
               )}
               {studySections && (
@@ -1084,8 +1216,10 @@ function NewDocumentInner() {
                   body: previewBody,
                   docType: form.docType,
                   tableRows: isBriefing ? [] : tableRows,
-                  judgmentCard,
+                  judgmentCard: isBriefing ? judgmentCard : null,
                   judgmentBriefing: isBriefing,
+                  briefingTitle: isBriefing ? briefingTitle : undefined,
+                  judgmentPriority: isBriefing ? judgmentPriority : undefined,
                   studySections: isBriefing ? null : studySections,
                   paperLayout,
                 }}

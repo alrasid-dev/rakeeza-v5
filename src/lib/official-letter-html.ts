@@ -13,6 +13,10 @@ import { formatClaimAmount, normalizeFormationOrdinal } from '@/lib/arabic-norma
 import { enrichStudySections, hasStudyContent, studyDisplayMeta } from '@/lib/study-display';
 import { BRAND } from '@/lib/brand';
 import { fontStackFor } from '@/lib/font-stacks';
+import {
+  buildJudgmentBriefingBlockHtml,
+  isJudgmentBriefingDoc,
+} from '@/lib/judgment-card';
 
 export type OfficialLetterDoc = {
   number?: string | null;
@@ -34,8 +38,10 @@ export type OfficialLetterDoc = {
   headerLines?: string[] | null;
   studySections?: StudySections | null;
   judgmentCard?: { label: string; value: string }[] | null;
-  /** When true (or judgmentCard present), hide الأطراف / النص — عرض شف briefing */
+  /** Explicit judgment-briefing mode */
   judgmentBriefing?: boolean | null;
+  briefingTitle?: string | null;
+  judgmentPriority?: string | null;
   fontFamily?: string | null;
   fontSizePt?: number | null;
   paperLayout?: PaperLayoutId | string | null;
@@ -227,23 +233,16 @@ function layoutTheme(layout: PaperLayoutId) {
 }
 
 
-function judgmentCardHtml(rows: { label: string; value: string }[]) {
-  if (!rows?.length) return '';
-  // Smart layout: pair rows into a 2-column grid of label/value cells when even count;
-  // otherwise fall back to stacked full-width pairs (always reliable for 6 briefing rows).
-  const cells = rows
-    .map(
-      (r, i) =>
-        `<tr style="background:${i % 2 ? '#f3f8f5' : '#fff'}">
-          <th style="padding:8px 10px;border:1px solid ${GREEN}55;background:${GREEN}14;color:${GREEN};font-weight:700;width:38%;text-align:right;vertical-align:middle;white-space:nowrap">${esc(r.label)}</th>
-          <td style="padding:8px 10px;border:1px solid ${GREEN}55;text-align:right;vertical-align:middle;font-weight:600" dir="auto">${esc(r.value || '—')}</td>
-        </tr>`,
-    )
-    .join('');
-  return `<h3 style="margin:10px 0 6px">عرض شف — بطاقة رصد</h3>
-  <table dir="rtl" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;border:1px solid ${GREEN};margin:6px 0 12px;font-size:13px">
-    <tbody>${cells}</tbody>
-  </table>`;
+function judgmentBriefingHtml(
+  doc: OfficialLetterDoc,
+  rows: { label: string; value: string }[],
+) {
+  return buildJudgmentBriefingBlockHtml({
+    recipients: doc.recipients,
+    card: rows,
+    title: doc.briefingTitle || 'بطاقة عرض',
+    green: GREEN,
+  });
 }
 
 export function buildOfficialLetterHtml(doc: OfficialLetterDoc, opts?: { forPdf?: boolean; embeddedFontCss?: string }) {
@@ -294,7 +293,13 @@ body { margin: 0; color: #111; }
     : null;
   const hasStudy = hasStudyContent(study);
   const isBriefing =
-    doc.judgmentBriefing === true || Boolean(doc.judgmentCard && doc.judgmentCard.length > 0);
+    !hasStudy &&
+    isJudgmentBriefingDoc({
+      judgmentBriefing: doc.judgmentBriefing,
+      judgmentCard: doc.judgmentCard,
+      studySections: doc.studySections,
+    });
+  const isUrgent = isBriefing && doc.judgmentPriority === 'عاجل';
   const meta = studyDisplayMeta(study, { subject: doc.subject, recipients: doc.recipients });
   const previewSubject =
     (doc.subject && doc.subject.trim() && doc.subject.trim() !== '—')
@@ -433,7 +438,7 @@ body {
 </head>
 <body>
 <div class="paper" data-paper-layout="${esc(layout)}">
-  <div class="bismillah">بسم الله الرحمن الرحيم</div>
+  <div class="bismillah" style="position:relative">${isUrgent ? `<span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);display:inline-flex;align-items:center;gap:4px;background:#c00000;color:#fff;font-size:11px;font-weight:700;padding:2px 10px;border-radius:999px">⚠ عاجل</span>` : ''}بسم الله الرحمن الرحيم</div>
   ${brandRow}
   <div class="meta">
     <div><span class="label">الرقم:</span> <span dir="ltr">${esc(doc.number || '—')}</span></div>
@@ -453,7 +458,7 @@ body {
   </div>
   <div class="section" style="${layout === 'modern-hex' ? 'padding-inline:28px' : ''}">
     ${hasStudy && study ? studyHtml(study) : ''}
-    ${!hasStudy && doc.judgmentCard?.length ? judgmentCardHtml(doc.judgmentCard) : ''}
+    ${isBriefing && doc.judgmentCard?.length ? judgmentBriefingHtml(doc, doc.judgmentCard) : ''}
     ${
       !hasStudy && !isBriefing && doc.parties
         ? `<h3>الأطراف</h3><div class="body">${pre(doc.parties)}</div>`

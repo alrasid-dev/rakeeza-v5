@@ -86,6 +86,8 @@ export default function DocumentDetailPage() {
     tableRows?: { name: string; id?: string; extra?: string }[];
     judgmentCard?: { label: string; value: string }[];
     judgmentBriefing?: boolean;
+    briefingTitle?: string;
+    judgmentPriority?: string;
     studySections?: StudySections;
     style?: DocStyle;
     paperLayout?: PaperLayoutId | string;
@@ -156,16 +158,18 @@ export default function DocumentDetailPage() {
               dateHijri: doc.dateHijri,
               recipients: doc.recipients,
               copyTo: fields.copyTo,
-              parties: fields.judgmentBriefing || fields.judgmentCard?.length ? '' : doc.parties,
-              reasons: fields.judgmentBriefing || fields.judgmentCard?.length ? '' : doc.reasons,
-              studyFields: fields.judgmentBriefing || fields.judgmentCard?.length ? '' : doc.studyFields,
-              body: fields.judgmentBriefing || fields.judgmentCard?.length ? '' : bodyOnce,
+              parties: fields.judgmentBriefing ? '' : doc.parties,
+              reasons: fields.judgmentBriefing ? '' : doc.reasons,
+              studyFields: fields.judgmentBriefing ? '' : doc.studyFields,
+              body: fields.judgmentBriefing ? '' : bodyOnce,
               docType: doc.docType,
               qrDataUrl: fields.qrDataUrl,
-              tableRows: fields.judgmentBriefing || fields.judgmentCard?.length ? [] : fields.tableRows,
-              judgmentCard: fields.judgmentCard,
-              judgmentBriefing: Boolean(fields.judgmentBriefing || fields.judgmentCard?.length),
-              studySections: fields.judgmentBriefing || fields.judgmentCard?.length ? null : fields.studySections,
+              tableRows: fields.judgmentBriefing ? [] : fields.tableRows,
+              judgmentCard: fields.judgmentBriefing ? fields.judgmentCard : null,
+              judgmentBriefing: Boolean(fields.judgmentBriefing),
+              briefingTitle: fields.briefingTitle,
+              judgmentPriority: fields.judgmentPriority,
+              studySections: fields.judgmentBriefing ? null : fields.studySections,
               paperLayout,
             }}
           />

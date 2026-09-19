@@ -15,6 +15,8 @@ export const PROCESSING_MECHANISMS = [
   'إصدار صك مستبدل',
   'رفع تذكرة',
   'تحديد موعد',
+  'تنويه',
+  'تنبيه',
 ] as const;
 
 export type ProcessingMechanism = (typeof PROCESSING_MECHANISMS)[number];
@@ -54,12 +56,25 @@ export function isJudgmentBriefingMeta(meta: TemplateFieldsMeta | null | undefin
   return Boolean(meta.seed?.judgmentCard?.length);
 }
 
-/** Runtime: any doc carrying a judgment card is treated as briefing for render. */
+/** True for مدخلات الأحكام form slugs (both paper designs). */
+export function isJudgmentBriefingFormSlug(slug: string | null | undefined): boolean {
+  return /^madkhalat-ahkam/i.test(String(slug || ''));
+}
+
+/**
+ * Runtime briefing detection.
+ * Prefer the explicit `judgmentBriefing` flag — never force briefing from a leftover
+ * `judgmentCard` alone when study sections are present (flexible study vs letter vs judgment).
+ */
 export function isJudgmentBriefingDoc(doc: {
   judgmentCard?: { label: string; value: string }[] | null;
   judgmentBriefing?: boolean | null;
+  studySections?: unknown;
 }): boolean {
   if (doc.judgmentBriefing === true) return true;
+  if (doc.judgmentBriefing === false) return false;
+  // Legacy saved docs: card without flag — only if no study payload
+  if (doc.studySections) return false;
   return Boolean(doc.judgmentCard && doc.judgmentCard.length > 0);
 }
 
@@ -71,6 +86,8 @@ export function detectProcessingMechanism(raw: string): ProcessingMechanism | nu
   if (/إصدار\s*صك\s*مستبدل|صك\s*مستبدل/.test(text)) return 'إصدار صك مستبدل';
   if (/رفع\s*تذكرة/.test(text)) return 'رفع تذكرة';
   if (/تحديد\s*موعد/.test(text)) return 'تحديد موعد';
+  if (/تنبيه/.test(text)) return 'تنبيه';
+  if (/تنويه/.test(text)) return 'تنويه';
   // Exact match against known list
   for (const m of PROCESSING_MECHANISMS) {
     if (text.includes(m)) return m;
@@ -312,4 +329,161 @@ export function setJudgmentCardValue(
     migrated.push({ label: target, value });
   }
   return migrated;
+}
+
+/** Dynamic title above the judgment KV table (never «عرض شف»). */
+export const BRIEFING_TITLES = [
+  'بطاقة عرض',
+  'عرض تذكير',
+  'تنويه',
+  'تنبيه',
+  'بطاقة رصد',
+] as const;
+
+export type BriefingTitle = (typeof BRIEFING_TITLES)[number];
+
+export type JudgmentPriority = 'عادي' | 'عاجل';
+
+export const JUDGMENT_SALUTATION = 'السلام عليكم ورحمة الله وبركاته وبعد:-';
+export const JUDGMENT_CLOSING = 'لإطلاع فضيلتكم والله يحفظكم';
+export const OBSERVATION_RED = 'تم رصد';
+
+export function isBriefingTitle(v: string): v is BriefingTitle {
+  return (BRIEFING_TITLES as readonly string[]).includes(v);
+}
+
+export function detectBriefingTitle(raw: string): BriefingTitle | null {
+  const t = String(raw || '');
+  if (!t.trim()) return null;
+  const typeLine = t.match(/(?:نوع(?:\s*البطاقة|\s*العرض)?|عنوان(?:\s*البطاقة)?|عنوان العرض)\s*[:：]\s*([^\n]+)/);
+  if (typeLine) {
+    const v = typeLine[1].trim();
+    if (/عرض\s*تذكير/.test(v)) return 'عرض تذكير';
+    if (/تنبيه/.test(v)) return 'تنبيه';
+    if (/تنويه/.test(v)) return 'تنويه';
+    if (/بطاقة\s*رصد/.test(v)) return 'بطاقة رصد';
+    if (/بطاقة\s*عرض/.test(v)) return 'بطاقة عرض';
+  }
+  if (/عرض\s*تذكير/.test(t)) return 'عرض تذكير';
+  if (/بطاقة\s*رصد/.test(t)) return 'بطاقة رصد';
+  if (/بطاقة\s*عرض/.test(t)) return 'بطاقة عرض';
+  // Standalone title near the top of the paste only
+  const head = t.slice(0, 180);
+  if (/^تنبيه\b/m.test(head)) return 'تنبيه';
+  if (/^تنويه\b/m.test(head)) return 'تنويه';
+  return null;
+}
+
+export function detectJudgmentPriority(raw: string): JudgmentPriority | null {
+  const t = String(raw || '');
+  if (!t.trim()) return null;
+  if (/عاجل|عاجلة|مستعجل|أولوية\s*[:：]?\s*عاجل/.test(t)) return 'عاجل';
+  if (/أولوية\s*[:：]?\s*عادي|درجة\s*[:：]?\s*عادي/.test(t)) return 'عادي';
+  return null;
+}
+
+export function getJudgmentCardValue(
+  rows: JudgmentCardRow[] | null | undefined,
+  label: string,
+): string {
+  if (!rows?.length) return '';
+  const target = label === MECHANISM_LABEL_LEGACY ? MECHANISM_LABEL : label;
+  const row = rows.find(
+    (r) =>
+      r.label === target ||
+      (target === MECHANISM_LABEL && r.label === MECHANISM_LABEL_LEGACY) ||
+      (target === JUDGMENT_SOURCE_LABEL && r.label === 'مصدر الحكم'),
+  );
+  return String(row?.value || '').trim();
+}
+
+export type JudgmentObservationParts = {
+  beforeRed: string;
+  red: string;
+  afterRed: string;
+};
+
+/** Observation sentence with «تم رصد» split out for red styling. */
+export function buildJudgmentObservationParts(
+  card: JudgmentCardRow[] | null | undefined,
+): JudgmentObservationParts {
+  const formation = getJudgmentCardValue(card, 'التشكيل') || '……';
+  const caseNo = getJudgmentCardValue(card, 'رقم القضية') || '……';
+  const deed = getJudgmentCardValue(card, 'رقم الحكم') || '……';
+  const source = getJudgmentCardValue(card, JUDGMENT_SOURCE_LABEL) || '……';
+  const note = getJudgmentCardValue(card, 'الرصد');
+  const beforeRed = `تنفيذاً لتوجيه أصحاب الفضيلة أعضاء الدائرة لدى التشكيل ( ${formation} ) `;
+  const afterRed =
+    ` صدور حكم برقم ${deed} في القضية رقم ${caseNo} من فضيلة الشيخ ${source}` +
+    (note ? `، ${note}` : '') +
+    '.';
+  return { beforeRed, red: OBSERVATION_RED, afterRed };
+}
+
+/** Mechanism paragraph reflecting selected آلية المعالجة المقترحة. */
+export function buildMechanismParagraph(mechanismRaw: string): string {
+  const detected = detectProcessingMechanism(mechanismRaw);
+  const m = detected || String(mechanismRaw || '').trim();
+  switch (m) {
+    case 'إصدار صك مستبدل':
+      return (
+        'وفي حال اقتضى الأمر إصدار صك مستبدل يُراعى: (١) التحقق من سلامة بيانات الحكم والمدخلات، ' +
+        '(٢) استكمال مسوغات الاستبدال وفق الإجراءات المتبعة، (٣) رفع ما يلزم للاعتماد.'
+      );
+    case 'رفع تذكرة':
+      return 'ونقترح رفع تذكرة حيال ما رُصد لاتخاذ ما يلزم وفق النظام.';
+    case 'تحديد موعد':
+      return 'ونقترح تحديد موعد للنظر فيما رُصد واتخاذ اللازم.';
+    case 'تنويه':
+      return 'وننوه إلى ما رُصد أعلاه لاتخاذ ما ترونه مناسباً.';
+    case 'تنبيه':
+      return 'وننبّه إلى ما رُصد أعلاه لاتخاذ اللازم بصفة عاجلة.';
+    default:
+      if (/تنبيه/.test(m)) return 'وننبّه إلى ما رُصد أعلاه لاتخاذ اللازم بصفة عاجلة.';
+      if (/تنويه/.test(m)) return 'وننوه إلى ما رُصد أعلاه لاتخاذ ما ترونه مناسباً.';
+      return m ? `والمقترح: ${m}.` : '';
+  }
+}
+
+function escHtml(s: string) {
+  return String(s || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+/** Full judgment briefing block HTML: preamble → closing → titled KV table. No «عرض شف». */
+export function buildJudgmentBriefingBlockHtml(opts: {
+  recipients?: string | null;
+  card: JudgmentCardRow[];
+  title?: string | null;
+  green?: string;
+}): string {
+  if (!opts.card?.length) return '';
+  const GREEN = opts.green || '#006C35';
+  const address = String(opts.recipients || JUDGMENT_CARD_RECIPIENTS).trim();
+  const title = String(opts.title || 'بطاقة عرض').trim() || 'بطاقة عرض';
+  const obs = buildJudgmentObservationParts(opts.card);
+  const mech = buildMechanismParagraph(getJudgmentCardValue(opts.card, MECHANISM_LABEL));
+  const cells = opts.card
+    .map(
+      (r, i) =>
+        `<tr style="background:${i % 2 ? '#f3f8f5' : '#fff'}">
+          <th style="padding:8px 10px;border:1px solid ${GREEN}55;background:${GREEN}14;color:${GREEN};font-weight:700;width:38%;text-align:right;vertical-align:middle;white-space:nowrap">${escHtml(r.label)}</th>
+          <td style="padding:8px 10px;border:1px solid ${GREEN}55;text-align:right;vertical-align:middle;font-weight:600" dir="auto">${escHtml(r.value || '—')}</td>
+        </tr>`,
+    )
+    .join('');
+  return `<div class="judgment-briefing" style="margin:4px 0 12px;line-height:1.9;text-align:justify">
+  <div style="margin-bottom:6px;font-weight:700">${escHtml(address)}</div>
+  <div style="margin-bottom:8px">${escHtml(JUDGMENT_SALUTATION)}</div>
+  <div style="margin-bottom:8px">${escHtml(obs.beforeRed)}<span style="color:#c00000;font-weight:700">${escHtml(obs.red)}</span>${escHtml(obs.afterRed)}</div>
+  ${mech ? `<div style="margin-bottom:8px">${escHtml(mech)}</div>` : ''}
+  <div style="margin-bottom:12px;font-weight:600">${escHtml(JUDGMENT_CLOSING)}</div>
+  <h3 style="margin:10px 0 6px;color:${GREEN};font-size:14px;border-bottom:1px solid #C5A059;padding-bottom:2px">${escHtml(title)}</h3>
+  <table dir="rtl" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;border:1px solid ${GREEN};margin:6px 0 4px;font-size:13px">
+    <tbody>${cells}</tbody>
+  </table>
+</div>`;
 }

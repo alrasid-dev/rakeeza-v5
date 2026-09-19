@@ -267,6 +267,8 @@ export async function GET(req: NextRequest) {
     let copyToField = '';
     let judgmentCard: { label: string; value: string }[] | null = null;
     let judgmentBriefing = false;
+    let briefingTitleField = '';
+    let judgmentPriorityField = '';
     try {
       const fields = JSON.parse(doc.fieldsJson || '{}') as {
         qrDataUrl?: string;
@@ -283,7 +285,11 @@ export async function GET(req: NextRequest) {
       paperLayout = fields.paperLayout || null;
       copyToField = fields.copyTo || '';
       judgmentCard = fields.judgmentCard?.length ? fields.judgmentCard : null;
-      judgmentBriefing = fields.judgmentBriefing === true || Boolean(judgmentCard?.length);
+      judgmentBriefing =
+        fields.judgmentBriefing === true ||
+        (Boolean(judgmentCard?.length) && !studySections && fields.judgmentBriefing !== false);
+      briefingTitleField = (fields as { briefingTitle?: string }).briefingTitle || '';
+      judgmentPriorityField = (fields as { judgmentPriority?: string }).judgmentPriority || '';
     } catch {
       qrDataUrl = null;
     }
@@ -339,6 +345,8 @@ html, body, .paper, .paper *:not(img):not(svg):not(svg *) {
         studySections: judgmentBriefing ? null : studySections,
         judgmentCard,
         judgmentBriefing,
+        briefingTitle: briefingTitleField || undefined,
+        judgmentPriority: judgmentPriorityField || undefined,
         fontFamily: style?.fontFamily || 'Traditional Arabic',
         fontSizePt: style?.fontSizePt,
         paperLayout,

@@ -6,6 +6,15 @@ import { attachmentDisposition } from '@/lib/download-headers';
 import { officialDateDisplay } from '@/lib/hijri';
 import { docxFontName } from '@/lib/font-stacks';
 import { loadEmblemPng, dataUrlToBuffer, BRAND } from '@/lib/brand-assets';
+import {
+  JUDGMENT_CARD_RECIPIENTS,
+  JUDGMENT_CLOSING,
+  JUDGMENT_SALUTATION,
+  MECHANISM_LABEL,
+  buildJudgmentObservationParts,
+  buildMechanismParagraph,
+  getJudgmentCardValue,
+} from '@/lib/judgment-card';
 import QRCode from 'qrcode';
 import {
   Document,
@@ -200,7 +209,11 @@ export async function GET(req: NextRequest) {
       bodyFont = docxFontName(fields.style?.fontFamily);
       judgmentCard = Array.isArray(fields.judgmentCard) ? fields.judgmentCard : [];
       (doc as { _judgmentBriefing?: boolean })._judgmentBriefing =
-        fields.judgmentBriefing === true || judgmentCard.length > 0;
+        fields.judgmentBriefing === true;
+      (doc as { _briefingTitle?: string })._briefingTitle =
+        (fields as { briefingTitle?: string }).briefingTitle || 'بطاقة عرض';
+      (doc as { _judgmentPriority?: string })._judgmentPriority =
+        (fields as { judgmentPriority?: string }).judgmentPriority || 'عادي';
     } catch {
       qrDataUrl = null;
     }
@@ -379,12 +392,104 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const isBriefing =
-      Boolean((doc as { _judgmentBriefing?: boolean })._judgmentBriefing) || judgmentCard.length > 0;
+    const isBriefing = Boolean((doc as { _judgmentBriefing?: boolean })._judgmentBriefing);
+    const briefingTitle =
+      (doc as { _briefingTitle?: string })._briefingTitle || 'بطاقة عرض';
+    const judgmentPriority =
+      (doc as { _judgmentPriority?: string })._judgmentPriority || 'عادي';
 
-    if (judgmentCard.length) {
-      children.push(new Paragraph({ children: [], spacing: { after: 160 } }));
-      children.push(banner('عرض شف — بطاقة رصد', GREEN));
+    if (isBriefing && judgmentPriority === 'عاجل') {
+      children.unshift(
+        new Paragraph({
+          alignment: AlignmentType.LEFT,
+          children: [
+            new TextRun({
+              text: '⚠ عاجل',
+              bold: true,
+              color: 'C00000',
+              size: 22,
+              font: bodyFont,
+              rightToLeft: true,
+            }),
+          ],
+          spacing: { after: 80 },
+        }),
+      );
+    }
+
+    if (isBriefing && judgmentCard.length) {
+      const address = String(doc.recipients || JUDGMENT_CARD_RECIPIENTS).trim();
+      const obs = buildJudgmentObservationParts(judgmentCard);
+      const mech = buildMechanismParagraph(getJudgmentCardValue(judgmentCard, MECHANISM_LABEL));
+      children.push(new Paragraph({ children: [], spacing: { after: 120 } }));
+      children.push(
+        new Paragraph({
+          alignment: AlignmentType.RIGHT,
+          children: [
+            new TextRun({ text: address, bold: true, size: 24, font: bodyFont, rightToLeft: true }),
+          ],
+          spacing: { after: 80 },
+        }),
+      );
+      children.push(
+        new Paragraph({
+          alignment: AlignmentType.RIGHT,
+          children: [
+            new TextRun({
+              text: JUDGMENT_SALUTATION,
+              size: 24,
+              font: bodyFont,
+              rightToLeft: true,
+            }),
+          ],
+          spacing: { after: 120 },
+        }),
+      );
+      children.push(
+        new Paragraph({
+          alignment: AlignmentType.RIGHT,
+          children: [
+            new TextRun({ text: obs.beforeRed, size: 24, font: bodyFont, rightToLeft: true }),
+            new TextRun({
+              text: obs.red,
+              bold: true,
+              color: 'C00000',
+              size: 24,
+              font: bodyFont,
+              rightToLeft: true,
+            }),
+            new TextRun({ text: obs.afterRed, size: 24, font: bodyFont, rightToLeft: true }),
+          ],
+          spacing: { after: 120 },
+        }),
+      );
+      if (mech) {
+        children.push(
+          new Paragraph({
+            alignment: AlignmentType.RIGHT,
+            children: [
+              new TextRun({ text: mech, size: 24, font: bodyFont, rightToLeft: true }),
+            ],
+            spacing: { after: 120 },
+          }),
+        );
+      }
+      children.push(
+        new Paragraph({
+          alignment: AlignmentType.RIGHT,
+          children: [
+            new TextRun({
+              text: JUDGMENT_CLOSING,
+              bold: true,
+              size: 24,
+              font: bodyFont,
+              rightToLeft: true,
+            }),
+          ],
+          spacing: { after: 160 },
+        }),
+      );
+      children.push(banner(briefingTitle, GREEN));
       const labelW = Math.floor(PAGE_W * 0.38);
       const valueW = PAGE_W - labelW;
       children.push(

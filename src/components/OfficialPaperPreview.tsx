@@ -13,6 +13,17 @@ import { officialDateDisplay } from '@/lib/hijri';
 import { fontStackFor } from '@/lib/font-stacks';
 import { enrichStudySections, hasStudyContent, studyDisplayMeta } from '@/lib/study-display';
 import { BRAND } from '@/lib/brand';
+import {
+  JUDGMENT_CARD_RECIPIENTS,
+  JUDGMENT_CLOSING,
+  JUDGMENT_SALUTATION,
+  MECHANISM_LABEL,
+  buildJudgmentObservationParts,
+  buildMechanismParagraph,
+  getJudgmentCardValue,
+  isJudgmentBriefingDoc,
+  type JudgmentPriority,
+} from '@/lib/judgment-card';
 
 export type OfficialPaperFields = {
   number?: string | null;
@@ -33,8 +44,10 @@ export type OfficialPaperFields = {
   courtName?: string | null;
   tableRows?: { name: string; id?: string; extra?: string }[];
   judgmentCard?: { label: string; value: string }[] | null;
-  /** عرض شف briefing — hide الأطراف / النص even if leftover shells exist */
+  /** Explicit judgment-briefing mode — never inferred from leftover card alone when study present */
   judgmentBriefing?: boolean | null;
+  briefingTitle?: string | null;
+  judgmentPriority?: JudgmentPriority | string | null;
   studySections?: StudySections | null;
   paperLayout?: PaperLayoutId | string | null;
 };
@@ -638,6 +651,67 @@ function BrandHeader({
   );
 }
 
+function UrgentBadge({ className = '' }: { className?: string }) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full bg-red-600 text-white text-[11px] font-bold px-2.5 py-0.5 shadow-sm ${className}`}
+      title="عاجل"
+    >
+      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+        <path d="M12 2L1 21h22L12 2zm0 4.5l7.5 13h-15L12 6.5zM11 10v5h2v-5h-2zm0 6v2h2v-2h-2z" />
+      </svg>
+      عاجل
+    </span>
+  );
+}
+
+function JudgmentBriefingView({
+  card,
+  recipients,
+  title,
+}: {
+  card: { label: string; value: string }[];
+  recipients?: string | null;
+  title?: string | null;
+}) {
+  const address = (recipients && recipients.trim()) || JUDGMENT_CARD_RECIPIENTS;
+  const heading = (title && title.trim()) || 'بطاقة عرض';
+  const obs = buildJudgmentObservationParts(card);
+  const mech = buildMechanismParagraph(getJudgmentCardValue(card, MECHANISM_LABEL));
+  return (
+    <div className="mt-1 space-y-3 text-sm leading-relaxed text-justify">
+      <div className="font-bold">{address}</div>
+      <div>{JUDGMENT_SALUTATION}</div>
+      <div>
+        {obs.beforeRed}
+        <span className="text-red-700 font-bold">{obs.red}</span>
+        {obs.afterRed}
+      </div>
+      {mech ? <div>{mech}</div> : null}
+      <div className="font-semibold">{JUDGMENT_CLOSING}</div>
+      <div>
+        <SectionTitle accent="gold">{heading}</SectionTitle>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm border border-moj-green">
+            <tbody>
+              {card.map((r, i) => (
+                <tr key={`${r.label}-${i}`} className="odd:bg-white even:bg-moj-light/40">
+                  <th className="p-2 border border-moj-green/40 bg-moj-green/10 text-moj-green font-bold w-[38%] text-right align-middle whitespace-nowrap">
+                    {r.label}
+                  </th>
+                  <td className="p-2 border border-moj-green/40 text-right align-middle font-semibold" dir="auto">
+                    {r.value || '—'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function OfficialPaperPreview({
   doc,
   className = '',
@@ -702,9 +776,16 @@ export default function OfficialPaperPreview({
     study?.preparer,
   ];
   // When StudyFormView is on screen, hide form leftovers (empty label shells / duplicates).
-  // Judgment briefing (عرض شف): never show الأطراف / النص / أسباب / دراسة shells.
+  // Judgment briefing: never show الأطراف / النص / أسباب / دراسة shells.
+  // Study always wins when studySections are present.
   const isBriefing =
-    doc.judgmentBriefing === true || Boolean(doc.judgmentCard && doc.judgmentCard.length > 0);
+    !hasStudy &&
+    isJudgmentBriefingDoc({
+      judgmentBriefing: doc.judgmentBriefing,
+      judgmentCard: doc.judgmentCard,
+      studySections: doc.studySections,
+    });
+  const isUrgent = isBriefing && doc.judgmentPriority === 'عاجل';
   const partiesLeftover = hasStudy || isBriefing ? '' : leftoverBlock(doc.parties, already);
   const reasonsLeftover = hasStudy || isBriefing ? '' : leftoverBlock(doc.reasons, already);
   const studyFieldsLeftover = hasStudy || isBriefing ? '' : leftoverBlock(doc.studyFields, already);
@@ -740,10 +821,15 @@ export default function OfficialPaperPreview({
         <div
           className={`text-white font-bold ${chrome.compact ? 'py-1.5 text-xs' : 'py-2 text-sm'} border-b-[3px] ${
             chrome.modernHex || chrome.bismillahAlign === 'right' ? 'text-right px-5' : 'text-center'
-          }`}
+          } relative`}
           style={{ background: chrome.bismillahBg, borderColor: chrome.bismillahBorder, fontFamily }}
         >
           بسم الله الرحمن الرحيم
+          {isUrgent ? (
+            <span className="absolute left-3 top-1/2 -translate-y-1/2">
+              <UrgentBadge />
+            </span>
+          ) : null}
         </div>
 
         {chrome.modernHex ? (
@@ -830,26 +916,12 @@ export default function OfficialPaperPreview({
           )}
 
 
-          {doc.judgmentCard && doc.judgmentCard.length > 0 && (
-            <div className="mt-1">
-              <SectionTitle accent={chrome.titleAccent}>عرض شف — بطاقة رصد</SectionTitle>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm border border-moj-green">
-                  <tbody>
-                    {doc.judgmentCard.map((r, i) => (
-                      <tr key={i} className="odd:bg-white even:bg-moj-light/40">
-                        <th className="p-2 border border-moj-green/40 bg-moj-green/10 text-moj-green font-bold w-[38%] text-right align-middle whitespace-nowrap">
-                          {r.label}
-                        </th>
-                        <td className="p-2 border border-moj-green/40 text-right align-middle font-semibold" dir="auto">
-                          {r.value || '—'}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+          {isBriefing && doc.judgmentCard && doc.judgmentCard.length > 0 && (
+            <JudgmentBriefingView
+              card={doc.judgmentCard}
+              recipients={doc.recipients}
+              title={doc.briefingTitle}
+            />
           )}
           {showParties && (
             <Clickable field="parties" onFieldClick={onFieldClick}>
