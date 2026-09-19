@@ -144,7 +144,7 @@ export async function GET(req: NextRequest) {
     addKv('الموضوع', doc.subject);
     addKv('الأطراف', doc.parties, true);
     addKv('الأسباب', doc.reasons, true);
-    addKv('النص', doc.body, true);
+    if (doc.body) addKv('', doc.body, true);
     addKv('الدراسة', doc.studyFields, true);
 
     const ss = fields.studySections;

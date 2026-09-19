@@ -466,7 +466,7 @@ body {
     }
     ${
       !hasStudy && !isBriefing && doc.body
-        ? `<h3>النص</h3><div class="body">${pre(String(doc.body).trim())}</div>`
+        ? `<div class="body">${pre(String(doc.body).trim())}</div>`
         : ''
     }
     ${

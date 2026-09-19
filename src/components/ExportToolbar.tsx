@@ -81,7 +81,7 @@ function buildPlainLetter(doc: ExportDoc) {
     lines.push('الأسباب', doc.reasons.trim(), '');
   }
   if (body) {
-    lines.push('النص', body, '');
+    lines.push(body, '');
   }
   if (doc.studyFields?.trim()) {
     lines.push('الدراسة', doc.studyFields.trim(), '');

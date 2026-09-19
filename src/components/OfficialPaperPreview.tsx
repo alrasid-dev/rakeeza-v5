@@ -865,7 +865,6 @@ export default function OfficialPaperPreview({
           )}
           {bodyForPreview && (
             <Clickable field="body" onFieldClick={onFieldClick}>
-              <SectionTitle accent={chrome.titleAccent}>النص</SectionTitle>
               {/* key forces remount when body changes — prevents stale stacked spans */}
               <pre
                 key={`body-${bodyForPreview.length}-${bodyForPreview.slice(0, 32)}`}

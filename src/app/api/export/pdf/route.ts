@@ -232,7 +232,6 @@ function pdfViaJsPdf(doc: {
     y += 1;
   }
   if (doc.body?.trim()) {
-    writeAr('النص', 12, [0, 108, 53]);
     for (const line of wrapArabicLines(doc.body, 68).slice(0, 55)) writeAr(line || ' ', 10);
     y += 1;
   }
