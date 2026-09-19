@@ -28,6 +28,11 @@ export type ExportDoc = {
   fontSizePt?: number | null;
   qrDataUrl?: string | null;
   headerLines?: string[] | null;
+  judgmentCard?: { label: string; value: string }[] | null;
+  judgmentBriefing?: boolean | null;
+  briefingTitle?: string | null;
+  observationText?: string | null;
+  mechanismText?: string | null;
 };
 
 type FormatId = 'docx' | 'xlsx' | 'pdf' | 'pptx' | 'outlook';
@@ -61,8 +66,6 @@ function contentFingerprint(doc: ExportDoc) {
 function buildPlainLetter(doc: ExportDoc) {
   const body = normalizeBodyText(doc.body);
   const lines = [
-    'بسم الله الرحمن الرحيم',
-    '',
     'المملكة العربية السعودية',
     'وزارة العدل',
     doc.courtName || 'المحكمة العمالية بالرياض',
@@ -80,7 +83,15 @@ function buildPlainLetter(doc: ExportDoc) {
   if (doc.reasons?.trim()) {
     lines.push('الأسباب', doc.reasons.trim(), '');
   }
-  if (body) {
+  if (doc.judgmentBriefing && doc.judgmentCard?.length) {
+    lines.push(doc.briefingTitle || 'بطاقة عرض', '');
+    if (doc.observationText?.trim()) lines.push(doc.observationText.trim(), '');
+    if (doc.mechanismText?.trim()) lines.push(doc.mechanismText.trim(), '');
+    for (const row of doc.judgmentCard) {
+      lines.push(`${row.label}: ${row.value}`);
+    }
+    lines.push('');
+  } else if (body) {
     lines.push(body, '');
   }
   if (doc.studyFields?.trim()) {
@@ -165,6 +176,12 @@ export default function ExportToolbar({
           qrDataUrl: doc.qrDataUrl,
           headerLines: doc.headerLines,
           origin: typeof window !== 'undefined' ? window.location.origin : undefined,
+          judgmentCard: doc.judgmentCard,
+          judgmentBriefing: doc.judgmentBriefing,
+          briefingTitle: doc.briefingTitle || undefined,
+          observationText: doc.observationText || undefined,
+          mechanismText: doc.mechanismText || undefined,
+          underLogoLabel: doc.judgmentBriefing ? doc.briefingTitle || 'بطاقة عرض' : undefined,
         });
         const ok = await copyOutlookHtml(html, buildPlainLetter(doc));
         if (ok) {
@@ -273,6 +290,12 @@ export default function ExportToolbar({
       qrDataUrl: doc.qrDataUrl,
       headerLines: doc.headerLines,
       origin: typeof window !== 'undefined' ? window.location.origin : undefined,
+          judgmentCard: doc.judgmentCard,
+          judgmentBriefing: doc.judgmentBriefing,
+          briefingTitle: doc.briefingTitle || undefined,
+          observationText: doc.observationText || undefined,
+          mechanismText: doc.mechanismText || undefined,
+          underLogoLabel: doc.judgmentBriefing ? doc.briefingTitle || 'بطاقة عرض' : undefined,
     });
     try {
       const ok = await copyOutlookHtml(html, plain);

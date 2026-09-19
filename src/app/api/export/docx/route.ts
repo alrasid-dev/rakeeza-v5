@@ -230,43 +230,7 @@ export async function GET(req: NextRequest) {
 
     const children: (Paragraph | Table)[] = [];
 
-    // Basmala green bar
-    children.push(
-      new Table({
-        width: { size: PAGE_W, type: WidthType.DXA },
-        rows: [
-          new TableRow({
-            children: [
-              new TableCell({
-                width: { size: PAGE_W, type: WidthType.DXA },
-                shading: { type: ShadingType.CLEAR, fill: GREEN },
-                borders: {
-                  top: { style: BorderStyle.SINGLE, size: 4, color: GREEN },
-                  bottom: { style: BorderStyle.SINGLE, size: 24, color: GOLD },
-                  left: { style: BorderStyle.SINGLE, size: 4, color: GREEN },
-                  right: { style: BorderStyle.SINGLE, size: 4, color: GREEN },
-                },
-                children: [
-                  new Paragraph({
-                    alignment: AlignmentType.CENTER,
-                    children: [
-                      new TextRun({
-                        text: 'بسم الله الرحمن الرحيم',
-                        bold: true,
-                        color: 'FFFFFF',
-                        size: 24,
-                        font: bodyFont,
-                        rightToLeft: true,
-                      }),
-                    ],
-                  }),
-                ],
-              }),
-            ],
-          }),
-        ],
-      }),
-    );
+    // Basmala removed per user request
 
     // Official header: physical LTR — col0=QR(left), col1=emblem(center), col2=kingdom(right)
     // Word RTL docs still lay table columns left→right in OOXML.

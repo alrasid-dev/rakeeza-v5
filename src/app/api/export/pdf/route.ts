@@ -180,37 +180,33 @@ function pdfViaJsPdf(doc: {
     }
   };
 
-  // Green basmala bar
-  pdf.setFillColor(0, 108, 53);
-  pdf.rect(10, 8, 190, 12, 'F');
+  // Top gold rule (basmala removed)
   pdf.setFillColor(197, 160, 89);
-  pdf.rect(10, 20, 190, 1.2, 'F');
-  y = 16;
-  writeAr('بسم الله الرحمن الرحيم', 13, [255, 255, 255], 'center');
-  y = 26;
+  pdf.rect(10, 8, 190, 1.5, 'F');
+  y = 14;
 
   // LEFT=QR, CENTER=emblem, RIGHT=kingdom text (official letterhead)
   if (doc.qrDataUrl) {
     try {
       const m = doc.qrDataUrl.match(/^data:image\/\w+;base64,(.+)$/);
-      if (m) pdf.addImage(m[1], 'PNG', 14, 24, 18, 18);
+      if (m) pdf.addImage(m[1], 'PNG', 14, 12, 18, 18);
     } catch {
       /* ignore */
     }
   }
   try {
     const emblem = loadEmblemPng();
-    pdf.addImage(emblem.toString('base64'), 'PNG', 96, 24, 18, 18);
+    pdf.addImage(emblem.toString('base64'), 'PNG', 96, 12, 18, 18);
   } catch {
     /* ignore */
   }
 
-  y = 28;
+  y = 16;
   for (const h of doc.headerLines.slice(0, 3)) {
     writeAr(h, h.includes('محكمة') || h.includes('المحكمة') ? 13 : 11, [0, 108, 53], 'right');
   }
   writeAr(BRAND.platform, 9, [197, 160, 89], 'right');
-  y = Math.max(y, 48);
+  y = Math.max(y, 36);
 
   writeAr(`الرقم: ${doc.number || '—'}`, 11);
   writeAr(`التاريخ: ${officialDateDisplay(doc.dateHijri, doc.dateGregorian)}`, 11);

@@ -69,8 +69,14 @@ export async function GET(req: NextRequest) {
     const fields = JSON.parse(doc.fieldsJson || '{}') as {
       studySections?: Record<string, string | undefined>;
       tableRows?: { name: string; id?: string; extra?: string }[];
+      judgmentCard?: { label: string; value: string }[];
+      judgmentBriefing?: boolean;
+      briefingTitle?: string;
+      observationText?: string;
+      mechanismText?: string;
       qrDataUrl?: string;
     };
+    const isBriefing = Boolean(fields.judgmentBriefing && fields.judgmentCard?.length);
 
     const wb = new ExcelJS.Workbook();
     wb.creator = 'ركيزة';
@@ -120,12 +126,6 @@ export async function GET(req: NextRequest) {
 
     ws.addRow([]);
 
-    const basmala = ws.addRow(['بسم الله الرحمن الرحيم']);
-    ws.mergeCells(basmala.number, 1, basmala.number, 4);
-    styleHeaderCell(basmala.getCell(1), { fill: GREEN, size: 12 });
-
-    ws.addRow([]);
-
     const addKv = (label: string, value?: string | null, tall = false) => {
       if (value == null || String(value).trim() === '') return;
       const row = ws.addRow([label, String(value)]);
@@ -139,13 +139,18 @@ export async function GET(req: NextRequest) {
 
     addKv('الرقم', doc.number);
     addKv('التاريخ', officialDateDisplay(doc.dateHijri, doc.dateGregorian));
-    addKv('النوع', doc.docType);
+    addKv('النوع', isBriefing ? (fields.briefingTitle || 'بطاقة عرض') : doc.docType);
     addKv('إلى', doc.recipients);
     addKv('الموضوع', doc.subject);
-    addKv('الأطراف', doc.parties, true);
-    addKv('الأسباب', doc.reasons, true);
-    if (doc.body) addKv('', doc.body, true);
-    addKv('الدراسة', doc.studyFields, true);
+    if (!isBriefing) {
+      addKv('الأطراف', doc.parties, true);
+      addKv('الأسباب', doc.reasons, true);
+      if (doc.body) addKv('نص المكاتبة', doc.body, true);
+      addKv('الدراسة', doc.studyFields, true);
+    } else {
+      if (fields.observationText?.trim()) addKv('الملاحظة', fields.observationText, true);
+      if (fields.mechanismText?.trim()) addKv('آلية المعالجة', fields.mechanismText, true);
+    }
 
     const ss = fields.studySections;
     if (ss) {
@@ -169,6 +174,26 @@ export async function GET(req: NextRequest) {
       ] as const) {
         addKv(label, ss[k] as string | undefined, true);
       }
+    }
+
+    if (fields.judgmentCard?.length) {
+      const ban = ws.addRow([fields.briefingTitle || 'بطاقة عرض — مدخلات الأحكام']);
+      ws.mergeCells(ban.number, 1, ban.number, 4);
+      styleHeaderCell(ban.getCell(1), { fill: GOLD, color: '1A1A1A' });
+      const head = ws.addRow(['الحقل', 'القيمة', '', '']);
+      head.eachCell((c, i) => {
+        if (i <= 2) styleHeaderCell(c, { fill: GREEN, size: 10 });
+      });
+      for (const row of fields.judgmentCard) {
+        const r = ws.addRow([row.label, row.value, '', '']);
+        ws.mergeCells(r.number, 2, r.number, 4);
+        styleKvLabel(r.getCell(1));
+        styleKvValue(r.getCell(2));
+        styleKvValue(r.getCell(3));
+        styleKvValue(r.getCell(4));
+        r.height = Math.min(80, 18 + Math.ceil(String(row.value || '').length / 45) * 12);
+      }
+      ws.addRow([]);
     }
 
     if (fields.tableRows?.length) {

@@ -88,6 +88,8 @@ export default function DocumentDetailPage() {
     judgmentBriefing?: boolean;
     briefingTitle?: string;
     judgmentPriority?: string;
+    observationText?: string;
+    mechanismText?: string;
     studySections?: StudySections;
     style?: DocStyle;
     paperLayout?: PaperLayoutId | string;
@@ -139,6 +141,11 @@ export default function DocumentDetailPage() {
             fontFamily: fields.style?.fontFamily,
             fontSizePt: fields.style?.fontSizePt,
             qrDataUrl: fields.qrDataUrl,
+            judgmentCard: fields.judgmentBriefing ? fields.judgmentCard : null,
+            judgmentBriefing: Boolean(fields.judgmentBriefing),
+            briefingTitle: fields.briefingTitle,
+            observationText: fields.observationText,
+            mechanismText: fields.mechanismText,
           }}
           onRequestIssue={issue}
         />

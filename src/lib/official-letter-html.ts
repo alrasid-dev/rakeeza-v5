@@ -447,7 +447,7 @@ body {
 </head>
 <body>
 <div class="paper" data-paper-layout="${esc(layout)}">
-  <div class="bismillah" style="position:relative">${isUrgent ? `<span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);display:inline-flex;align-items:center;gap:4px;background:#c00000;color:#fff;font-size:11px;font-weight:700;padding:2px 10px;border-radius:999px">⚠ عاجل</span>` : ''}بسم الله الرحمن الرحيم</div>
+  ${isUrgent ? `<div class="bismillah" style="position:relative;min-height:28px">${`<span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);display:inline-flex;align-items:center;gap:4px;background:#c00000;color:#fff;font-size:11px;font-weight:700;padding:2px 10px;border-radius:999px">⚠ عاجل</span>`}</div>` : `<div style="border-bottom:3px solid ${GOLD};height:0"></div>`}
   ${brandRow}
   <div class="meta">
     <div><span class="label">الرقم:</span> <span dir="ltr">${esc(doc.number || '—')}</span></div>

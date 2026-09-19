@@ -862,19 +862,16 @@ export default function OfficialPaperPreview({
         data-paper-layout={layout}
       >
         {chrome.modernHex && <HexMotifDecor />}
-        <div
-          className={`text-white font-bold ${chrome.compact ? 'py-1.5 text-xs' : 'py-2 text-sm'} border-b-[3px] ${
-            chrome.modernHex || chrome.bismillahAlign === 'right' ? 'text-right px-5' : 'text-center'
-          } relative`}
-          style={{ background: chrome.bismillahBg, borderColor: chrome.bismillahBorder, fontFamily }}
-        >
-          بسم الله الرحمن الرحيم
-          {isUrgent ? (
+        {isUrgent ? (
+          <div className="relative border-b-[3px] py-1.5 px-5" style={{ borderColor: chrome.bismillahBorder, background: '#fff' }}>
             <span className="absolute left-3 top-1/2 -translate-y-1/2">
               <UrgentBadge />
             </span>
-          ) : null}
-        </div>
+            <div className="h-2" />
+          </div>
+        ) : (
+          <div className="h-0 border-b-[3px]" style={{ borderColor: chrome.bismillahBorder }} />
+        )}
 
         {chrome.modernHex ? (
           <ModernHexHeader qrDataUrl={doc.qrDataUrl} court={court} underLogoLabel={underLogoLabel} />
