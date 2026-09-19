@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs';
-import path from 'path';
 import { prisma } from '@/lib/db';
 import { getSession } from '@/lib/auth';
 import { buildOfficialLetterHtml } from '@/lib/official-letter-html';
@@ -9,11 +8,7 @@ import { attachmentDisposition } from '@/lib/download-headers';
 import { officialDateDisplay } from '@/lib/hijri';
 import { wrapArabicLines } from '@/lib/arabic-pdf-text';
 import { loadEmblemPng, BRAND } from '@/lib/brand-assets';
-import {
-  exportFontStack,
-  googleFontsImportCss,
-  pdfEmbeddedFamily,
-} from '@/lib/font-stacks';
+import { buildPdfEmbeddedFontCss, loadNotoNaskhBase64 } from '@/lib/pdf-font-css';
 import { normalizePaperLayout } from '@/lib/paper-layouts';
 import { jsPDF } from 'jspdf';
 import QRCode from 'qrcode';
@@ -67,11 +62,8 @@ async function renderHtmlToPdf(browser: { newPage: () => Promise<any>; close: ()
   try {
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: 'load', timeout: 45000 });
-    await page.evaluate(async () => {
-      const fonts = (globalThis as unknown as { document?: { fonts?: { ready?: Promise<unknown> } } }).document
-        ?.fonts;
-      if (fonts?.ready) await fonts.ready;
-    });
+    // Wait until Base64 @font-face faces are loaded before rasterizing PDF
+    await page.evaluate(() => document.fonts.ready);
     await new Promise((r) => setTimeout(r, 1200));
     const pdf = await page.pdf({
       format: 'A4',
@@ -128,74 +120,6 @@ async function pdfViaChromium(html: string): Promise<Buffer | null> {
   return null;
 }
 
-function loadArabicFontBase64(): string {
-  const fontPath = path.join(process.cwd(), 'public', 'fonts', 'NotoNaskhArabic-Regular.ttf');
-  if (!fs.existsSync(fontPath)) {
-    throw new Error('Arabic font missing: public/fonts/NotoNaskhArabic-Regular.ttf');
-  }
-  return fs.readFileSync(fontPath).toString('base64');
-}
-
-/** Optional TTFs under public/fonts — Amiri / Scheherazade preferred when present. */
-function loadOptionalFontBase64(fileName: string): string | null {
-  const fontPath = path.join(process.cwd(), 'public', 'fonts', fileName);
-  if (!fs.existsSync(fontPath)) return null;
-  return fs.readFileSync(fontPath).toString('base64');
-}
-
-function buildPdfEmbeddedFontCss(fontFamilyId?: string | null): string {
-  const faces: string[] = [];
-  const noto = loadArabicFontBase64();
-  faces.push(`@font-face {
-  font-family: 'Noto Naskh Arabic';
-  font-style: normal;
-  font-weight: 100 900;
-  src: url(data:font/ttf;base64,${noto}) format('truetype');
-  font-display: block;
-}`);
-  // If download failed previously, map PDF to Noto but keep selected family name in export stack
-  // so Chromium can still resolve via Google Fonts @import when available.
-  const amiri = loadOptionalFontBase64('Amiri-Regular.ttf');
-  if (amiri) {
-    faces.push(`@font-face {
-  font-family: 'Amiri';
-  font-style: normal;
-  font-weight: 400;
-  src: url(data:font/ttf;base64,${amiri}) format('truetype');
-  font-display: block;
-}`);
-  }
-  const scheh = loadOptionalFontBase64('ScheherazadeNew-Regular.ttf');
-  if (scheh) {
-    faces.push(`@font-face {
-  font-family: 'Scheherazade New';
-  font-style: normal;
-  font-weight: 400;
-  src: url(data:font/ttf;base64,${scheh}) format('truetype');
-  font-display: block;
-}`);
-  }
-
-  const stack = exportFontStack(fontFamilyId);
-  const preferred = pdfEmbeddedFamily(fontFamilyId);
-  const gf = googleFontsImportCss([String(fontFamilyId || 'Traditional Arabic')]);
-  // Put preferred embedded face FIRST so Chromium PDF matches the preview picker
-  return `${faces.join('\n')}
-${gf}
-html, body {
-  font-family: '${preferred}', ${stack} !important;
-  font-weight: 400 !important;
-  -webkit-font-smoothing: antialiased;
-}
-.paper, .paper *:not(img):not(svg):not(svg *) {
-  font-family: '${preferred}', ${stack} !important;
-  font-weight: 400 !important;
-}
-.paper { color: #111 !important; }
-.bismillah, .bismillah * { color: #fff !important; }
-`;
-}
-
 /**
  * jsPDF fallback — logical Arabic ONLY (no reshape/bidi).
  * Reshape+bidi + Noto Naskh caused letter-spaced reversed glyphs in production
@@ -218,7 +142,7 @@ function pdfViaJsPdf(doc: {
   paperLayout?: string | null;
 }): Buffer {
   const pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
-  const fontB64 = loadArabicFontBase64();
+  const fontB64 = loadNotoNaskhBase64();
   pdf.addFileToVFS('NotoNaskhArabic-Regular.ttf', fontB64);
   pdf.addFont('NotoNaskhArabic-Regular.ttf', 'NotoNaskhArabic', 'normal');
   pdf.setFont('NotoNaskhArabic');

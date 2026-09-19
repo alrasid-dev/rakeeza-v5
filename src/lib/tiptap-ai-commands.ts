@@ -174,11 +174,11 @@ export function applyAiBodyCommand(editor: Editor | null | undefined, cmd: AiBod
         }
         for (let i = ranges.length - 1; i >= 0; i--) {
           const r = ranges[i];
-          selectRange(editor, r.from, r.to).setFontFamily(cmd.fontFamily).run();
+          selectRange(editor, r.from, r.to).setFontFamily(tiptapFontFamilyCss(cmd.fontFamily)).run();
         }
         return { ok: true, message: 'خط على المواضع المطابقة', usedChain: true };
       }
-      editor.chain().focus().setFontFamily(cmd.fontFamily).run();
+      editor.chain().focus().setFontFamily(tiptapFontFamilyCss(cmd.fontFamily)).run();
       return { ok: true, message: 'خط على التحديد', usedChain: true };
     }
 

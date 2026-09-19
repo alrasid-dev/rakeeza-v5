@@ -21,7 +21,7 @@ import {
   type AiCommandResult,
 } from '@/lib/tiptap-ai-commands';
 import type { DocStyle } from '@/components/StyleToolbar';
-import { fontStackFor } from '@/lib/font-stacks';
+import { fontStackFor, tiptapFontFamilyCss } from '@/lib/font-stacks';
 
 export type TiptapBodyEditorHandle = {
   getEditor: () => Editor | null;
@@ -201,7 +201,9 @@ export function editorApplyFontSize(editor: Editor | null, pt: number): boolean 
 
 export function editorApplyFontFamily(editor: Editor | null, family: string): boolean {
   if (!editor) return false;
-  return editor.chain().focus().setFontFamily(family).run();
+  // TipTap TextStyle → style="font-family: 'Amiri', serif;"
+  const css = tiptapFontFamilyCss(family);
+  return editor.chain().focus().setFontFamily(css).run();
 }
 
 export function editorApplyEnlarge(editor: Editor | null, level: 1 | 2): boolean {

@@ -279,8 +279,8 @@ export function buildOfficialLetterHtml(doc: OfficialLetterDoc, opts?: OfficialL
   const pageCss = opts?.forPdf
     ? `@page { size: A4; margin: 12mm; }
 body { margin: 0; color: #111; }
-.paper, .paper *:not(img):not(svg):not(svg *) { font-family: ${font} !important; font-weight: 400 !important; }
-.paper { color: #111 !important; }
+/* Default stack only — TipTap inline font-family must override (no * !important) */
+.paper { font-family: ${font}; font-weight: 400; color: #111 !important; }
 .bismillah, .bismillah * { color: #fff !important; font-weight: 400 !important; }`
     : '';
 
@@ -296,11 +296,13 @@ body { margin: 0; color: #111; }
 }`
       : '';
 
-  // Preview (browser): next/font vars + light Google fallback. Export: concrete stacks + GF import + embeds.
-  const fontFace = useExportFonts
-    ? `${gfImport}
+  // Preview: next/font. Outlook: concrete stacks + GF @import. PDF: Base64 embeds only (no network).
+  const fontFace = opts?.forPdf
+    ? embeddedBlock
+    : useExportFonts
+      ? `${gfImport}
 ${embeddedBlock}`
-    : `@import url('https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;700&display=swap');
+      : `@import url('https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;700&display=swap');
 ${embeddedBlock}`;
 
   const qr = doc.qrDataUrl

@@ -15,7 +15,9 @@
     "import:employees": "tsx scripts/import-employees.ts",
     "guide:pdf": "tsx scripts/generate-user-guide.mjs",
     "verify:strict-paste": "tsx scripts/verify-strict-paste.mts",
-    "verify:tiptap-mutation": "tsx scripts/verify-tiptap-mutation.mts"
+    "verify:tiptap-mutation": "tsx scripts/verify-tiptap-mutation.mts",
+    "verify:pdf-fonts": "tsx scripts/verify-pdf-fonts.mts",
+    "fonts:download": "tsx scripts/download-arabic-fonts.mts"
   },
   "dependencies": {
     "@libsql/client": "^0.8.1",
@@ -76,7 +78,7 @@
     "tsx": "^4.23.13",
     "typescript": "^5"
   },
-  "description": "ركيزة — مكتبة المخاطبات والتعاميم",
+  "description": "\u0631\u0643\u064a\u0632\u0629 \u2014 \u0645\u0643\u062a\u0628\u0629 \u0627\u0644\u0645\u062e\u0627\u0637\u0628\u0627\u062a \u0648\u0627\u0644\u062a\u0639\u0627\u0645\u064a\u0645",
   "prisma": {
     "seed": "tsx prisma/seed.ts"
   }

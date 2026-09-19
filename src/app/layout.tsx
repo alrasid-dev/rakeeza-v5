@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import {
   Almarai,
   Amiri,
+  Aref_Ruqaa,
   Cairo,
   Changa,
   El_Messiri,
@@ -99,6 +100,13 @@ const almarai = Almarai({
   display: 'swap',
 });
 
+const arefRuqaa = Aref_Ruqaa({
+  subsets: ['arabic'],
+  variable: '--font-aref-ruqaa',
+  weight: ['400', '700'],
+  display: 'swap',
+});
+
 const elMessiri = El_Messiri({
   subsets: ['arabic', 'latin'],
   variable: '--font-el-messiri',
@@ -166,6 +174,7 @@ const fontVars = [
   reemKufi.variable,
   changa.variable,
   almarai.variable,
+  arefRuqaa.variable,
   elMessiri.variable,
   markazi.variable,
   harmattan.variable,
@@ -197,6 +206,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             --font-reem-kufi-stack: var(--font-reem-kufi), "Reem Kufi", sans-serif;
             --font-changa-stack: var(--font-changa), "Changa", sans-serif;
             --font-almarai-stack: var(--font-almarai), "Almarai", sans-serif;
+            --font-aref-ruqaa-stack: var(--font-aref-ruqaa), "Aref Ruqaa", "Amiri", serif;
           }
         `}</style>
       </head>
