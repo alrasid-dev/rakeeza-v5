@@ -8,6 +8,7 @@ import OfficialPaperPreview, { normalizeBodyText } from '@/components/OfficialPa
 import RecipientCascade from '@/components/RecipientCascade';
 import StyleToolbar, { type DocStyle } from '@/components/StyleToolbar';
 import { applyAlignToRange } from '@/lib/body-align';
+import { formatCourtPresidentLine } from '@/lib/honorific';
 import PaperLayoutPicker from '@/components/PaperLayoutPicker';
 import ExportToolbar from '@/components/ExportToolbar';
 import { parsePaste, type TableRow } from '@/lib/parse-paste';
@@ -86,6 +87,43 @@ function NewDocumentInner() {
   const [templateId, setTemplateId] = useState('');
   const [paste, setPaste] = useState('');
   const [form, setForm] = useState({ ...EMPTY_FORM });
+
+  const undoStackRef = useRef<string[]>([]);
+  const skipUndoPushRef = useRef(false);
+  const [canUndo, setCanUndo] = useState(false);
+
+  function pushUndoSnapshot(nextForm: typeof form) {
+    if (skipUndoPushRef.current) return;
+    const json = JSON.stringify(nextForm);
+    const stack = undoStackRef.current;
+    if (stack[stack.length - 1] === json) return;
+    stack.push(json);
+    if (stack.length > 40) stack.shift();
+    setCanUndo(stack.length > 1);
+  }
+
+  function undoLastChange() {
+    const stack = undoStackRef.current;
+    if (stack.length < 2) return;
+    stack.pop(); // drop current
+    const prev = stack[stack.length - 1];
+    if (!prev) return;
+    try {
+      skipUndoPushRef.current = true;
+      setForm(JSON.parse(prev));
+      setCanUndo(stack.length > 1);
+    } finally {
+      requestAnimationFrame(() => {
+        skipUndoPushRef.current = false;
+      });
+    }
+  }
+
+  useEffect(() => {
+    pushUndoSnapshot(form);
+  }, [form]);
+
+
   const [tableRows, setTableRows] = useState<TableRow[]>([]);
   const [observationText, setObservationText] = useState('');
   const [mechanismText, setMechanismText] = useState('');
@@ -801,7 +839,18 @@ function NewDocumentInner() {
 
       {step === 3 && (
         <div className="space-y-3">
-          <StyleToolbar value={style} onChange={setStyle} onAlignSelection={applyBodyAlign} />
+          <div className="flex flex-wrap items-end gap-2">
+            <StyleToolbar value={style} onChange={setStyle} onAlignSelection={applyBodyAlign} />
+            <button
+              type="button"
+              className="btn-outline text-sm px-3 py-2 disabled:opacity-40"
+              disabled={!canUndo}
+              title="تراجع عن آخر تعديل في الحقول"
+              onClick={undoLastChange}
+            >
+              تراجع
+            </button>
+          </div>
           <div className="rounded-xl border-2 border-moj-gold bg-[#fff8e8] dark:bg-[#2a2418] p-3 space-y-2 shadow-md ring-2 ring-moj-gold/40">
             <div className="text-sm font-bold text-moj-green flex items-center gap-2">
               <span className="inline-block h-2.5 w-2.5 rounded-full bg-moj-gold animate-pulse" />
@@ -1012,7 +1061,7 @@ function NewDocumentInner() {
                 >
                   <RecipientCascade
                     value={form.recipients}
-                    onChange={(line) => setForm({ ...form, recipients: line })}
+                    onChange={(line) => setForm({ ...form, recipients: formatCourtPresidentLine(line) })}
                   />
                 </div>
               </div>
@@ -1027,7 +1076,7 @@ function NewDocumentInner() {
                 >
                   <RecipientCascade
                     value={form.copyTo}
-                    onChange={(line) => setForm({ ...form, copyTo: line })}
+                    onChange={(line) => setForm({ ...form, copyTo: formatCourtPresidentLine(line) })}
                   />
                 </div>
               </div>

@@ -332,3 +332,16 @@ export function caseOverseerRoleLabel(_name?: string | null): string {
 export function preparerRoleLabel(_name?: string | null): string {
   return 'معد الدراسة';
 }
+
+
+/** Canonical إلى-line for court president / judges correspondence. */
+export function formatCourtPresidentLine(line: string): string {
+  const raw = String(line || '').trim();
+  if (!raw) return raw;
+  const acting = lineHasActingMarker(raw);
+  const base = stripActingMarker(raw);
+  if (!/رئيس\s*(المحكمة|محكمة)/.test(base)) return raw;
+  // Drop personal name after / — office formula only
+  const formula = 'فضيلة رئيس المحكمة سلمه الله';
+  return applyActingMarker(formula, acting);
+}

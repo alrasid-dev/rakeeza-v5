@@ -537,8 +537,8 @@ export function buildJudgmentBriefingBlockHtml(opts: {
 }): string {
   if (!opts.card?.length) return '';
   const GREEN = opts.green || '#006C35';
-  const address = String(opts.recipients || JUDGMENT_CARD_RECIPIENTS).trim();
-  // Title (بطاقة عرض / …) is rendered under the ministry emblem in the letterhead — not above the table.
+  // «إلى» is only in the letterhead meta — do not repeat recipients in the body.
+  void opts.recipients;
   void opts.title;
   const obs = buildJudgmentObservationParts(opts.card, opts.observationText);
   const mech =
@@ -554,8 +554,7 @@ export function buildJudgmentBriefingBlockHtml(opts: {
     )
     .join('');
   return `<div class="judgment-briefing" style="margin:4px 0 12px;line-height:1.9;text-align:justify">
-  <div style="margin-bottom:6px;font-weight:700">${escHtml(address)}</div>
-  <div style="margin-bottom:8px">${escHtml(JUDGMENT_SALUTATION)}</div>
+  <div style="margin-bottom:8px;text-align:center;font-weight:600">${escHtml(JUDGMENT_SALUTATION)}</div>
   <div style="margin-bottom:8px">${escHtml(obs.beforeRed)}<span style="color:#c00000;font-weight:700">${escHtml(obs.red)}</span>${escHtml(obs.afterRed)}</div>
   ${mech ? `<div style="margin-bottom:8px">${escHtml(mech)}</div>` : ''}
   <div style="margin-bottom:12px;font-weight:600">${escHtml(JUDGMENT_CLOSING)}</div>

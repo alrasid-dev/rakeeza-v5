@@ -15,7 +15,6 @@ import { enrichStudySections, hasStudyContent, studyDisplayMeta } from '@/lib/st
 import { BRAND } from '@/lib/brand';
 import { parseBodyBlocks, type ParaAlign } from '@/lib/body-align';
 import {
-  JUDGMENT_CARD_RECIPIENTS,
   JUDGMENT_CLOSING,
   JUDGMENT_SALUTATION,
   MECHANISM_LABEL,
@@ -698,7 +697,7 @@ function JudgmentBriefingView({
   observationText?: string | null;
   mechanismText?: string | null;
 }) {
-  const address = (recipients && recipients.trim()) || JUDGMENT_CARD_RECIPIENTS;
+  void recipients; // «إلى» already in the meta box — do not repeat in the body
   void title; // title is rendered under the ministry logo in the letterhead
   const obs = buildJudgmentObservationParts(card, observationText);
   const mech =
@@ -706,8 +705,7 @@ function JudgmentBriefingView({
     buildMechanismParagraph(getJudgmentCardValue(card, MECHANISM_LABEL));
   return (
     <div className="mt-1 space-y-3 leading-relaxed text-justify">
-      <div className="font-bold">{address}</div>
-      <div>{JUDGMENT_SALUTATION}</div>
+      <div className="text-center font-semibold">{JUDGMENT_SALUTATION}</div>
       <div>
         {obs.beforeRed}
         <span className="text-red-700 font-bold">{obs.red}</span>

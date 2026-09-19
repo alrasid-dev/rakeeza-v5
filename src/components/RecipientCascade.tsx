@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { addressEmployee, addressEmployees, applyActingMarker, lineHasActingMarker, stripActingMarker } from '@/lib/honorific';
+import { addressEmployee, addressEmployees, applyActingMarker, formatCourtPresidentLine, lineHasActingMarker, stripActingMarker } from '@/lib/honorific';
 
 type OrgUnit = { id: string; name: string };
 type Employee = {
@@ -126,24 +126,18 @@ export default function RecipientCascade({
     } else if (deptIds.length) {
       line = lineFromDepts(deptIds);
     }
-    onChange(applyActingMarker(line, useActing), { employeeIds: nextEmpIds, orgUnitIds: deptIds });
+    onChange(formatCourtPresidentLine(applyActingMarker(line, useActing)), { employeeIds: nextEmpIds, orgUnitIds: deptIds });
   }
 
   function toggleActing() {
     const next = !acting;
     setActing(next);
     if (selectedEmpIds.length || selectedDeptIds.length) {
-      // Rebuild from employees/depts so we never stack «المكلف»
       emitSelection(selectedEmpIds, selectedDeptIds, next);
       return;
     }
-    // Manual / seeded line: strip all then optionally add once
-    const base = stripActingMarker(value);
-    if (!base.trim()) {
-      onChange(next ? 'فضيلة رئيس المحكمة المكلف سلمه الله' : '');
-      return;
-    }
-    onChange(applyActingMarker(base, next));
+    const base = stripActingMarker(value) || 'فضيلة رئيس المحكمة سلمه الله';
+    onChange(formatCourtPresidentLine(applyActingMarker(base, next)));
   }
 
   function toggleEmp(id: string) {
@@ -249,7 +243,7 @@ export default function RecipientCascade({
                 : 'border-dashed border-gray-300 bg-transparent text-gray-500 hover:border-moj-green'
             }`}
           >
-            <span>{acting ? 'مكلف (مفعّل)' : 'إضافة: مكلف'}</span>
+            <span>{acting ? 'إزالة المكلف' : 'إضافة: مكلف'}</span>
           </button>
           <span className="text-[10px] text-gray-500">اختياري — ليس إلزامياً</span>
         </div>
