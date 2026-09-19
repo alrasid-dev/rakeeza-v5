@@ -84,26 +84,42 @@ export default function RecipientCascade({
     return list;
   }, [employees, orgUnitId, multiDept, selectedDeptIds, empSearch]);
 
+  function lineFromDepts(deptIds: string[]) {
+    return deptIds
+      .map((id) => orgUnits.find((u) => u.id === id)?.name || '')
+      .filter(Boolean)
+      .join('\n');
+  }
+
+  /** Employees win; otherwise department names fill «إلى» so the letter shows the pick. */
   function emitSelection(nextEmpIds: string[], nextDeptIds?: string[]) {
     const idSet = new Set(nextEmpIds);
     const emps = employees.filter((e) => idSet.has(e.id));
-    const line = addressEmployees(
-      emps.map((e) => ({
-        name: e.name,
-        gender: e.gender,
-        notes: e.notes,
-        position: e.position,
-      })),
-    );
     const deptIds =
       nextDeptIds ??
-      Array.from(
-        new Set(
-          emps
-            .map((e) => e.orgUnitId || e.orgUnit?.id || '')
-            .filter(Boolean) as string[],
-        ),
+      (emps.length
+        ? Array.from(
+            new Set(
+              emps
+                .map((e) => e.orgUnitId || e.orgUnit?.id || '')
+                .filter(Boolean) as string[],
+            ),
+          )
+        : selectedDeptIds);
+
+    let line = '';
+    if (emps.length) {
+      line = addressEmployees(
+        emps.map((e) => ({
+          name: e.name,
+          gender: e.gender,
+          notes: e.notes,
+          position: e.position,
+        })),
       );
+    } else if (deptIds.length) {
+      line = lineFromDepts(deptIds);
+    }
     onChange(line, { employeeIds: nextEmpIds, orgUnitIds: deptIds });
   }
 
@@ -124,7 +140,7 @@ export default function RecipientCascade({
 
   function clearEmployees() {
     setSelectedEmpIds([]);
-    emitSelection([]);
+    emitSelection([], selectedDeptIds);
   }
 
   function toggleDept(id: string) {
@@ -133,8 +149,57 @@ export default function RecipientCascade({
       : [...selectedDeptIds, id];
     setSelectedDeptIds(next);
     setSelectedEmpIds([]);
-    onChange('');
+    emitSelection([], next);
   }
+
+  /** Quick chips: set «إلى» text directly (and pick matching employee when found). */
+  function applyQuickRecipient(label: string) {
+    setManual(false);
+    const q = label.replace(/^فضيلة\s+/, '').replace(/^الأستاذة?\s+/, '');
+    const match = employees.find((e) => {
+      const t = `${e.position?.title || ''} ${e.position?.honorific || ''}`;
+      if (/مكلف/.test(label) && !/مكلف/.test(t)) return false;
+      if (/رئيس\s*المحكمة/.test(label) && /رئيس\s*(محكمة|المحكمة)/.test(t)) return true;
+      if (/موارد\s*بشرية/.test(label) && /موارد\s*بشرية/.test(t)) return true;
+      return t.includes(q) || (e.name && label.includes(e.name));
+    });
+    if (match) {
+      setSelectedEmpIds([match.id]);
+      const unit = match.orgUnitId || match.orgUnit?.id || '';
+      if (unit) setSelectedDeptIds([unit]);
+      emitSelection([match.id], unit ? [unit] : []);
+      return;
+    }
+    setSelectedEmpIds([]);
+    onChange(label);
+  }
+
+  const QUICK_RECIPIENTS = useMemo(() => {
+    const base: { label: string; icon: string }[] = [
+      { label: 'فضيلة رئيس المحكمة المكلف', icon: '⚖️' },
+      { label: 'فضيلة رئيس المحكمة', icon: '🏛️' },
+      { label: 'الأستاذ مدير الموارد البشرية المكلف', icon: '👤' },
+    ];
+    const seen = new Set(base.map((b) => b.label));
+    for (const e of employees) {
+      const title = e.position?.title || '';
+      const hon = e.position?.honorific || '';
+      if (!/مكلف/.test(title) && !/مكلف/.test(hon)) continue;
+      const line = addressEmployee({
+        name: e.name,
+        gender: e.gender,
+        notes: e.notes,
+        position: e.position,
+      });
+      // Chip shows role without repeating the full name twice when long
+      const roleOnly = line.split('/')[0]?.trim() || line;
+      if (!roleOnly || seen.has(roleOnly)) continue;
+      seen.add(roleOnly);
+      base.push({ label: roleOnly, icon: '📌' });
+      if (base.length >= 8) break;
+    }
+    return base;
+  }, [employees]);
 
   const empSummary =
     selectedEmpIds.length === 0
@@ -197,6 +262,30 @@ export default function RecipientCascade({
         )}
       </div>
 
+      {!manual && (
+        <div className="flex flex-wrap gap-2">
+          {QUICK_RECIPIENTS.map((q) => {
+            const on = value.trim() === q.label || value.includes(q.label);
+            return (
+              <button
+                key={q.label}
+                type="button"
+                title={q.label}
+                onClick={() => applyQuickRecipient(q.label)}
+                className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] transition ${
+                  on
+                    ? 'border-moj-green bg-moj-green text-white'
+                    : 'border-moj-green/30 bg-moj-light/50 text-moj-green hover:bg-moj-light'
+                }`}
+              >
+                <span aria-hidden>{q.icon}</span>
+                <span className="font-semibold">{q.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {!manual ? (
         <div className="space-y-3">
           {!multiDept ? (
@@ -206,9 +295,16 @@ export default function RecipientCascade({
                 className="input"
                 value={orgUnitId}
                 onChange={(e) => {
-                  setOrgUnitId(e.target.value);
+                  const id = e.target.value;
+                  setOrgUnitId(id);
                   setSelectedEmpIds([]);
-                  onChange('');
+                  if (id) {
+                    setSelectedDeptIds([id]);
+                    emitSelection([], [id]);
+                  } else {
+                    setSelectedDeptIds([]);
+                    onChange('');
+                  }
                 }}
               >
                 <option value="">— كل الأقسام —</option>

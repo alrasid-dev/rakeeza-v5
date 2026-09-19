@@ -218,17 +218,71 @@ export function peerTitleFor(emp: HonorificEmployee): string {
 }
 
 /** Default internal peer address */
+/** True when title/honorific marks an acting (مكلف) appointment */
+export function isActingAppointment(title?: string | null, honorific?: string | null): boolean {
+  return /مكلف/.test(String(title || '')) || /مكلف/.test(String(honorific || ''));
+}
+
+/**
+ * Infer judicial VIP line from position title.
+ * Examples: رئيس محكمة مكلف → فضيلة رئيس المحكمة المكلف
+ */
+export function courtPresidentHonorificFromTitle(title?: string | null): string | null {
+  const t = String(title || '').trim();
+  if (!t) return null;
+  if (/رئيس\s*(محكمة|المحكمة)\s*الم?كلف|رئيس\s*محكمة\s*مكلف/.test(t)) {
+    return 'فضيلة رئيس المحكمة المكلف';
+  }
+  if (/رئيس\s*(محكمة|المحكمة)/.test(t) && !/مساعد|تشكيل|مكلف/.test(t)) {
+    return 'فضيلة رئيس المحكمة';
+  }
+  if (/رئيس\s*تشكيل|رئيس\s*التشكيل/.test(t)) {
+    return /مكلف/.test(t) ? 'فضيلة رئيس التشكيل المكلف' : 'فضيلة رئيس التشكيل';
+  }
+  if (/الرئيس\s*المساعد|مساعد\s*رئيس/.test(t)) {
+    return /مكلف/.test(t) ? 'فضيلة الرئيس المساعد المكلف' : 'فضيلة الرئيس المساعد';
+  }
+  return null;
+}
+
+/**
+ * Address line for internal letters.
+ * If the person is مكلف, include the full acting title so the letter shows e.g.
+ * «فضيلة رئيس المحكمة المكلف / …» or «الأستاذ مدير الموارد البشرية المكلف / …».
+ */
 export function addressEmployee(emp: HonorificEmployee, opts?: { peerPrefix?: string }) {
   const rawHonorific = emp.position?.honorific?.trim() || '';
+  const title = emp.position?.title?.trim() || '';
+  const acting = isActingAppointment(title, rawHonorific);
+  const fromTitle = courtPresidentHonorificFromTitle(title);
 
-  // Keep judicial / VIP honorifics (فضيلة، معالي، سمو) with gender fix for قاضي/قاضية
+  let vipLine = '';
   if (rawHonorific && isVipHonorific(rawHonorific) && !isSaadaOrEmptyStaff(rawHonorific)) {
-    const vip = vipHonorificFor(emp, rawHonorific);
-    return `${vip} / ${emp.name}`.replace(/\s+/g, ' ').trim();
+    vipLine = vipHonorificFor(emp, rawHonorific);
+  }
+  if (fromTitle) {
+    if (!vipLine || acting || /مكلف/.test(fromTitle)) {
+      vipLine = fromTitle;
+    }
+  }
+  if (/رئيس\s*المحكمة\s*المكلف/.test(rawHonorific)) {
+    vipLine = 'فضيلة رئيس المحكمة المكلف';
   }
 
-  // Ignore سعادة and generic staff honorifics — use gender-aware peer form
+  if (vipLine) {
+    return `${vipLine} / ${emp.name}`.replace(/\s+/g, ' ').trim();
+  }
+
   const peer = opts?.peerPrefix?.trim() || peerTitleFor(emp);
+
+  // Acting staff (non-VIP): show peer + full title with المكلف
+  if (acting && title) {
+    let role = title;
+    role = role.replace(/^الأستاذة?\s*/, '').replace(/^سعاد[ةه]\s*/, '').trim();
+    if (!/مكلف/.test(role)) role = `${role} المكلف`;
+    return `${peer} ${role} / ${emp.name}`.replace(/\s+/g, ' ').trim();
+  }
+
   return `${peer} / ${emp.name}`.replace(/\s+/g, ' ').trim();
 }
 

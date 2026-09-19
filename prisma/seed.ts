@@ -77,6 +77,10 @@ const POSITIONS: { title: string; honorific: string; rank: number }[] = [
   { title: 'باحث شرعي', honorific: 'الأستاذ', rank: 70 },
   { title: 'باحث قانوني', honorific: 'الأستاذ', rank: 70 },
   { title: 'موظف إداري', honorific: 'الأستاذ', rank: 40 },
+  { title: 'مدير الموارد البشرية', honorific: 'الأستاذ', rank: 60 },
+  { title: 'مدير الموارد البشرية المكلف', honorific: 'الأستاذ مدير الموارد البشرية المكلف', rank: 59 },
+  { title: 'مدير قسم', honorific: 'الأستاذ', rank: 55 },
+  { title: 'مدير قسم مكلف', honorific: 'الأستاذ', rank: 54 },
 ];
 
 const DOC_TEMPLATES = [
