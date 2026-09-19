@@ -193,11 +193,14 @@ export async function GET(req: NextRequest) {
         copyTo?: string;
         style?: { fontFamily?: string };
         judgmentCard?: { label: string; value: string }[];
+        judgmentBriefing?: boolean;
       };
       qrDataUrl = fields.qrDataUrl || null;
       (doc as { _copyTo?: string })._copyTo = fields.copyTo || '';
       bodyFont = docxFontName(fields.style?.fontFamily);
       judgmentCard = Array.isArray(fields.judgmentCard) ? fields.judgmentCard : [];
+      (doc as { _judgmentBriefing?: boolean })._judgmentBriefing =
+        fields.judgmentBriefing === true || judgmentCard.length > 0;
     } catch {
       qrDataUrl = null;
     }
@@ -376,7 +379,41 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    if (doc.parties && doc.parties.trim()) {
+    const isBriefing =
+      Boolean((doc as { _judgmentBriefing?: boolean })._judgmentBriefing) || judgmentCard.length > 0;
+
+    if (judgmentCard.length) {
+      children.push(new Paragraph({ children: [], spacing: { after: 160 } }));
+      children.push(banner('عرض شف — بطاقة رصد', GREEN));
+      const labelW = Math.floor(PAGE_W * 0.38);
+      const valueW = PAGE_W - labelW;
+      children.push(
+        new Table({
+          width: { size: PAGE_W, type: WidthType.DXA },
+          rows: judgmentCard.map(
+            (r, i) =>
+              new TableRow({
+                children: [
+                  cell(r.value || '—', {
+                    width: valueW,
+                    fill: i % 2 ? LIGHT : 'FFFFFF',
+                    font: bodyFont,
+                  }),
+                  cell(r.label || '—', {
+                    bold: true,
+                    width: labelW,
+                    fill: LIGHT,
+                    color: GREEN,
+                    font: bodyFont,
+                  }),
+                ],
+              }),
+          ),
+        }),
+      );
+    }
+
+    if (!isBriefing && doc.parties && doc.parties.trim()) {
       children.push(new Paragraph({ children: [], spacing: { after: 120 } }));
       children.push(banner('أطراف القضية', GREEN));
       const partyLines = String(doc.parties)
@@ -404,47 +441,16 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    if (doc.reasons && doc.reasons.trim()) {
+    if (!isBriefing && doc.reasons && doc.reasons.trim()) {
       children.push(new Paragraph({ children: [], spacing: { after: 160 } }));
       children.push(banner('الأسباب', '8B7355'));
       children.push(...bodyLines(doc.reasons));
     }
 
-    if (doc.body && doc.body.trim()) {
+    if (!isBriefing && doc.body && doc.body.trim()) {
       children.push(new Paragraph({ children: [], spacing: { after: 160 } }));
       children.push(banner('نص المكاتبة', GREEN));
       children.push(...bodyLines(doc.body));
-    }
-
-    if (judgmentCard.length) {
-      children.push(new Paragraph({ children: [], spacing: { after: 160 } }));
-      children.push(banner('بطاقة رصد', GREEN));
-      const labelW = Math.floor(PAGE_W * 0.38);
-      const valueW = PAGE_W - labelW;
-      children.push(
-        new Table({
-          width: { size: PAGE_W, type: WidthType.DXA },
-          rows: judgmentCard.map(
-            (r, i) =>
-              new TableRow({
-                children: [
-                  cell(r.value || '—', {
-                    width: valueW,
-                    fill: i % 2 ? LIGHT : 'FFFFFF',
-                    font: bodyFont,
-                  }),
-                  cell(r.label || '—', {
-                    bold: true,
-                    width: labelW,
-                    fill: LIGHT,
-                    color: GREEN,
-                    font: bodyFont,
-                  }),
-                ],
-              }),
-          ),
-        }),
-      );
     }
 
     if (doc.studyFields && doc.studyFields.trim()) {

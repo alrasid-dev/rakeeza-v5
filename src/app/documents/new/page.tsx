@@ -17,9 +17,15 @@ import { suggestFont } from '@/lib/font-suggest';
 import { applyPolishFix, findPolishIssues, suggestLegalPhrases, type PolishIssue, type LegalPhraseSuggestion } from '@/lib/arabic-polish';
 import { DEFAULT_PAPER_LAYOUT, normalizePaperLayout, type PaperLayoutId } from '@/lib/paper-layouts';
 import {
+  JUDGMENT_CARD_SUBJECT,
+  MECHANISM_LABEL,
+  PROCESSING_MECHANISMS,
+  isJudgmentBriefingMeta,
+  isKnownMechanism,
   mergeJudgmentCardFromPaste,
   normalizeJudgmentCard,
   parseTemplateFieldsJson,
+  setJudgmentCardValue,
   type JudgmentCardRow,
 } from '@/lib/judgment-card';
 import { fontStackFor } from '@/lib/font-stacks';
@@ -194,9 +200,17 @@ function NewDocumentInner() {
     const meta = parseTemplateFieldsJson(match.fieldsJson);
     const seed = meta.seed;
 
+    const briefing = isJudgmentBriefingMeta(meta);
+
     setForm((f) => {
       const next = { ...f, docType: formName || match.name || f.docType };
-      if ((!next.body || !next.body.trim()) && match.bodyHtml) {
+      if (briefing) {
+        // عرض شف: content lives in the table — never inject letter body prose
+        next.body = '';
+        next.parties = '';
+        next.reasons = '';
+        next.studyFields = '';
+      } else if ((!next.body || !next.body.trim()) && match.bodyHtml) {
         next.body = match.bodyHtml;
       }
       if ((!next.subject || !next.subject.trim()) && seed?.subject) {
@@ -210,6 +224,9 @@ function NewDocumentInner() {
 
     if (seed?.judgmentCard?.length) {
       setJudgmentCard((prev) => (prev && prev.length ? prev : seed.judgmentCard!));
+    } else if (briefing) {
+      // ensure card exists for briefing templates even if seed missing
+      setJudgmentCard((prev) => (prev && prev.length ? prev : null));
     }
 
     // Prefer URL layoutParam; otherwise template defaultPaperLayout
@@ -252,63 +269,75 @@ function NewDocumentInner() {
   /** Smart paste REPLACES fields — never merges/appends with previous body */
   function applyPaste() {
     const parsed = parsePaste(paste);
-    const nextBody = normalizeBodyText(parsed.body || '');
-    const enrichedStudy = parsed.studySections
-      ? enrichStudySections(parsed.studySections, {
-          subject: parsed.subject,
-          parties: parsed.parties,
-          reasons: parsed.reasons,
-          studyFields: parsed.studyFields,
-          body: nextBody,
-          recipients: parsed.recipients,
-        })
-      : null;
+    const tpl = templates.find((t) => t.id === templateId);
+    const briefing = isJudgmentBriefingMeta(parseTemplateFieldsJson(tpl?.fieldsJson)) || Boolean(judgmentCard?.length);
+    const nextBody = briefing ? '' : normalizeBodyText(parsed.body || '');
+    const enrichedStudy = briefing
+      ? null
+      : parsed.studySections
+        ? enrichStudySections(parsed.studySections, {
+            subject: parsed.subject,
+            parties: parsed.parties,
+            reasons: parsed.reasons,
+            studyFields: parsed.studyFields,
+            body: nextBody,
+            recipients: parsed.recipients,
+          })
+        : null;
     const caseNumber = (enrichedStudy?.caseNumber || parsed.studySections?.caseNumber || '').replace(/\s+/g, '');
-    const nextSubject =
-      (parsed.subject && parsed.subject.trim()) ||
-      (caseNumber ? `دراسة شكوى — ${caseNumber}` : '');
-    setTableRows(parsed.tableRows || []);
-    // Fill «مصدر الحكم فضيلة الشيخ» (and other card rows) from smart paste when present
+    const seedMeta = parseTemplateFieldsJson(tpl?.fieldsJson).seed;
+    const nextSubject = briefing
+      ? (parsed.subject && parsed.subject.trim()) ||
+        form.subject ||
+        seedMeta?.subject ||
+        JUDGMENT_CARD_SUBJECT
+      : (parsed.subject && parsed.subject.trim()) ||
+        (caseNumber ? `دراسة شكوى — ${caseNumber}` : '');
+    setTableRows(briefing ? [] : parsed.tableRows || []);
+    // Fill «مصدر الحكم فضيلة الشيخ» + آلية المعالجة المقترحة from smart paste
     setJudgmentCard((prev) => {
       const extras = { ...(parsed.judgmentCardFields || {}) };
-      // Study paste may carry judge/researcher under researcher
       const researcher = enrichedStudy?.researcher || parsed.studySections?.researcher;
       if (researcher && !extras['مصدر الحكم فضيلة الشيخ']) {
         extras['مصدر الحكم فضيلة الشيخ'] = researcher;
       }
       const formation = enrichedStudy?.formation || parsed.studySections?.formation;
       if (formation && !extras['التشكيل']) extras['التشكيل'] = formation;
-      const caseNumber = enrichedStudy?.caseNumber || parsed.studySections?.caseNumber;
-      if (caseNumber && !extras['رقم القضية']) extras['رقم القضية'] = caseNumber;
+      const caseNo = enrichedStudy?.caseNumber || parsed.studySections?.caseNumber;
+      if (caseNo && !extras['رقم القضية']) extras['رقم القضية'] = caseNo;
       const deed = enrichedStudy?.deedNumber || parsed.studySections?.deedNumber;
       if (deed && !extras['رقم الحكم']) extras['رقم الحكم'] = deed;
-      const hasAny = Object.values(extras).some((v) => String(v || '').trim());
-      if (!hasAny && !(prev && prev.length)) return prev;
+      const hasAny = Object.values(extras).some((v) => String(v || '').trim()) || Boolean(paste.trim());
+      if (!hasAny && !(prev && prev.length) && !briefing) return prev;
       return mergeJudgmentCardFromPaste(prev, paste, extras);
     });
-    setStudySections(enrichedStudy || parsed.studySections || null);
-    setDetectedKind(parsed.detectedKind || '');
-    if (parsed.fontHint) {
+    setStudySections(briefing ? null : enrichedStudy || parsed.studySections || null);
+    setDetectedKind(briefing ? 'briefing' : parsed.detectedKind || '');
+    if (parsed.fontHint && !briefing) {
       setStyle((s) => ({
         ...s,
         fontFamily: parsed.fontHint!.family,
         fontSizePt: parsed.fontHint!.sizePt,
       }));
     }
-    if (parsed.detectedKind === 'study') {
-      setPaperLayout('study-report');
-    } else if (parsed.detectedKind === 'letter' && /تعميم/.test(parsed.subject || paste)) {
-      setPaperLayout('taameem-circular');
+    if (!briefing) {
+      if (parsed.detectedKind === 'study') {
+        setPaperLayout('study-report');
+      } else if (parsed.detectedKind === 'letter' && /تعميم/.test(parsed.subject || paste)) {
+        setPaperLayout('taameem-circular');
+      }
     }
     const { corrections } = suggestFont(form.docType || formName, nextBody);
     setFontCorrections(corrections);
     setForm({
       ...EMPTY_FORM,
       subject: nextSubject,
-      recipients: parsed.recipients || '',
-      parties: parsed.parties || '',
-      reasons: parsed.reasons || '',
-      studyFields: parsed.studyFields || '',
+      recipients:
+        (parsed.recipients && parsed.recipients.trim()) ||
+        (briefing ? form.recipients || seedMeta?.recipients || '' : ''),
+      parties: briefing ? '' : parsed.parties || '',
+      reasons: briefing ? '' : parsed.reasons || '',
+      studyFields: briefing ? '' : parsed.studyFields || '',
       body: nextBody,
       dateGregorian: (() => {
         const raw = parsed.date || '';
@@ -322,14 +351,16 @@ function NewDocumentInner() {
         if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return formatHijri(raw);
         return todayHijri();
       })(),
-      docType:
-        parsed.detectedKind === 'study'
+      docType: briefing
+        ? formName || form.docType || 'مدخلات الأحكام بطاقة عرض'
+        : parsed.detectedKind === 'study'
           ? formName || 'نموذج تحليل حكم (شكوى)'
           : formName || form.docType || 'مكاتبة',
     });
     setSavedDocId(null);
     setStep(3);
   }
+
 
   function clearLocalDraft() {
     if (formSlug) clearDraft(formSlug);
@@ -474,7 +505,7 @@ function NewDocumentInner() {
         templateId: templateId || null,
         issue,
         assignNumber: issue,
-        fields: { tableRows, judgmentCard, studySections, style, paperLayout, copyTo: form.copyTo },
+        fields: { tableRows, judgmentCard, studySections, style, paperLayout, copyTo: form.copyTo, judgmentBriefing: isBriefing },
       }),
     });
     const data = await res.json();
@@ -516,8 +547,13 @@ function NewDocumentInner() {
     }
   }
 
+  const activeTpl = templates.find((t) => t.id === templateId);
+  const activeMeta = parseTemplateFieldsJson(activeTpl?.fieldsJson);
+  const isBriefing =
+    isJudgmentBriefingMeta(activeMeta) || Boolean(judgmentCard && judgmentCard.length > 0);
+
   const title = formName || 'مكاتبة جديدة';
-  const previewBody = normalizeBodyText(form.body);
+  const previewBody = isBriefing ? '' : normalizeBodyText(form.body);
   const editorFontStyle: React.CSSProperties = {
     fontFamily: fontStackFor(style.fontFamily),
     fontSize: style.fontSizePt ? `${style.fontSizePt}pt` : undefined,
@@ -531,13 +567,15 @@ function NewDocumentInner() {
     dateHijri: form.dateHijri,
     recipients: form.recipients,
     copyTo: form.copyTo,
-    parties: form.parties,
-    reasons: form.reasons,
-    studyFields: form.studyFields,
+    parties: isBriefing ? '' : form.parties,
+    reasons: isBriefing ? '' : form.reasons,
+    studyFields: isBriefing ? '' : form.studyFields,
     body: previewBody,
     docType: form.docType,
     paperLayout,
-    studySections,
+    studySections: isBriefing ? null : studySections,
+    judgmentCard,
+    judgmentBriefing: isBriefing,
     fontFamily: style.fontFamily,
     fontSizePt: style.fontSizePt,
   };
@@ -863,80 +901,148 @@ function NewDocumentInner() {
                 </div>
               </div>
 
-              <div>
-                <label className="label">الأطراف</label>
-                <textarea
-                  ref={(el) => {
-                    fieldRefs.current.parties = el;
-                  }}
-                  className="input min-h-[60px]"
-                  style={editorFontStyle}
-                  value={form.parties}
-                  onChange={(e) => setForm({ ...form, parties: e.target.value })}
-                />
-              </div>
-
-              <div>
-                <label className="label">الأسباب / الحيثيات</label>
-                <textarea
-                  ref={(el) => {
-                    fieldRefs.current.reasons = el;
-                  }}
-                  className="input min-h-[80px]"
-                  style={editorFontStyle}
-                  value={form.reasons}
-                  onChange={(e) => setForm({ ...form, reasons: e.target.value })}
-                />
-              </div>
-
-              <div>
-                <label className="label">حقول الدراسة / التوصية</label>
-                <textarea
-                  ref={(el) => {
-                    fieldRefs.current.studyFields = el;
-                  }}
-                  className="input min-h-[60px]"
-                  style={editorFontStyle}
-                  value={form.studyFields}
-                  onChange={(e) => setForm({ ...form, studyFields: e.target.value })}
-                  placeholder="التوصية: ..."
-                />
-              </div>
-
-              <div>
-                <label className="label">نص المكاتبة</label>
-                {polishIssues.length > 0 && (
-                  <div
-                    dir="rtl"
-                    className="mb-2 rounded-lg border border-amber-400/80 bg-amber-50/90 dark:bg-amber-950/30 px-2.5 py-1.5 space-y-1"
-                  >
-                    <div className="text-[11px] font-bold text-amber-900 dark:text-amber-100">
-                      تدقيق سريع ({polishIssues.length})
-                    </div>
-                    <ul className="space-y-1">
-                      {polishIssues.map((iss, i) => renderPolishIssueRow(iss, i, true))}
-                    </ul>
+              {isBriefing ? (
+                <div className="space-y-2" ref={(el) => { fieldRefs.current.judgmentCard = el; }}>
+                  <div className="flex items-center justify-between gap-2">
+                    <label className="label mb-0">بطاقة رصد — عرض شف</label>
+                    <span className="text-[11px] text-moj-green/80">توزَّع الحقول تلقائياً في الجدول</span>
                   </div>
-                )}
-                <textarea
-                  ref={(el) => {
-                    fieldRefs.current.body = el;
-                  }}
-                  className="input min-h-[140px]"
-                  style={editorFontStyle}
-                  value={form.body}
-                  onChange={(e) => setBodyField(e.target.value)}
-                />
-              </div>
+                  <div className="overflow-x-auto rounded-lg border border-moj-green/40">
+                    <table className="w-full text-sm" dir="rtl">
+                      <tbody>
+                        {(judgmentCard || []).map((row, i) => (
+                          <tr key={`${row.label}-${i}`} className="odd:bg-white even:bg-moj-light/30 dark:odd:bg-transparent dark:even:bg-white/5">
+                            <th className="p-2 border-b border-moj-green/20 text-moj-green font-bold text-right whitespace-nowrap w-[38%] align-middle">
+                              {row.label}
+                            </th>
+                            <td className="p-1.5 border-b border-moj-green/20 align-middle">
+                              {row.label === MECHANISM_LABEL ? (
+                                <select
+                                  className="input py-1.5 text-sm"
+                                  style={editorFontStyle}
+                                  value={
+                                    isKnownMechanism(row.value)
+                                      ? row.value
+                                      : row.value || PROCESSING_MECHANISMS[0]
+                                  }
+                                  onChange={(e) => {
+                                    const v = e.target.value;
+                                    setJudgmentCard((prev) =>
+                                      setJudgmentCardValue(prev || [], MECHANISM_LABEL, v),
+                                    );
+                                  }}
+                                >
+                                  {!isKnownMechanism(row.value) && row.value ? (
+                                    <option value={row.value}>{row.value}</option>
+                                  ) : null}
+                                  {PROCESSING_MECHANISMS.map((m) => (
+                                    <option key={m} value={m}>
+                                      {m}
+                                    </option>
+                                  ))}
+                                </select>
+                              ) : (
+                                <input
+                                  className="input py-1.5 text-sm"
+                                  style={editorFontStyle}
+                                  value={row.value}
+                                  dir="auto"
+                                  onChange={(e) => {
+                                    const v = e.target.value;
+                                    setJudgmentCard((prev) =>
+                                      setJudgmentCardValue(prev || [], row.label, v),
+                                    );
+                                  }}
+                                />
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <p className="text-[11px] text-gray-500 dark:text-white/40">
+                    لا يُعرض قسم الأطراف ولا نص المكاتبة في المعاينة أو التصدير لهذا القالب.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <label className="label">الأطراف</label>
+                    <textarea
+                      ref={(el) => {
+                        fieldRefs.current.parties = el;
+                      }}
+                      className="input min-h-[60px]"
+                      style={editorFontStyle}
+                      value={form.parties}
+                      onChange={(e) => setForm({ ...form, parties: e.target.value })}
+                    />
+                  </div>
 
-              {tableRows.length > 0 && !studySections && (
+                  <div>
+                    <label className="label">الأسباب / الحيثيات</label>
+                    <textarea
+                      ref={(el) => {
+                        fieldRefs.current.reasons = el;
+                      }}
+                      className="input min-h-[80px]"
+                      style={editorFontStyle}
+                      value={form.reasons}
+                      onChange={(e) => setForm({ ...form, reasons: e.target.value })}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="label">حقول الدراسة / التوصية</label>
+                    <textarea
+                      ref={(el) => {
+                        fieldRefs.current.studyFields = el;
+                      }}
+                      className="input min-h-[60px]"
+                      style={editorFontStyle}
+                      value={form.studyFields}
+                      onChange={(e) => setForm({ ...form, studyFields: e.target.value })}
+                      placeholder="التوصية: ..."
+                    />
+                  </div>
+
+                  <div>
+                    <label className="label">نص المكاتبة</label>
+                    {polishIssues.length > 0 && (
+                      <div
+                        dir="rtl"
+                        className="mb-2 rounded-lg border border-amber-400/80 bg-amber-50/90 dark:bg-amber-950/30 px-2.5 py-1.5 space-y-1"
+                      >
+                        <div className="text-[11px] font-bold text-amber-900 dark:text-amber-100">
+                          تدقيق سريع ({polishIssues.length})
+                        </div>
+                        <ul className="space-y-1">
+                          {polishIssues.map((iss, i) => renderPolishIssueRow(iss, i, true))}
+                        </ul>
+                      </div>
+                    )}
+                    <textarea
+                      ref={(el) => {
+                        fieldRefs.current.body = el;
+                      }}
+                      className="input min-h-[140px]"
+                      style={editorFontStyle}
+                      value={form.body}
+                      onChange={(e) => setBodyField(e.target.value)}
+                    />
+                  </div>
+                </>
+              )}
+
+              {tableRows.length > 0 && !studySections && !isBriefing && (
                 <div className="text-xs text-moj-green bg-moj-light rounded-lg p-2">
                   تم استخراج {tableRows.length} صف/صفوف من جدول الأسماء والهويات — تظهر في المعاينة.
                 </div>
               )}
-              {judgmentCard && judgmentCard.length > 0 && (
+              {isBriefing && judgmentCard && judgmentCard.length > 0 && (
                 <div className="text-xs text-moj-green bg-moj-light rounded-lg p-2">
-                  بطاقة رصد ({judgmentCard.length} صفوف) — تظهر تلقائياً داخل الخطاب تحت النص.
+                  عرض شف — بطاقة رصد ({judgmentCard.length} صفوف) تظهر تحت بيانات الخطاب مباشرة.
                 </div>
               )}
               {studySections && (
@@ -972,14 +1078,15 @@ function NewDocumentInner() {
                   dateHijri: form.dateHijri,
                   recipients: form.recipients,
                   copyTo: form.copyTo,
-                  parties: form.parties,
-                  reasons: form.reasons,
-                  studyFields: form.studyFields,
+                  parties: isBriefing ? '' : form.parties,
+                  reasons: isBriefing ? '' : form.reasons,
+                  studyFields: isBriefing ? '' : form.studyFields,
                   body: previewBody,
                   docType: form.docType,
-                  tableRows,
+                  tableRows: isBriefing ? [] : tableRows,
                   judgmentCard,
-                  studySections,
+                  judgmentBriefing: isBriefing,
+                  studySections: isBriefing ? null : studySections,
                   paperLayout,
                 }}
               />

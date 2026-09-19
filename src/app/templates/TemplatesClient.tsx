@@ -6,7 +6,6 @@ import OfficialPaperPreview from '@/components/OfficialPaperPreview';
 import PaperLayoutPicker from '@/components/PaperLayoutPicker';
 import { DEFAULT_PAPER_LAYOUT, type PaperLayoutId } from '@/lib/paper-layouts';
 import {
-  JUDGMENT_CARD_BODY,
   JUDGMENT_CARD_RECIPIENTS,
   JUDGMENT_CARD_SEED,
   JUDGMENT_CARD_SUBJECT,
@@ -55,14 +54,14 @@ const SAMPLE: Record<string, SampleDoc> = {
   'مدخلات الأحكام بطاقة عرض': {
     subject: JUDGMENT_CARD_SUBJECT,
     recipients: JUDGMENT_CARD_RECIPIENTS,
-    body: JUDGMENT_CARD_BODY,
+    body: '',
     judgmentCard: JUDGMENT_CARD_SEED,
     layout: 'taameem-circular',
   },
   'مدخلات الأحكام بطاقة عرض — عصري هندسي': {
     subject: JUDGMENT_CARD_SUBJECT,
     recipients: JUDGMENT_CARD_RECIPIENTS,
-    body: JUDGMENT_CARD_BODY,
+    body: '',
     judgmentCard: JUDGMENT_CARD_SEED,
     layout: 'modern-hex',
   },
@@ -168,9 +167,10 @@ export default function TemplatesClient({
               doc={{
                 subject: sample.subject,
                 recipients: sample.recipients,
-                body: sample.body || undefined,
+                body: sample.judgmentCard?.length ? '' : sample.body || undefined,
                 paperLayout: effectiveLayout,
                 judgmentCard: sample.judgmentCard,
+                judgmentBriefing: Boolean(sample.judgmentCard?.length),
                 studySections: sample.study
                   ? {
                       caseNumber: '٠٠٠٠٠٠٠٠٠٠',

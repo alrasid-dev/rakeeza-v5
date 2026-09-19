@@ -85,6 +85,7 @@ export default function DocumentDetailPage() {
     qrDataUrl?: string;
     tableRows?: { name: string; id?: string; extra?: string }[];
     judgmentCard?: { label: string; value: string }[];
+    judgmentBriefing?: boolean;
     studySections?: StudySections;
     style?: DocStyle;
     paperLayout?: PaperLayoutId | string;
@@ -155,15 +156,16 @@ export default function DocumentDetailPage() {
               dateHijri: doc.dateHijri,
               recipients: doc.recipients,
               copyTo: fields.copyTo,
-              parties: doc.parties,
-              reasons: doc.reasons,
-              studyFields: doc.studyFields,
-              body: bodyOnce,
+              parties: fields.judgmentBriefing || fields.judgmentCard?.length ? '' : doc.parties,
+              reasons: fields.judgmentBriefing || fields.judgmentCard?.length ? '' : doc.reasons,
+              studyFields: fields.judgmentBriefing || fields.judgmentCard?.length ? '' : doc.studyFields,
+              body: fields.judgmentBriefing || fields.judgmentCard?.length ? '' : bodyOnce,
               docType: doc.docType,
               qrDataUrl: fields.qrDataUrl,
-              tableRows: fields.tableRows,
+              tableRows: fields.judgmentBriefing || fields.judgmentCard?.length ? [] : fields.tableRows,
               judgmentCard: fields.judgmentCard,
-              studySections: fields.studySections,
+              judgmentBriefing: Boolean(fields.judgmentBriefing || fields.judgmentCard?.length),
+              studySections: fields.judgmentBriefing || fields.judgmentCard?.length ? null : fields.studySections,
               paperLayout,
             }}
           />

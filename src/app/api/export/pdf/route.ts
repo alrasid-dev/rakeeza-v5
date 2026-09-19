@@ -267,6 +267,7 @@ export async function GET(req: NextRequest) {
     let paperLayout: string | null = null;
     let copyToField = '';
     let judgmentCard: { label: string; value: string }[] | null = null;
+    let judgmentBriefing = false;
     try {
       const fields = JSON.parse(doc.fieldsJson || '{}') as {
         qrDataUrl?: string;
@@ -275,6 +276,7 @@ export async function GET(req: NextRequest) {
         paperLayout?: string;
         copyTo?: string;
         judgmentCard?: { label: string; value: string }[];
+        judgmentBriefing?: boolean;
       };
       qrDataUrl = fields.qrDataUrl || null;
       studySections = fields.studySections || null;
@@ -282,6 +284,7 @@ export async function GET(req: NextRequest) {
       paperLayout = fields.paperLayout || null;
       copyToField = fields.copyTo || '';
       judgmentCard = fields.judgmentCard?.length ? fields.judgmentCard : null;
+      judgmentBriefing = fields.judgmentBriefing === true || Boolean(judgmentCard?.length);
     } catch {
       qrDataUrl = null;
     }
@@ -326,16 +329,17 @@ html, body, .paper, .paper *:not(img):not(svg):not(svg *) {
         dateHijri: doc.dateHijri,
         recipients: doc.recipients,
         copyTo: copyToField,
-        parties: doc.parties,
-        reasons: doc.reasons,
-        studyFields: doc.studyFields,
-        body: doc.body,
+        parties: judgmentBriefing ? '' : doc.parties,
+        reasons: judgmentBriefing ? '' : doc.reasons,
+        studyFields: judgmentBriefing ? '' : doc.studyFields,
+        body: judgmentBriefing ? '' : doc.body,
         docType: doc.docType,
         footer: letterhead?.footer || 'للاستخدام الداخلي فقط',
         qrDataUrl,
         headerLines,
-        studySections,
+        studySections: judgmentBriefing ? null : studySections,
         judgmentCard,
+        judgmentBriefing,
         fontFamily: style?.fontFamily || 'Traditional Arabic',
         fontSizePt: style?.fontSizePt,
         paperLayout,

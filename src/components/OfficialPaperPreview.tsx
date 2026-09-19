@@ -33,6 +33,8 @@ export type OfficialPaperFields = {
   courtName?: string | null;
   tableRows?: { name: string; id?: string; extra?: string }[];
   judgmentCard?: { label: string; value: string }[] | null;
+  /** عرض شف briefing — hide الأطراف / النص even if leftover shells exist */
+  judgmentBriefing?: boolean | null;
   studySections?: StudySections | null;
   paperLayout?: PaperLayoutId | string | null;
 };
@@ -700,15 +702,19 @@ export default function OfficialPaperPreview({
     study?.preparer,
   ];
   // When StudyFormView is on screen, hide form leftovers (empty label shells / duplicates).
-  const partiesLeftover = hasStudy ? '' : leftoverBlock(doc.parties, already);
-  const reasonsLeftover = hasStudy ? '' : leftoverBlock(doc.reasons, already);
-  const studyFieldsLeftover = hasStudy ? '' : leftoverBlock(doc.studyFields, already);
-  const bodyForPreview = hasStudy
-    ? ''
-    : leftoverBlock(
-        bodyOnce ? bodyWithoutDuplicatedSections(bodyOnce, doc.parties, doc.reasons) : '',
-        already,
-      );
+  // Judgment briefing (عرض شف): never show الأطراف / النص / أسباب / دراسة shells.
+  const isBriefing =
+    doc.judgmentBriefing === true || Boolean(doc.judgmentCard && doc.judgmentCard.length > 0);
+  const partiesLeftover = hasStudy || isBriefing ? '' : leftoverBlock(doc.parties, already);
+  const reasonsLeftover = hasStudy || isBriefing ? '' : leftoverBlock(doc.reasons, already);
+  const studyFieldsLeftover = hasStudy || isBriefing ? '' : leftoverBlock(doc.studyFields, already);
+  const bodyForPreview =
+    hasStudy || isBriefing
+      ? ''
+      : leftoverBlock(
+          bodyOnce ? bodyWithoutDuplicatedSections(bodyOnce, doc.parties, doc.reasons) : '',
+          already,
+        );
   const showParties = Boolean(partiesLeftover);
   const showReasons = Boolean(reasonsLeftover);
   const showStudyFields = Boolean(studyFieldsLeftover);
@@ -824,6 +830,27 @@ export default function OfficialPaperPreview({
           )}
 
 
+          {doc.judgmentCard && doc.judgmentCard.length > 0 && (
+            <div className="mt-1">
+              <SectionTitle accent={chrome.titleAccent}>عرض شف — بطاقة رصد</SectionTitle>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm border border-moj-green">
+                  <tbody>
+                    {doc.judgmentCard.map((r, i) => (
+                      <tr key={i} className="odd:bg-white even:bg-moj-light/40">
+                        <th className="p-2 border border-moj-green/40 bg-moj-green/10 text-moj-green font-bold w-[38%] text-right align-middle whitespace-nowrap">
+                          {r.label}
+                        </th>
+                        <td className="p-2 border border-moj-green/40 text-right align-middle font-semibold" dir="auto">
+                          {r.value || '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
           {showParties && (
             <Clickable field="parties" onFieldClick={onFieldClick}>
               <SectionTitle accent={chrome.titleAccent}>الأطراف</SectionTitle>
@@ -850,27 +877,6 @@ export default function OfficialPaperPreview({
             </Clickable>
           )}
 
-          {doc.judgmentCard && doc.judgmentCard.length > 0 && (
-            <div className="mt-3">
-              <SectionTitle accent={chrome.titleAccent}>بطاقة رصد</SectionTitle>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm border border-moj-green">
-                  <tbody>
-                    {doc.judgmentCard.map((r, i) => (
-                      <tr key={i} className="odd:bg-white even:bg-moj-light/40">
-                        <th className="p-2 border border-moj-green/40 bg-moj-green/10 text-moj-green font-bold w-[38%] text-right align-middle">
-                          {r.label}
-                        </th>
-                        <td className="p-2 border border-moj-green/40 text-right align-middle" dir="auto">
-                          {r.value}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
           {showStudyFields && (
             <Clickable field="studyFields" onFieldClick={onFieldClick}>
               <SectionTitle accent={chrome.titleAccent}>الدراسة</SectionTitle>

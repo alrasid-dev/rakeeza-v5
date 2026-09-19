@@ -31,6 +31,8 @@ function judgmentFieldsJson(defaultPaperLayout: string) {
   return JSON.stringify({
     keys: [...LETTER_KEYS, 'judgmentCard'],
     defaultPaperLayout,
+    mode: 'briefing',
+    hideBodyAndParties: true,
     seed: {
       subject: JUDGMENT_CARD_SUBJECT,
       recipients: JUDGMENT_CARD_RECIPIENTS,
@@ -113,8 +115,7 @@ export async function ensureTemplates() {
       {
         name: 'مدخلات الأحكام بطاقة عرض',
         category: 'letter-official',
-        description:
-          'بطاقة رصد مدخلات الأحكام — تخطيط تعميم دائري كلاسيكي (defaultPaperLayout: taameem-circular)',
+        description: 'عرض شف — بطاقة رصد مدخلات الأحكام (تعميم دائري)',
         fieldsJson: judgmentFieldsJson('taameem-circular'),
         bodyHtml: JUDGMENT_CARD_BODY,
         isEmpty: false,
@@ -122,8 +123,7 @@ export async function ensureTemplates() {
       {
         name: 'مدخلات الأحكام بطاقة عرض — عصري هندسي',
         category: 'letter-official',
-        description:
-          'بطاقة رصد مدخلات الأحكام — تخطيط عصري هندسي (defaultPaperLayout: modern-hex)',
+        description: 'عرض شف — بطاقة رصد مدخلات الأحكام (عصري هندسي)',
         fieldsJson: judgmentFieldsJson('modern-hex'),
         bodyHtml: JUDGMENT_CARD_BODY,
         isEmpty: false,

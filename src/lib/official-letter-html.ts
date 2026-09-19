@@ -34,6 +34,8 @@ export type OfficialLetterDoc = {
   headerLines?: string[] | null;
   studySections?: StudySections | null;
   judgmentCard?: { label: string; value: string }[] | null;
+  /** When true (or judgmentCard present), hide الأطراف / النص — عرض شف briefing */
+  judgmentBriefing?: boolean | null;
   fontFamily?: string | null;
   fontSizePt?: number | null;
   paperLayout?: PaperLayoutId | string | null;
@@ -227,18 +229,20 @@ function layoutTheme(layout: PaperLayoutId) {
 
 function judgmentCardHtml(rows: { label: string; value: string }[]) {
   if (!rows?.length) return '';
-  const trs = rows
+  // Smart layout: pair rows into a 2-column grid of label/value cells when even count;
+  // otherwise fall back to stacked full-width pairs (always reliable for 6 briefing rows).
+  const cells = rows
     .map(
       (r, i) =>
         `<tr style="background:${i % 2 ? '#f3f8f5' : '#fff'}">
-          <th style="padding:8px 10px;border:1px solid ${GREEN}55;background:${GREEN}14;color:${GREEN};font-weight:700;width:38%;text-align:right;vertical-align:middle">${esc(r.label)}</th>
-          <td style="padding:8px 10px;border:1px solid ${GREEN}55;text-align:right;vertical-align:middle" dir="auto">${esc(r.value)}</td>
+          <th style="padding:8px 10px;border:1px solid ${GREEN}55;background:${GREEN}14;color:${GREEN};font-weight:700;width:38%;text-align:right;vertical-align:middle;white-space:nowrap">${esc(r.label)}</th>
+          <td style="padding:8px 10px;border:1px solid ${GREEN}55;text-align:right;vertical-align:middle;font-weight:600" dir="auto">${esc(r.value || '—')}</td>
         </tr>`,
     )
     .join('');
-  return `<h3>بطاقة رصد</h3>
+  return `<h3 style="margin:10px 0 6px">عرض شف — بطاقة رصد</h3>
   <table dir="rtl" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;border:1px solid ${GREEN};margin:6px 0 12px;font-size:13px">
-    <tbody>${trs}</tbody>
+    <tbody>${cells}</tbody>
   </table>`;
 }
 
@@ -289,6 +293,8 @@ body { margin: 0; color: #111; }
       })
     : null;
   const hasStudy = hasStudyContent(study);
+  const isBriefing =
+    doc.judgmentBriefing === true || Boolean(doc.judgmentCard && doc.judgmentCard.length > 0);
   const meta = studyDisplayMeta(study, { subject: doc.subject, recipients: doc.recipients });
   const previewSubject =
     (doc.subject && doc.subject.trim() && doc.subject.trim() !== '—')
@@ -447,24 +453,24 @@ body {
   </div>
   <div class="section" style="${layout === 'modern-hex' ? 'padding-inline:28px' : ''}">
     ${hasStudy && study ? studyHtml(study) : ''}
+    ${!hasStudy && doc.judgmentCard?.length ? judgmentCardHtml(doc.judgmentCard) : ''}
     ${
-      !hasStudy && doc.parties
+      !hasStudy && !isBriefing && doc.parties
         ? `<h3>الأطراف</h3><div class="body">${pre(doc.parties)}</div>`
         : ''
     }
     ${
-      !hasStudy && doc.reasons
+      !hasStudy && !isBriefing && doc.reasons
         ? `<h3>الأسباب</h3><div class="body">${pre(doc.reasons)}</div>`
         : ''
     }
     ${
-      !hasStudy && doc.body
+      !hasStudy && !isBriefing && doc.body
         ? `<h3>النص</h3><div class="body">${pre(String(doc.body).trim())}</div>`
         : ''
     }
-    ${!hasStudy && doc.judgmentCard?.length ? judgmentCardHtml(doc.judgmentCard) : ''}
     ${
-      !hasStudy && doc.studyFields
+      !hasStudy && !isBriefing && doc.studyFields
         ? `<h3>الدراسة</h3><div class="body">${pre(doc.studyFields)}</div>`
         : ''
     }
