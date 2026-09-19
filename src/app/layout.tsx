@@ -4,11 +4,17 @@ import {
   Amiri,
   Cairo,
   Changa,
+  El_Messiri,
+  Harmattan,
   IBM_Plex_Sans_Arabic,
   Lateef,
+  Mada,
+  Markazi_Text,
   Noto_Kufi_Arabic,
   Noto_Naskh_Arabic,
+  Readex_Pro,
   Reem_Kufi,
+  Rubik,
   Scheherazade_New,
   Tajawal,
 } from 'next/font/google';
@@ -93,6 +99,48 @@ const almarai = Almarai({
   display: 'swap',
 });
 
+const elMessiri = El_Messiri({
+  subsets: ['arabic', 'latin'],
+  variable: '--font-el-messiri',
+  weight: ['400', '500', '600', '700'],
+  display: 'swap',
+});
+
+const markazi = Markazi_Text({
+  subsets: ['arabic', 'latin'],
+  variable: '--font-markazi',
+  weight: ['400', '500', '600', '700'],
+  display: 'swap',
+});
+
+const harmattan = Harmattan({
+  subsets: ['arabic', 'latin'],
+  variable: '--font-harmattan',
+  weight: ['400', '700'],
+  display: 'swap',
+});
+
+const readex = Readex_Pro({
+  subsets: ['arabic', 'latin'],
+  variable: '--font-readex',
+  weight: ['400', '500', '600', '700'],
+  display: 'swap',
+});
+
+const rubik = Rubik({
+  subsets: ['arabic', 'latin'],
+  variable: '--font-rubik',
+  weight: ['400', '500', '600', '700'],
+  display: 'swap',
+});
+
+const mada = Mada({
+  subsets: ['arabic', 'latin'],
+  variable: '--font-mada',
+  weight: ['400', '500', '600', '700'],
+  display: 'swap',
+});
+
 export const metadata: Metadata = {
   title: 'ركيزة — مكتبة المخاطبات والتعاميم',
   description: 'ركيزة — مكتبة المخاطبات والتعاميم — المحكمة العمالية بالرياض — v5.0.0',
@@ -118,6 +166,12 @@ const fontVars = [
   reemKufi.variable,
   changa.variable,
   almarai.variable,
+  elMessiri.variable,
+  markazi.variable,
+  harmattan.variable,
+  readex.variable,
+  rubik.variable,
+  mada.variable,
 ].join(' ');
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

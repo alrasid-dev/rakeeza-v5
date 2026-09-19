@@ -146,6 +146,8 @@ export default function DocumentDetailPage() {
             briefingTitle: fields.briefingTitle,
             observationText: fields.observationText,
             mechanismText: fields.mechanismText,
+            judgmentPriority: fields.judgmentPriority,
+            align: fields.style?.align,
           }}
           onRequestIssue={issue}
         />

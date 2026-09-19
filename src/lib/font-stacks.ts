@@ -57,6 +57,36 @@ export const FONT_OPTIONS: { id: string; label: string; stack: string }[] = [
     stack: 'var(--font-tajawal), "Tajawal", Tahoma, sans-serif',
   },
   {
+    id: 'El Messiri',
+    label: 'El Messiri',
+    stack: 'var(--font-el-messiri), "El Messiri", "Noto Naskh Arabic", serif',
+  },
+  {
+    id: 'Markazi Text',
+    label: 'Markazi Text',
+    stack: 'var(--font-markazi), "Markazi Text", "Noto Naskh Arabic", serif',
+  },
+  {
+    id: 'Harmattan',
+    label: 'Harmattan',
+    stack: 'var(--font-harmattan), "Harmattan", "Noto Naskh Arabic", serif',
+  },
+  {
+    id: 'Readex Pro',
+    label: 'Readex Pro',
+    stack: 'var(--font-readex), "Readex Pro", Tahoma, sans-serif',
+  },
+  {
+    id: 'Rubik',
+    label: 'Rubik',
+    stack: 'var(--font-rubik), "Rubik", Tahoma, sans-serif',
+  },
+  {
+    id: 'Mada',
+    label: 'Mada',
+    stack: 'var(--font-mada), "Mada", Tahoma, sans-serif',
+  },
+  {
     id: 'Tahoma',
     label: 'Tahoma',
     stack: 'Tahoma, var(--font-noto-naskh), Arial, sans-serif',
@@ -87,6 +117,12 @@ export function docxFontName(id?: string | null): string {
     'IBM Plex Sans Arabic': 'IBM Plex Sans Arabic',
     Cairo: 'Cairo',
     Tajawal: 'Tajawal',
+    'El Messiri': 'El Messiri',
+    'Markazi Text': 'Markazi Text',
+    Harmattan: 'Harmattan',
+    'Readex Pro': 'Readex Pro',
+    Rubik: 'Rubik',
+    Mada: 'Mada',
     Tahoma: 'Tahoma',
     Arial: 'Arial',
   };

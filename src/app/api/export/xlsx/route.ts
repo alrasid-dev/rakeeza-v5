@@ -5,6 +5,7 @@ import { hasOfficialOutgoingNumber } from '@/lib/honorific';
 import { attachmentDisposition } from '@/lib/download-headers';
 import { officialDateDisplay } from '@/lib/hijri';
 import { loadEmblemPng, BRAND } from '@/lib/brand-assets';
+import { IDENTITY_COLORS, normalizePaperLayout, PAPER_LAYOUTS } from '@/lib/paper-layouts';
 import ExcelJS from 'exceljs';
 
 const GREEN = '006C35';
@@ -75,8 +76,25 @@ export async function GET(req: NextRequest) {
       observationText?: string;
       mechanismText?: string;
       qrDataUrl?: string;
+      paperLayout?: string;
+      style?: { fontFamily?: string; fontSizePt?: number };
+      copyTo?: string;
     };
     const isBriefing = Boolean(fields.judgmentBriefing && fields.judgmentCard?.length);
+    const paperLayout = normalizePaperLayout(fields.paperLayout);
+    const layoutMeta = PAPER_LAYOUTS.find((l) => l.id === paperLayout);
+    // Theme header colors from selected paper layout
+    const themeGreen =
+      paperLayout === 'identity-service-b' || paperLayout === 'modern-hex'
+        ? IDENTITY_COLORS.greenDeep.replace('#', '')
+        : paperLayout === 'formal-gold'
+          ? '8A6B2E'
+          : GREEN;
+    const themeGold = IDENTITY_COLORS.gold.replace('#', '');
+    const themeCream =
+      paperLayout === 'modern-hex' || paperLayout === 'identity-service-a' || paperLayout === 'formal-gold'
+        ? IDENTITY_COLORS.cream.replace('#', '')
+        : LIGHT;
 
     const wb = new ExcelJS.Workbook();
     wb.creator = 'ركيزة';
@@ -96,21 +114,25 @@ export async function GET(req: NextRequest) {
     // Row 1–3: official merged header
     const r1 = ws.addRow(['المملكة العربية السعودية']);
     ws.mergeCells(r1.number, 1, r1.number, 4);
-    styleHeaderCell(r1.getCell(1), { fill: GREEN, size: 14 });
+    styleHeaderCell(r1.getCell(1), { fill: themeGreen, size: 14 });
     r1.height = 24;
 
     const r2 = ws.addRow(['وزارة العدل']);
     ws.mergeCells(r2.number, 1, r2.number, 4);
-    styleHeaderCell(r2.getCell(1), { fill: GREEN, size: 13 });
+    styleHeaderCell(r2.getCell(1), { fill: themeGreen, size: 13 });
 
     const r3 = ws.addRow(['المحكمة العمالية بالرياض']);
     ws.mergeCells(r3.number, 1, r3.number, 4);
-    styleHeaderCell(r3.getCell(1), { fill: GREEN, size: 14 });
+    styleHeaderCell(r3.getCell(1), { fill: themeGreen, size: 14 });
     r3.height = 22;
 
     const r4 = ws.addRow([BRAND.platform]);
     ws.mergeCells(r4.number, 1, r4.number, 4);
-    styleHeaderCell(r4.getCell(1), { fill: GOLD, color: '1A1A1A', size: 11 });
+    styleHeaderCell(r4.getCell(1), { fill: themeGold, color: '1A1A1A', size: 11 });
+
+    const rLayout = ws.addRow([`تصميم القالب: ${layoutMeta?.nameAr || paperLayout}`]);
+    ws.mergeCells(rLayout.number, 1, rLayout.number, 4);
+    styleHeaderCell(rLayout.getCell(1), { fill: themeCream, color: themeGreen, size: 10 });
 
     // Try embed emblem
     try {
@@ -140,7 +162,10 @@ export async function GET(req: NextRequest) {
     addKv('الرقم', doc.number);
     addKv('التاريخ', officialDateDisplay(doc.dateHijri, doc.dateGregorian));
     addKv('النوع', isBriefing ? (fields.briefingTitle || 'بطاقة عرض') : doc.docType);
+    addKv('تصميم القالب', layoutMeta?.nameAr || paperLayout);
+    addKv('الخط', fields.style?.fontFamily || '—');
     addKv('إلى', doc.recipients);
+    if (fields.copyTo?.trim()) addKv('نسخة إلى', fields.copyTo);
     addKv('الموضوع', doc.subject);
     if (!isBriefing) {
       addKv('الأطراف', doc.parties, true);

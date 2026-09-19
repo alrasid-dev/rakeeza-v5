@@ -127,7 +127,8 @@ function studyHtml(s: StudySections) {
 
 /** Always embed MOJ logo as data URL so PDF/DOCX/print never fall back to old icon */
 const EMBLEM_IMG = `<img src="${MOJ_EMBLEM_PNG_DATA_URL}" alt="شعار وزارة العدل" width="72" height="72" style="width:72px;height:72px;object-fit:contain;display:block" />`;
-const EMBLEM_IMG_FILE = EMBLEM_IMG;
+/** Hosted path — Outlook absolutizes this; PDF embeds data-URI via EMBLEM_IMG */
+const EMBLEM_IMG_FILE = `<img src="/brand/moj-logo-gold.png" alt="شعار وزارة العدل" width="72" height="72" style="width:72px;height:72px;object-fit:contain;display:block" />`;
 
 function geometricFooterSvg(variant: 'a' | 'b') {
   const g = IDENTITY_COLORS.green;

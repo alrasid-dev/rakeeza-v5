@@ -8,6 +8,7 @@ import OfficialPaperPreview, { normalizeBodyText } from '@/components/OfficialPa
 import RecipientCascade from '@/components/RecipientCascade';
 import StyleToolbar, { type DocStyle } from '@/components/StyleToolbar';
 import { applyAlignToRange } from '@/lib/body-align';
+import { applyInlineToRange, clearInlineInRange, type InlineKind } from '@/lib/body-inline';
 import { formatCourtPresidentLine } from '@/lib/honorific';
 import PaperLayoutPicker from '@/components/PaperLayoutPicker';
 import ExportToolbar from '@/components/ExportToolbar';
@@ -721,6 +722,51 @@ function NewDocumentInner() {
     // no body focus: still update default for inference fallback
   };
 
+
+  const withBodySelection = (fn: (body: string, start: number, end: number) => string) => {
+    const el = fieldRefs.current.body as HTMLTextAreaElement | undefined | null;
+    if (!el || typeof el.selectionStart !== 'number') {
+      setError('حدّد كلمة أو جملة في خانة المكاتبة أولاً');
+      return;
+    }
+    const start = el.selectionStart;
+    const end = el.selectionEnd;
+    if (start === end) {
+      setError('حدّد نصاً أولاً ثم اضغط الزر (مثل وورد)');
+      return;
+    }
+    const next = fn(form.body || '', start, end);
+    if (next === (form.body || '')) return;
+    setBodyField(next);
+    setError('');
+    requestAnimationFrame(() => {
+      const box = fieldRefs.current.body as HTMLTextAreaElement | null;
+      if (!box) return;
+      box.focus();
+      try {
+        // selection shifts by marker length — keep rough highlight on content
+        box.setSelectionRange(start, Math.min(next.length, end + (next.length - (form.body || '').length)));
+      } catch {
+        /* ignore */
+      }
+    });
+  };
+
+  const applyBodyColor = (hex: string) => {
+    withBodySelection((body, s, e) => applyInlineToRange(body, s, e, 'color', hex));
+  };
+  const applyBodyEnlarge = (level: 1 | 2) => {
+    const kind: InlineKind = level === 2 ? 'enlarge2' : 'enlarge';
+    withBodySelection((body, s, e) => applyInlineToRange(body, s, e, kind));
+  };
+  const applyBodyBold = () => {
+    withBodySelection((body, s, e) => applyInlineToRange(body, s, e, 'bold'));
+  };
+  const clearBodyInline = () => {
+    withBodySelection((body, s, e) => clearInlineInRange(body, s, e));
+  };
+
+
   const exportDoc = {
     id: savedDocId || undefined,
     number: null as string | null,
@@ -840,7 +886,15 @@ function NewDocumentInner() {
       {step === 3 && (
         <div className="space-y-3">
           <div className="flex flex-wrap items-end gap-2">
-            <StyleToolbar value={style} onChange={setStyle} onAlignSelection={applyBodyAlign} />
+            <StyleToolbar
+              value={style}
+              onChange={setStyle}
+              onAlignSelection={applyBodyAlign}
+              onColorSelection={applyBodyColor}
+              onEnlargeSelection={applyBodyEnlarge}
+              onBoldSelection={applyBodyBold}
+              onClearInline={clearBodyInline}
+            />
             <button
               type="button"
               className="btn-outline text-sm px-3 py-2 disabled:opacity-40"

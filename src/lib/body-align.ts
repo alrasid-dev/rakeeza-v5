@@ -1,3 +1,4 @@
+import { inlineNodesToHtml } from '@/lib/body-inline';
 /** Per-paragraph body alignment for official letters (يمين / وسط / يسار). */
 
 export type ParaAlign = 'right' | 'center' | 'left';
@@ -160,7 +161,7 @@ export function bodyBlocksToHtml(
     .map((b) => {
       if (!b.text.trim()) return '<div style="height:0.6em"></div>';
       const align = cssTextAlign(b.align);
-      const html = esc(b.text).replace(/\n/g, '<br/>');
+      const html = inlineNodesToHtml(b.text, esc);
       return `<div style="text-align:${align};margin:0 0 0.55em;white-space:pre-wrap">${html}</div>`;
     })
     .join('');

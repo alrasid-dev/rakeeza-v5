@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 'use client';
 
 import type { StudySections } from '@/lib/parse-study';
@@ -14,6 +15,7 @@ import { fontStackFor } from '@/lib/font-stacks';
 import { enrichStudySections, hasStudyContent, studyDisplayMeta } from '@/lib/study-display';
 import { BRAND } from '@/lib/brand';
 import { parseBodyBlocks, type ParaAlign } from '@/lib/body-align';
+import { parseInlineNodes } from '@/lib/body-inline';
 import {
   JUDGMENT_CLOSING,
   JUDGMENT_SALUTATION,
@@ -453,6 +455,28 @@ function StudyFormView({ s }: { s: StudySections }) {
   );
 }
 
+
+function RichBodyLine({ text }: { text: string }) {
+  const nodes = parseInlineNodes(text);
+  return (
+    <>
+      {nodes.map((n, i) => {
+        if (n.type === 'text') return <span key={i}>{n.text}</span>;
+        const style: CSSProperties = {};
+        if (n.color) style.color = n.color;
+        if (n.enlarge === 1) style.fontSize = '1.22em';
+        if (n.enlarge === 2) style.fontSize = '1.4em';
+        if (n.bold) style.fontWeight = 700;
+        return (
+          <span key={i} style={style}>
+            {n.text}
+          </span>
+        );
+      })}
+    </>
+  );
+}
+
 type LayoutChrome = {
   paperBorder: string;
   paperBg?: string;
@@ -827,7 +851,7 @@ export default function OfficialPaperPreview({
   const showReasons = Boolean(reasonsLeftover);
   const showStudyFields = Boolean(studyFieldsLeftover);
 
-  const letterFontStyle: React.CSSProperties = {
+  const letterFontStyle: CSSProperties = {
     fontFamily,
     fontSize,
   };
@@ -994,7 +1018,7 @@ export default function OfficialPaperPreview({
                     className="whitespace-pre-wrap"
                     style={{ textAlign: b.align }}
                   >
-                    {b.text || ' '}
+                    {b.text ? <RichBodyLine text={b.text} /> : ' '}
                   </div>
                 ))}
               </div>

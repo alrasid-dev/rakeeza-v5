@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { buildLetterHtml, copyOutlookHtml } from '@/lib/outlook-clipboard';
 import { normalizeBodyText } from '@/components/OfficialPaperPreview';
 import { hasOfficialOutgoingNumber } from '@/lib/honorific';
+import { stripInlineMarks } from '@/lib/body-inline';
 import { officialDateDisplay } from '@/lib/hijri';
 import type { PaperLayoutId } from '@/lib/paper-layouts';
 import type { StudySections } from '@/lib/parse-study';
@@ -33,6 +34,8 @@ export type ExportDoc = {
   briefingTitle?: string | null;
   observationText?: string | null;
   mechanismText?: string | null;
+  judgmentPriority?: string | null;
+  align?: 'right' | 'center' | 'left' | null;
 };
 
 type FormatId = 'docx' | 'xlsx' | 'pdf' | 'pptx' | 'outlook';
@@ -64,7 +67,7 @@ function contentFingerprint(doc: ExportDoc) {
 }
 
 function buildPlainLetter(doc: ExportDoc) {
-  const body = normalizeBodyText(doc.body);
+  const body = stripInlineMarks(normalizeBodyText(doc.body));
   const lines = [
     'المملكة العربية السعودية',
     'وزارة العدل',
@@ -181,9 +184,13 @@ export default function ExportToolbar({
           briefingTitle: doc.briefingTitle || undefined,
           observationText: doc.observationText || undefined,
           mechanismText: doc.mechanismText || undefined,
+          judgmentPriority: doc.judgmentPriority,
           underLogoLabel: doc.judgmentBriefing ? doc.briefingTitle || 'بطاقة عرض' : undefined,
           fontFamily: doc.fontFamily || undefined,
           fontSizePt: doc.fontSizePt || undefined,
+          align: doc.align || undefined,
+          paperLayout: doc.paperLayout,
+          studySections: doc.studySections,
         });
         const ok = await copyOutlookHtml(html, buildPlainLetter(doc));
         if (ok) {
@@ -292,14 +299,18 @@ export default function ExportToolbar({
       qrDataUrl: doc.qrDataUrl,
       headerLines: doc.headerLines,
       origin: typeof window !== 'undefined' ? window.location.origin : undefined,
-          judgmentCard: doc.judgmentCard,
-          judgmentBriefing: doc.judgmentBriefing,
-          briefingTitle: doc.briefingTitle || undefined,
-          observationText: doc.observationText || undefined,
-          mechanismText: doc.mechanismText || undefined,
-          underLogoLabel: doc.judgmentBriefing ? doc.briefingTitle || 'بطاقة عرض' : undefined,
+      judgmentCard: doc.judgmentCard,
+      judgmentBriefing: doc.judgmentBriefing,
+      briefingTitle: doc.briefingTitle || undefined,
+      observationText: doc.observationText || undefined,
+      mechanismText: doc.mechanismText || undefined,
+      judgmentPriority: doc.judgmentPriority,
+      underLogoLabel: doc.judgmentBriefing ? doc.briefingTitle || 'بطاقة عرض' : undefined,
       fontFamily: doc.fontFamily || undefined,
       fontSizePt: doc.fontSizePt || undefined,
+      align: doc.align || undefined,
+      paperLayout: doc.paperLayout,
+      studySections: doc.studySections,
     });
     try {
       const ok = await copyOutlookHtml(html, plain);
