@@ -9,6 +9,8 @@ import {
   buildLetterHtml,
   outlookHtmlIsTableBased,
   outlookHeaderHasQrNumberDate,
+  outlookHtmlHasHostileLayout,
+  outlookBodyUsesAlignAttribute,
 } from '../src/lib/outlook-clipboard.ts';
 import { buildPdfEmbeddedFontCss } from '../src/lib/pdf-font-css.ts';
 import { htmlHasInlineParagraphFont } from '../src/lib/stamp-inline-font.ts';
@@ -102,6 +104,15 @@ fs.mkdirSync(tmp, { recursive: true });
   assert(!/display\s*:\s*grid/i.test(html), 'Outlook HTML has ZERO display:grid');
   assert(/بطاقة عرض|تعميم/.test(html), 'Outlook center has بطاقة عرض / badge');
   assert(/المملكة العربية السعودية/.test(html), 'Outlook right has kingdom letterhead');
+  assert(!outlookHtmlHasHostileLayout(html), 'Outlook HTML has ZERO hostile layout (overflow/height/flex/grid/absolute)');
+  assert(outlookBodyUsesAlignAttribute(html), 'Outlook body paragraphs use align= attribute');
+  assert(!/overflow\s*:/i.test(html), 'Outlook HTML has ZERO overflow:');
+  assert(!/max-height\s*:/i.test(html), 'Outlook HTML has ZERO max-height:');
+  assert(!/min-height\s*:/i.test(html), 'Outlook HTML has ZERO min-height:');
+  assert(!/(?:^|[;\s{])height\s*:\s*\d/i.test(html.replace(/<img\b[^>]*>/gi, '')), 'Outlook HTML has ZERO wrapper height:');
+  assert(!/user-select\s*:\s*none/i.test(html), 'Outlook HTML has ZERO user-select:none');
+  assert(!/contenteditable\s*=\s*["']?false/i.test(html), 'Outlook HTML has ZERO contenteditable=false');
+  assert(!(html.match(/<div/gi) || []).length, 'Outlook HTML has ZERO <div> wrappers');
 }
 
 // 3) Excel official template wiring

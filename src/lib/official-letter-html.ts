@@ -328,7 +328,9 @@ ${embeddedBlock}`;
   // PDF + Outlook: embed emblem as data-URI so paste/print never depends on blocked remote images.
   // Preview may use file path (browser same-origin).
   const emblemInner = opts?.forPdf || opts?.forOutlook ? EMBLEM_IMG : EMBLEM_IMG_FILE;
-  const emblem = `<div style="width:72px;height:72px;border:1.5px solid ${GOLD};border-radius:12px;background:#fff;overflow:hidden;text-align:center;margin:0 auto">${emblemInner}</div>`;
+  const emblem = opts?.forOutlook
+    ? `<table cellpadding="0" cellspacing="0" border="0" role="presentation" style="border-collapse:collapse;margin:0 auto"><tr><td align="center" style="border:1.5px solid ${GOLD};background:#fff;padding:4px">${emblemInner}</td></tr></table>`
+    : `<div style="width:72px;height:72px;border:1.5px solid ${GOLD};border-radius:12px;background:#fff;overflow:hidden;text-align:center;margin:0 auto">${emblemInner}</div>`;
 
   const study = doc.studySections
     ? enrichStudySections(doc.studySections, {
@@ -592,7 +594,15 @@ body {
   line-height: 1.85;
   margin: 0;
 }
-.paper {
+${opts?.forOutlook
+  ? `.paper {
+  width: 700px;
+  margin: 0 auto;
+  border: ${theme.paperBorder};
+  background: ${theme.paperBg};
+  font-family: ${paraFont};
+}`
+  : `.paper {
   max-width: 210mm;
   margin: 0 auto;
   border: ${theme.paperBorder};
@@ -601,6 +611,7 @@ body {
   background: ${theme.paperBg};
   font-family: ${paraFont};
   position: relative;
+}`
 }
 ${inheritRule}
 .bismillah {
@@ -615,7 +626,10 @@ ${inheritRule}
 .brand-row .court { color: ${GREEN}; font-weight: 800; }
 .brand-row .sub { color: ${GOLD}; font-size: 12px; margin-top: 2px; }
 ${metaCss}
-.section { padding: 4px 18px 10px; overflow: hidden; max-width: 100%; overflow-wrap: anywhere; }
+${opts?.forOutlook
+  ? `.section { padding: 4px 18px 10px; max-width: 100%; overflow-wrap: anywhere; }`
+  : `.section { padding: 4px 18px 10px; overflow: hidden; max-width: 100%; overflow-wrap: anywhere; }`
+}
 .section h3 {
   margin: 12px 0 6px;
   color: ${GREEN};
@@ -640,7 +654,7 @@ ${metaCss}
   user-select: text !important;
   cursor: text;
 }
-img, svg, .cc-icon { -webkit-user-select: none; user-select: none; cursor: default; }
+${opts?.forOutlook ? 'img, svg, .cc-icon { cursor: default; }' : 'img, svg, .cc-icon { -webkit-user-select: none; user-select: none; cursor: default; }'}
 
 @media print {
   .cc-row, .cc-icon { display: inline-block !important; visibility: visible !important; }

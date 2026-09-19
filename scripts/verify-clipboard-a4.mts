@@ -4,7 +4,12 @@
  */
 import fs from 'fs';
 import path from 'path';
-import { buildLetterHtml, outlookHtmlIsTableBased } from '../src/lib/outlook-clipboard.ts';
+import {
+  buildLetterHtml,
+  outlookHtmlIsTableBased,
+  outlookHtmlHasHostileLayout,
+  outlookBodyUsesAlignAttribute,
+} from '../src/lib/outlook-clipboard.ts';
 import {
   buildExcelKvTableHtml,
   buildExcelTableHtml,
@@ -54,6 +59,11 @@ const sampleDoc = {
   assert(/<table[\s>]/i.test(html), 'Outlook HTML contains <table>');
   assert(/class="brand-row[^"]*official-header"/i.test(html) || /class="brand-row official-header"/i.test(html), 'brand-row official-header preserved');
   assert(/role="presentation"/i.test(html), 'presentation tables for Outlook');
+  assert(!outlookHtmlHasHostileLayout(html), 'Outlook HTML ZERO hostile layout (overflow/height/flex/grid)');
+  assert(outlookBodyUsesAlignAttribute(html), 'Outlook body uses align= attribute');
+  assert(!/overflow\s*:/i.test(html), 'Outlook HTML ZERO overflow');
+  assert(!/max-height\s*:/i.test(html), 'Outlook HTML ZERO max-height');
+  assert(!(html.match(/<div/gi) || []).length, 'Outlook HTML ZERO div wrappers');
   // Write debug artifact
   const out = path.join(process.cwd(), 'tmp', 'verify-clipboard-outlook.html');
   fs.mkdirSync(path.dirname(out), { recursive: true });

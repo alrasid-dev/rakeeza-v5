@@ -176,7 +176,8 @@ export function bodyBlocksToHtml(
     .map((b) => {
       // Keep blank / space-only lines as vertical gaps (Word-like)
       if (!b.text.replace(/[ \u00a0]/g, '').trim()) {
-        return '<div style="height:0.6em;mso-line-height-rule:exactly;font-size:8pt">&nbsp;</div>';
+        // No height/overflow wrappers — Outlook Word turns those into nested scrollboxes.
+        return '<p align="right" style="margin:0 0 0.55em;mso-line-height-rule:exactly;font-size:8pt">&nbsp;</p>';
       }
       const align = cssTextAlign(b.align);
       const html = inlineNodesToHtml(leadingSpacesToNbsp(b.text), esc);
