@@ -101,9 +101,11 @@ function HexMotifDecor({ className = '' }: { className?: string }) {
 function ModernHexHeader({
   qrDataUrl,
   court,
+  underLogoLabel,
 }: {
   qrDataUrl?: string | null;
   court: string;
+  underLogoLabel?: string | null;
 }) {
   return (
     <div
@@ -124,13 +126,18 @@ function ModernHexHeader({
           </div>
         )}
       </div>
-      <div className="flex justify-center z-[1]">
+      <div className="flex flex-col items-center justify-center gap-1 z-[1]">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="/brand/moj-logo-gold.png"
           alt="شعار وزارة العدل"
           className="w-[4.75rem] h-[4.75rem] shrink-0 rounded-xl border-2 border-moj-gold bg-white object-contain p-1 shadow-sm"
         />
+        {underLogoLabel ? (
+          <span className="text-[10px] font-extrabold text-moj-green border border-moj-gold rounded-full px-2.5 py-0.5 bg-white shadow-sm">
+            {underLogoLabel}
+          </span>
+        ) : null}
       </div>
       <div className="flex justify-end z-[1] min-w-0" dir="rtl">
         <div className="text-right min-w-0 leading-snug">
@@ -597,12 +604,15 @@ function BrandHeader({
   compact,
   showCircularBadge,
   brandBorder,
+  underLogoLabel,
 }: {
   court: string;
   qrDataUrl?: string | null;
   compact: boolean;
   showCircularBadge: boolean;
   brandBorder: string;
+  /** When set (e.g. بطاقة عرض), replaces the «تعميم» badge under the emblem. */
+  underLogoLabel?: string | null;
 }) {
   const pad = compact ? 'px-3 py-2' : 'px-4 py-3';
   const box = compact ? 'w-12 h-12' : 'w-16 h-16';
@@ -630,11 +640,15 @@ function BrandHeader({
       </div>
       <div className="flex flex-col items-center justify-center gap-1">
         <EmblemImg className={compact ? '!w-12 !h-12' : ''} />
-        {showCircularBadge && (
+        {underLogoLabel ? (
+          <span className="text-[10px] font-extrabold text-moj-green border border-moj-gold rounded-full px-2.5 py-0.5 bg-white">
+            {underLogoLabel}
+          </span>
+        ) : showCircularBadge ? (
           <span className="text-[9px] font-bold text-moj-green border border-moj-gold rounded-full px-2 py-0.5">
             تعميم
           </span>
-        )}
+        ) : null}
       </div>
       <div className="text-right min-w-0" dir="rtl">
         <div className={`${compact ? 'text-[10px]' : 'text-[11px]'} text-moj-green font-semibold`}>
@@ -682,7 +696,7 @@ function JudgmentBriefingView({
   mechanismText?: string | null;
 }) {
   const address = (recipients && recipients.trim()) || JUDGMENT_CARD_RECIPIENTS;
-  const heading = (title && title.trim()) || 'بطاقة عرض';
+  void title; // title is rendered under the ministry logo in the letterhead
   const obs = buildJudgmentObservationParts(card, observationText);
   const mech =
     (mechanismText && mechanismText.trim()) ||
@@ -699,7 +713,7 @@ function JudgmentBriefingView({
       {mech ? <div>{mech}</div> : null}
       <div className="font-semibold">{JUDGMENT_CLOSING}</div>
       <div>
-        <SectionTitle accent="gold">{heading}</SectionTitle>
+        {/* Title «بطاقة عرض» lives under the ministry emblem — not above the table */}
         <div className="overflow-x-auto">
           <table className="w-full text-sm border border-moj-green">
             <tbody>
@@ -795,6 +809,9 @@ export default function OfficialPaperPreview({
       studySections: doc.studySections,
     });
   const isUrgent = isBriefing && doc.judgmentPriority === 'عاجل';
+  const underLogoLabel = isJudgmentBriefingDoc(doc)
+    ? (doc.briefingTitle?.trim() || 'بطاقة عرض')
+    : null;
   const partiesLeftover = hasStudy || isBriefing ? '' : leftoverBlock(doc.parties, already);
   const reasonsLeftover = hasStudy || isBriefing ? '' : leftoverBlock(doc.reasons, already);
   const studyFieldsLeftover = hasStudy || isBriefing ? '' : leftoverBlock(doc.studyFields, already);
@@ -842,14 +859,15 @@ export default function OfficialPaperPreview({
         </div>
 
         {chrome.modernHex ? (
-          <ModernHexHeader qrDataUrl={doc.qrDataUrl} court={court} />
+          <ModernHexHeader qrDataUrl={doc.qrDataUrl} court={court} underLogoLabel={underLogoLabel} />
         ) : (
           <BrandHeader
             court={court}
             qrDataUrl={doc.qrDataUrl}
             compact={chrome.compact}
-            showCircularBadge={chrome.showCircularBadge}
+            showCircularBadge={chrome.showCircularBadge && !underLogoLabel}
             brandBorder={chrome.brandBorder}
+            underLogoLabel={underLogoLabel}
           />
         )}
 

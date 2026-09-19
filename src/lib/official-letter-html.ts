@@ -304,6 +304,9 @@ body { margin: 0; color: #111; }
       studySections: doc.studySections,
     });
   const isUrgent = isBriefing && doc.judgmentPriority === 'عاجل';
+  const underLogoLabel = isBriefing
+    ? (String(doc.briefingTitle || '').trim() || 'بطاقة عرض')
+    : '';
   const meta = studyDisplayMeta(study, { subject: doc.subject, recipients: doc.recipients });
   const previewSubject =
     (doc.subject && doc.subject.trim() && doc.subject.trim() !== '—')
@@ -345,7 +348,7 @@ body { margin: 0; color: #111; }
   <table class="brand-row" dir="ltr" width="100%" cellpadding="0" cellspacing="0" role="presentation" style="position:relative;z-index:1;border-collapse:collapse;border-bottom:1px solid ${GOLD}80;table-layout:fixed;background:transparent">
     <tr>
       <td width="33%" valign="middle" align="left" style="padding:14px 18px">${qr.replace('border:1px solid', 'border:1.5px dashed').replace('border:1px dashed', 'border:1.5px dashed')}</td>
-      <td width="34%" valign="middle" align="center" style="padding:14px 8px">${emblem}</td>
+      <td width="34%" valign="middle" align="center" style="padding:14px 8px">${emblem}${underLogoLabel ? `<div style="display:inline-block;margin-top:4px;font-size:10px;font-weight:800;color:${GREEN};border:1px solid ${GOLD};border-radius:999px;padding:2px 10px;background:#fff">${esc(underLogoLabel)}</div>` : ''}</td>
       <td width="33%" valign="middle" align="right" style="padding:14px 18px">${hexText}</td>
     </tr>
   </table>
@@ -354,7 +357,7 @@ body { margin: 0; color: #111; }
   <table class="brand-row" dir="ltr" width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse:collapse;border-bottom:2px solid ${GOLD};table-layout:fixed">
     <tr>
       <td width="33%" valign="middle" align="left" style="padding:14px 12px;width:33%">${qr}</td>
-      <td width="34%" valign="middle" align="center" style="padding:14px 8px;width:34%">${emblem}${layout === 'taameem-circular' ? `<div style="display:inline-block;margin-top:4px;font-size:9px;font-weight:700;color:${GREEN};border:1px solid ${GOLD};border-radius:999px;padding:1px 8px">تعميم</div>` : ''}</td>
+      <td width="34%" valign="middle" align="center" style="padding:14px 8px;width:34%">${emblem}${underLogoLabel ? `<div style="display:inline-block;margin-top:4px;font-size:10px;font-weight:800;color:${GREEN};border:1px solid ${GOLD};border-radius:999px;padding:2px 10px;background:#fff">${esc(underLogoLabel)}</div>` : (layout === 'taameem-circular' ? `<div style="display:inline-block;margin-top:4px;font-size:9px;font-weight:700;color:${GREEN};border:1px solid ${GOLD};border-radius:999px;padding:1px 8px">تعميم</div>` : '')}</td>
       <td width="33%" valign="middle" align="right" style="padding:14px 12px;width:33%" dir="rtl">
         ${header
           .map(

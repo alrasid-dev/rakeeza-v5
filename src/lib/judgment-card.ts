@@ -538,7 +538,8 @@ export function buildJudgmentBriefingBlockHtml(opts: {
   if (!opts.card?.length) return '';
   const GREEN = opts.green || '#006C35';
   const address = String(opts.recipients || JUDGMENT_CARD_RECIPIENTS).trim();
-  const title = String(opts.title || 'بطاقة عرض').trim() || 'بطاقة عرض';
+  // Title (بطاقة عرض / …) is rendered under the ministry emblem in the letterhead — not above the table.
+  void opts.title;
   const obs = buildJudgmentObservationParts(opts.card, opts.observationText);
   const mech =
     (opts.mechanismText && opts.mechanismText.trim()) ||
@@ -558,7 +559,6 @@ export function buildJudgmentBriefingBlockHtml(opts: {
   <div style="margin-bottom:8px">${escHtml(obs.beforeRed)}<span style="color:#c00000;font-weight:700">${escHtml(obs.red)}</span>${escHtml(obs.afterRed)}</div>
   ${mech ? `<div style="margin-bottom:8px">${escHtml(mech)}</div>` : ''}
   <div style="margin-bottom:12px;font-weight:600">${escHtml(JUDGMENT_CLOSING)}</div>
-  <h3 style="margin:10px 0 6px;color:${GREEN};font-size:14px;border-bottom:1px solid #C5A059;padding-bottom:2px">${escHtml(title)}</h3>
   <table dir="rtl" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;border:1px solid ${GREEN};margin:6px 0 4px;font-size:13px">
     <tbody>${cells}</tbody>
   </table>
