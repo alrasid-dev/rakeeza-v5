@@ -434,6 +434,12 @@ export function buildJudgmentObservationParts(
   } else {
     text = defaultJudgmentObservation(formation);
   }
+  // Strip salutation / closing / mechanism — those are rendered as their own blocks
+  text = text
+    .replace(/^\s*السلام\s*عليكم[^\n]*\n?/gm, '')
+    .replace(/\n?\s*لإطلاع\s*فضيلتكم[\s\S]*$/m, '')
+    .replace(/\n?\s*والله\s*يحفظكم[\s\S]*$/m, '')
+    .trim();
   // If paste included the mechanism paragraph, keep observation only
   const mechAt = text.search(/وفي\s*حال\s*اقتضى\s*الأمر/);
   if (mechAt >= 0) text = text.slice(0, mechAt).trim();
@@ -554,10 +560,10 @@ export function buildJudgmentBriefingBlockHtml(opts: {
     )
     .join('');
   return `<div class="judgment-briefing" style="margin:4px 0 12px;line-height:1.9;text-align:justify">
-  <div style="margin-bottom:8px;text-align:center;font-weight:600">${escHtml(JUDGMENT_SALUTATION)}</div>
-  <div style="margin-bottom:8px">${escHtml(obs.beforeRed)}<span style="color:#c00000;font-weight:700">${escHtml(obs.red)}</span>${escHtml(obs.afterRed)}</div>
-  ${mech ? `<div style="margin-bottom:8px">${escHtml(mech)}</div>` : ''}
-  <div style="margin-bottom:12px;font-weight:600">${escHtml(JUDGMENT_CLOSING)}</div>
+  <p align="center" style="margin:0 0 8px;text-align:center;font-weight:600">${escHtml(JUDGMENT_SALUTATION)}</p>
+  <div style="margin-bottom:8px;text-align:right">${escHtml(obs.beforeRed)}<span style="color:#c00000;font-weight:700">${escHtml(obs.red)}</span>${escHtml(obs.afterRed)}</div>
+  ${mech ? `<div style="margin-bottom:8px;text-align:right">${escHtml(mech)}</div>` : ''}
+  <p align="center" style="margin:0 0 12px;text-align:center;font-weight:700">${escHtml(JUDGMENT_CLOSING)}</p>
   <table dir="rtl" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;border:1px solid ${GREEN};margin:6px 0 4px;font-size:13px">
     <tbody>${cells}</tbody>
   </table>

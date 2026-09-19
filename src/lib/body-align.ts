@@ -31,7 +31,8 @@ export function inferParaAlign(text: string): ParaAlign {
   if (!t) return 'right';
   if (/^السلام\s*عليكم/.test(t)) return 'center';
   if (/^وبعد\s*[:-]?\s*$/.test(t)) return 'center';
-  if (/والله\s*يحفظكم|وتفضلوا\s*بقبول|والسلام\s*عليكم\s*ورحمة/.test(t) && t.length < 80) {
+  if (/^لإطلاع\s*فضيلتكم/.test(t) || /لإطلاع\s*فضيلتكم/.test(t) && t.length < 90) return 'center';
+  if (/والله\s*يحفظكم|وتفضلوا\s*بقبول|والسلام\s*عليكم\s*ورحمة/.test(t) && t.length < 90) {
     return 'center';
   }
   return 'right';
@@ -162,7 +163,8 @@ export function bodyBlocksToHtml(
       if (!b.text.trim()) return '<div style="height:0.6em"></div>';
       const align = cssTextAlign(b.align);
       const html = inlineNodesToHtml(b.text, esc);
-      return `<div style="text-align:${align};margin:0 0 0.55em;white-space:pre-wrap">${html}</div>`;
+      // align= for Outlook/Word; text-align for browsers/PDF
+      return `<p align="${align}" style="text-align:${align};margin:0 0 0.55em;white-space:pre-wrap">${html}</p>`;
     })
     .join('');
 }

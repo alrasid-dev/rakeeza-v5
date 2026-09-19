@@ -72,7 +72,7 @@ async function renderHtmlToPdf(browser: { newPage: () => Promise<any>; close: ()
         ?.fonts;
       if (fonts?.ready) await fonts.ready;
     });
-    await new Promise((r) => setTimeout(r, 400));
+    await new Promise((r) => setTimeout(r, 1200));
     const pdf = await page.pdf({
       format: 'A4',
       printBackground: true,
@@ -179,16 +179,17 @@ function buildPdfEmbeddedFontCss(fontFamilyId?: string | null): string {
   const stack = exportFontStack(fontFamilyId);
   const preferred = pdfEmbeddedFamily(fontFamilyId);
   const gf = googleFontsImportCss([String(fontFamilyId || 'Traditional Arabic')]);
-  return `${gf}
-${faces.join('\n')}
-html, body, .paper, .paper * {
-  font-family: ${stack} !important;
+  // Put preferred embedded face FIRST so Chromium PDF matches the preview picker
+  return `${faces.join('\n')}
+${gf}
+html, body {
+  font-family: '${preferred}', ${stack} !important;
   font-weight: 400 !important;
   -webkit-font-smoothing: antialiased;
 }
-/* Prefer embedded face first when mapped */
 .paper, .paper *:not(img):not(svg):not(svg *) {
   font-family: '${preferred}', ${stack} !important;
+  font-weight: 400 !important;
 }
 .paper { color: #111 !important; }
 .bismillah, .bismillah * { color: #fff !important; }

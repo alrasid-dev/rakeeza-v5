@@ -304,9 +304,10 @@ ${embeddedBlock}`;
     ? `<img src="${esc(doc.qrDataUrl)}" alt="QR" style="width:72px;height:72px;border:1px solid ${GOLD};border-radius:6px;background:#fff;display:block" />`
     : `<div style="width:72px;height:72px;border:1px dashed ${GOLD};border-radius:6px;text-align:center;line-height:72px;font-size:10px;color:${GREEN};background:#fff">QR</div>`;
 
-  // Outlook: hosted PNG path (absolutized by caller). PDF: data-URI emblem.
-  const emblemInner = opts?.forPdf ? EMBLEM_IMG : EMBLEM_IMG_FILE;
-  const emblem = `<div style="width:64px;height:64px;border:1.5px solid ${GOLD};border-radius:12px;background:#fff;overflow:hidden;text-align:center">${emblemInner}</div>`;
+  // PDF + Outlook: embed emblem as data-URI so paste/print never depends on blocked remote images.
+  // Preview may use file path (browser same-origin).
+  const emblemInner = opts?.forPdf || opts?.forOutlook ? EMBLEM_IMG : EMBLEM_IMG_FILE;
+  const emblem = `<div style="width:72px;height:72px;border:1.5px solid ${GOLD};border-radius:12px;background:#fff;overflow:hidden;text-align:center;margin:0 auto">${emblemInner}</div>`;
 
   const study = doc.studySections
     ? enrichStudySections(doc.studySections, {
@@ -356,17 +357,20 @@ ${embeddedBlock}`;
       </div>`
     : '';
 
+  // Outlook Word engine mangles position:absolute SVG overlays — drop decor for paste fidelity
+  const hexDecorSafe = opts?.forOutlook ? '' : hexDecor;
+
   // Official Saudi letterhead (physical LTR): LEFT=QR, CENTER=emblem, RIGHT=kingdom/ministry/court
   const hexText = `
-          <div style="text-align:right;line-height:1.35;min-width:0" dir="rtl">
-            <div class="court" style="font-size:12px;color:${GREEN};font-weight:700">${esc(BRAND.kingdom)}</div>
-            <div class="court" style="font-size:12px;color:${GREEN};font-weight:700">${esc(BRAND.ministry)}</div>
-            <div class="court" style="font-size:15px;color:${GREEN};font-weight:800;margin-top:2px">${esc(court)}</div>
-            <div class="sub" style="color:${GOLD};font-size:11px;margin-top:2px">${esc(BRAND.platform)}</div>
+          <div style="text-align:right;line-height:1.45;min-width:0;width:100%" dir="rtl">
+            <div style="font-size:13px;color:${GREEN};font-weight:700;mso-line-height-rule:exactly">${esc(BRAND.kingdom)}</div>
+            <div style="font-size:13px;color:${GREEN};font-weight:700;mso-line-height-rule:exactly">${esc(BRAND.ministry)}</div>
+            <div style="font-size:16px;color:${GREEN};font-weight:800;margin-top:3px;mso-line-height-rule:exactly">${esc(court)}</div>
+            <div style="color:${GOLD};font-size:11px;margin-top:3px;mso-line-height-rule:exactly">${esc(BRAND.platform)}</div>
           </div>`;
   const brandRow = layout === 'modern-hex'
     ? `<div style="position:relative;background:#F9F7F1">
-  ${hexDecor}
+  ${hexDecorSafe}
   <table class="brand-row" dir="ltr" width="100%" cellpadding="0" cellspacing="0" role="presentation" style="position:relative;z-index:1;border-collapse:collapse;border-bottom:1px solid ${GOLD}80;table-layout:fixed;background:transparent">
     <tr>
       <td width="33%" valign="middle" align="left" style="padding:14px 18px">${qr.replace('border:1px solid', 'border:1.5px dashed').replace('border:1px dashed', 'border:1.5px dashed')}</td>
