@@ -91,7 +91,7 @@ const EMPTY_FORM = {
 };
 
 /** Visible proof that strict-paste wire-up is loaded in the client bundle. */
-const PASTE_BUILD_ID = 'RAKEEZA-PASTE-20260919-A';
+const PASTE_BUILD_ID = 'RAKEEZA-PASTE-20260919-B';
 
 function NewDocumentInner() {
   const router = useRouter();
@@ -856,6 +856,16 @@ function NewDocumentInner() {
 
   return (
     <AppShell user={user}>
+      {/* Cache-bust proof banner — visible on EVERY step */}
+      <div
+        className="fixed top-0 inset-x-0 z-[200] bg-[#ffe600] text-black text-center font-black font-mono text-base sm:text-2xl md:text-3xl py-3 px-2 shadow-lg border-b-4 border-red-600 tracking-wide"
+        data-paste-build={PASTE_BUILD_ID}
+        role="status"
+        aria-live="polite"
+      >
+        PASTE BUILD: {PASTE_BUILD_ID} — STRICT PASTE LIVE ON ALL STEPS
+      </div>
+      <div className="h-14 sm:h-16 md:h-[4.25rem]" aria-hidden />
       {(formName || formSlug) && (
         <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-moj-gold/30 bg-gradient-to-l from-moj-gold/15 to-moj-green/5 px-3 py-2 text-sm text-moj-green">
           <span className="font-medium">مساحة العمل</span>
@@ -929,9 +939,6 @@ function NewDocumentInner() {
 
       {step === 2 && (
         <div className="bg-white dark:bg-[var(--surface)] rounded-xl border dark:border-white/10 p-3 sm:p-4 space-y-3">
-          <div className="inline-flex items-center rounded-full border border-moj-gold/50 bg-[#fff8e8] dark:bg-[#2a2418] px-2.5 py-0.5 text-[11px] font-mono text-moj-green">
-            بناء اللصق: {PASTE_BUILD_ID}
-          </div>
           <label className="label">
             الصق نص المكاتبة أو نموذج الدراسة من Excel — يُكتشف النوع تلقائياً دون اختيار مسبق
           </label>

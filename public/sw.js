@@ -1,5 +1,5 @@
 /* Rakeeza SW — cache shell only; never touch API/export (avoids empty JSON/PDF via HTML fallback). */
-const CACHE = 'rakeeza-v5-cache-v3';
+const CACHE = 'rakeeza-v5-cache-v4-20260919-B';
 const ASSETS = ['/manifest.json', '/brand/moj-logo-gold.png', '/icons/icon-192.png'];
 
 self.addEventListener('install', (e) => {

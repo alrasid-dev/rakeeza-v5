@@ -668,6 +668,12 @@ export default function LoginPage() {
           </div>
         </div>
       )}
+      <p
+        className="mt-4 text-center text-[10px] font-mono text-gray-400 dark:text-white/35 select-all"
+        data-rakeeza-build="RAKEEZA-BUILD-20260919-B"
+      >
+        RAKEEZA-BUILD-20260919-B
+      </p>
     </div>
   );
 }

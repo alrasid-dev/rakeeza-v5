@@ -151,9 +151,12 @@ const mada = Mada({
 
 export const metadata: Metadata = {
   title: 'ركيزة — مكتبة المخاطبات والتعاميم',
-  description: 'ركيزة — مكتبة المخاطبات والتعاميم — المحكمة العمالية بالرياض — v5.0.0',
+  description: 'ركيزة — مكتبة المخاطبات والتعاميم — المحكمة العمالية بالرياض — v5.0.0 — RAKEEZA-BUILD-20260919-B',
   manifest: '/manifest.json',
   icons: { icon: [{ url: '/brand/moj-icon-64.png', type: 'image/png', sizes: '64x64' }, { url: '/icons/icon-192.png', type: 'image/png', sizes: '192x192' }] },
+  other: {
+    'x-rakeeza-build': 'RAKEEZA-BUILD-20260919-B',
+  },
 };
 
 export const viewport: Viewport = {
