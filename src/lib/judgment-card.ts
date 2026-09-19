@@ -39,6 +39,15 @@ export const JUDGMENT_CARD_SUBJECT = 'بشأن متابعة سلامة مدخل�
 /** Briefing card has no letter body — content lives in the smart table. */
 export const JUDGMENT_CARD_BODY = '';
 
+/** Labels only — no sample case/judgment numbers or invented names. */
+export function emptyJudgmentCardShell(): JudgmentCardRow[] {
+  return JUDGMENT_CARD_SEED.map((r) => ({
+    label: r.label === MECHANISM_LABEL_LEGACY ? MECHANISM_LABEL : r.label,
+    value: '',
+  }));
+}
+
+
 export type TemplateFieldsMeta = {
   keys: string[];
   defaultPaperLayout?: string;
@@ -269,10 +278,15 @@ export function mergeJudgmentCardFromPaste(
   base: JudgmentCardRow[] | null | undefined,
   pasteRaw: string,
   extras?: Partial<Record<string, string>>,
+  opts?: { strict?: boolean },
 ): JudgmentCardRow[] {
-  const card = migrateMechanismLabel(
-    (base && base.length ? base : JUDGMENT_CARD_SEED).map((r) => ({ ...r })),
-  );
+  // strict paste: start from empty shell so seed sample IDs/names never leak
+  const starter = opts?.strict
+    ? emptyJudgmentCardShell()
+    : base && base.length
+      ? base
+      : JUDGMENT_CARD_SEED;
+  const card = migrateMechanismLabel(starter.map((r) => ({ ...r })));
   const extracted = { ...extractJudgmentCardFromPaste(pasteRaw), ...(extras || {}) };
 
   // Map legacy key from callers that still use old label

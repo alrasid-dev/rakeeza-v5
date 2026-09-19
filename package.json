@@ -13,7 +13,8 @@
     "db:setup": "prisma generate && prisma db push && tsx prisma/seed.ts",
     "postinstall": "prisma generate",
     "import:employees": "tsx scripts/import-employees.ts",
-    "guide:pdf": "tsx scripts/generate-user-guide.mjs"
+    "guide:pdf": "tsx scripts/generate-user-guide.mjs",
+    "verify:strict-paste": "tsx scripts/verify-strict-paste.mts"
   },
   "dependencies": {
     "@libsql/client": "^0.8.1",

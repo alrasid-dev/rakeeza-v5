@@ -13,6 +13,7 @@ import { formatCourtPresidentLine } from '@/lib/honorific';
 import PaperLayoutPicker from '@/components/PaperLayoutPicker';
 import ExportToolbar from '@/components/ExportToolbar';
 import { parsePaste, type TableRow } from '@/lib/parse-paste';
+import { buildPasteStatePatch } from '@/lib/paste-state';
 import type { StudySections } from '@/lib/parse-study';
 import { enrichStudySections } from '@/lib/study-display';
 import { clearDraft, clearAllDrafts, loadDraft, saveDraft } from '@/lib/draft-store';
@@ -376,6 +377,17 @@ function NewDocumentInner() {
   /** Smart paste: judgment template → briefing; else study → study; else ordinary letter. */
   function applyPaste() {
     const parsed = parsePaste(paste);
+    const tplForStrict = templates.find((t) => t.id === templateId);
+    const metaForStrict = parseTemplateFieldsJson(tplForStrict?.fieldsJson);
+    const strictPatch = buildPasteStatePatch(paste, {
+      briefingTemplate:
+        isJudgmentBriefingMeta(metaForStrict) || isJudgmentBriefingFormSlug(formSlug),
+      formName: formName || undefined,
+      keepDates: {
+        gregorian: form.dateGregorian || todayGregorianISO(),
+        hijri: form.dateHijri || todayHijri(),
+      },
+    });
     const tpl = templates.find((t) => t.id === templateId);
     const meta = parseTemplateFieldsJson(tpl?.fieldsJson);
     const seedMeta = meta.seed;
@@ -404,16 +416,20 @@ function NewDocumentInner() {
         judgmentCard,
         paste,
         { ...(parsed.judgmentCardFields || {}) },
+        { strict: true },
       );
       setJudgmentCard(mergedCard);
       const prose = extractJudgmentProseFromPaste(paste);
       if (prose.observation) setObservationText(prose.observation);
+      else setObservationText('');
       if (prose.mechanismText) setMechanismText(prose.mechanismText);
+      else setMechanismText('');
+      // Strict: never invent financial/name prose when paste has no observation
       const letterBody =
         (parsed.body && parsed.body.trim()) ||
         (prose.observation || prose.mechanismText
           ? defaultJudgmentLetterBody(mergedCard, prose.observation, prose.mechanismText)
-          : defaultJudgmentLetterBody(mergedCard));
+          : '');
       const nextSubject =
         (parsed.subject && parsed.subject.trim()) ||
         form.subject ||
@@ -493,11 +509,12 @@ function NewDocumentInner() {
     setForm({
       ...EMPTY_FORM,
       subject: nextSubject,
-      recipients: (parsed.recipients && parsed.recipients.trim()) || '',
-      parties: parsed.parties || '',
-      reasons: parsed.reasons || '',
-      studyFields: studyDetected ? parsed.studyFields || '' : '',
-      body: nextBody,
+      recipients: (strictPatch.form.recipients && strictPatch.form.recipients.trim()) || (parsed.recipients && parsed.recipients.trim()) || '',
+      copyTo: strictPatch.form.copyTo || '',
+      parties: strictPatch.form.parties || '',
+      reasons: strictPatch.form.reasons || '',
+      studyFields: studyDetected ? (strictPatch.form.studyFields || '') : '',
+      body: nextBody || strictPatch.form.body || '',
       dateGregorian: (() => {
         const raw = parsed.date || '';
         if (raw && looksLikeHijri(raw)) return todayGregorianISO();
