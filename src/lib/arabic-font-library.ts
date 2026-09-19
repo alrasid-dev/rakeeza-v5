@@ -225,3 +225,17 @@ export function resolvePdfEmbeddedFamily(id?: string | null): string {
   if (ext) return ext.pdfFallback;
   return 'Amiri';
 }
+
+/**
+ * Family name for inline `style="font-family: 'FontName'"` on PDF paragraphs.
+ * Matches a Base64 @font-face we actually embed (Traditional Arabic keeps its
+ * own family name so the selected picker id wins in the PDF).
+ */
+export function pdfInlineFontName(id?: string | null): string {
+  const key = String(id || '').trim() || 'Traditional Arabic';
+  const def = findFontDef(key);
+  if (def) return def.cssFamily;
+  const ext = EXTENDED_FONT_OPTIONS.find((f) => f.id === key);
+  if (ext) return ext.pdfFallback || ext.cssFamily;
+  return 'Traditional Arabic';
+}

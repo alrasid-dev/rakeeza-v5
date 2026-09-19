@@ -7,9 +7,19 @@ import { officialDateDisplay } from '@/lib/hijri';
 import { loadEmblemPng, BRAND } from '@/lib/brand-assets';
 import ExcelJS from 'exceljs';
 
-const GREEN = '006C35';
+/** Official template olive header + gold strip (MOJ letterhead). */
+const HEADER = '1B4D3E';
+const GREEN = HEADER; // alias for legacy call sites in this file
 const GOLD = 'C5A059';
 const LIGHT = 'E6F2EB';
+const INK = '111111';
+
+const THIN_HEADER = {
+  top: { style: 'thin' as const, color: { argb: `FF${HEADER}` } },
+  bottom: { style: 'thin' as const, color: { argb: `FF${HEADER}` } },
+  left: { style: 'thin' as const, color: { argb: `FF${HEADER}` } },
+  right: { style: 'thin' as const, color: { argb: `FF${HEADER}` } },
+};
 
 function styleHeaderCell(cell: ExcelJS.Cell, opts?: { fill?: string; color?: string; bold?: boolean; size?: number }) {
   cell.font = {
@@ -21,38 +31,73 @@ function styleHeaderCell(cell: ExcelJS.Cell, opts?: { fill?: string; color?: str
   cell.fill = {
     type: 'pattern',
     pattern: 'solid',
-    fgColor: { argb: `FF${opts?.fill || GREEN}` },
+    fgColor: { argb: `FF${opts?.fill || HEADER}` },
   };
   cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true, readingOrder: 'rtl' };
   cell.border = {
     top: { style: 'thin', color: { argb: `FF${GOLD}` } },
     bottom: { style: 'thin', color: { argb: `FF${GOLD}` } },
-    left: { style: 'thin', color: { argb: `FF${GREEN}` } },
-    right: { style: 'thin', color: { argb: `FF${GREEN}` } },
+    left: { style: 'thin', color: { argb: `FF${HEADER}` } },
+    right: { style: 'thin', color: { argb: `FF${HEADER}` } },
   };
 }
 
 function styleKvLabel(cell: ExcelJS.Cell) {
-  cell.font = { bold: true, color: { argb: `FF${GREEN}` }, size: 11, name: 'Arial' };
+  cell.font = { bold: true, color: { argb: `FF${HEADER}` }, size: 11, name: 'Arial' };
   cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: `FF${LIGHT}` } };
   cell.alignment = { horizontal: 'right', vertical: 'middle', readingOrder: 'rtl', wrapText: true };
-  cell.border = {
-    top: { style: 'thin', color: { argb: `FF${GREEN}` } },
-    bottom: { style: 'thin', color: { argb: `FF${GREEN}` } },
-    left: { style: 'thin', color: { argb: `FF${GREEN}` } },
-    right: { style: 'thin', color: { argb: `FF${GREEN}` } },
-  };
+  cell.border = THIN_HEADER;
 }
 
 function styleKvValue(cell: ExcelJS.Cell) {
-  cell.font = { size: 11, name: 'Arial', color: { argb: 'FF111111' } };
+  cell.font = { size: 11, name: 'Arial', color: { argb: `FF${INK}` } };
   cell.alignment = { horizontal: 'right', vertical: 'top', readingOrder: 'rtl', wrapText: true };
-  cell.border = {
-    top: { style: 'thin', color: { argb: `FF${GREEN}` } },
-    bottom: { style: 'thin', color: { argb: `FF${GREEN}` } },
-    left: { style: 'thin', color: { argb: `FF${GREEN}` } },
-    right: { style: 'thin', color: { argb: `FF${GREEN}` } },
-  };
+  cell.border = THIN_HEADER;
+}
+
+/**
+ * ExcelJS interactive table matching the official bordered form.
+ * Returns the next free row index after the table.
+ */
+function addOfficialTable(
+  ws: ExcelJS.Worksheet,
+  opts: {
+    name: string;
+    startRow: number;
+    columns: string[];
+    rows: (string | number)[][];
+  },
+): number {
+  const colCount = opts.columns.length;
+  const dataRows = opts.rows.length ? opts.rows : [opts.columns.map(() => '—')];
+  const endRow = opts.startRow + dataRows.length; // header + data
+  const endColLetter = String.fromCharCode('A'.charCodeAt(0) + colCount - 1);
+  const ref = `A${opts.startRow}:${endColLetter}${endRow}`;
+
+  ws.addTable({
+    name: opts.name,
+    ref,
+    headerRow: true,
+    totalsRow: false,
+    style: {
+      theme: 'TableStyleMedium2',
+      showRowStripes: true,
+    },
+    columns: opts.columns.map((name) => ({ name, filterButton: true })),
+    rows: dataRows,
+  });
+
+  const header = ws.getRow(opts.startRow);
+  for (let c = 1; c <= colCount; c++) {
+    styleHeaderCell(header.getCell(c), { fill: HEADER, size: 10 });
+  }
+  for (let r = opts.startRow + 1; r <= endRow; r++) {
+    const row = ws.getRow(r);
+    for (let c = 1; c <= colCount; c++) {
+      styleKvValue(row.getCell(c));
+    }
+  }
+  return endRow + 2;
 }
 
 export async function GET(req: NextRequest) {
@@ -86,7 +131,7 @@ export async function GET(req: NextRequest) {
     wb.company = 'وزارة العدل — المحكمة العمالية بالرياض';
 
     const ws = wb.addWorksheet('المكاتبة', {
-      views: [{ rightToLeft: true, state: 'normal', showGridLines: false }],
+      views: [{ rightToLeft: true }],
       properties: { defaultRowHeight: 18 },
     });
     ws.columns = [
@@ -99,16 +144,16 @@ export async function GET(req: NextRequest) {
     // Row 1–3: official merged header
     const r1 = ws.addRow(['المملكة العربية السعودية']);
     ws.mergeCells(r1.number, 1, r1.number, 4);
-    styleHeaderCell(r1.getCell(1), { fill: GREEN, size: 14 });
+    styleHeaderCell(r1.getCell(1), { fill: HEADER, size: 14 });
     r1.height = 24;
 
     const r2 = ws.addRow(['وزارة العدل']);
     ws.mergeCells(r2.number, 1, r2.number, 4);
-    styleHeaderCell(r2.getCell(1), { fill: GREEN, size: 13 });
+    styleHeaderCell(r2.getCell(1), { fill: HEADER, size: 13 });
 
     const r3 = ws.addRow(['المحكمة العمالية بالرياض']);
     ws.mergeCells(r3.number, 1, r3.number, 4);
-    styleHeaderCell(r3.getCell(1), { fill: GREEN, size: 14 });
+    styleHeaderCell(r3.getCell(1), { fill: HEADER, size: 14 });
     r3.height = 22;
 
     const r4 = ws.addRow([BRAND.platform]);
@@ -161,7 +206,7 @@ export async function GET(req: NextRequest) {
     if (ss) {
       const ban = ws.addRow(['بيانات القضية']);
       ws.mergeCells(ban.number, 1, ban.number, 4);
-      styleHeaderCell(ban.getCell(1), { fill: GREEN });
+      styleHeaderCell(ban.getCell(1), { fill: HEADER });
       for (const [k, label] of [
         ['caseNumber', 'رقم القضية'],
         ['deedNumber', 'رقم الصك'],
@@ -185,18 +230,20 @@ export async function GET(req: NextRequest) {
       const ban = ws.addRow([fields.briefingTitle || 'بطاقة عرض — مدخلات الأحكام']);
       ws.mergeCells(ban.number, 1, ban.number, 4);
       styleHeaderCell(ban.getCell(1), { fill: GOLD, color: '1A1A1A' });
-      const head = ws.addRow(['الحقل', 'القيمة', '', '']);
-      head.eachCell((c, i) => {
-        if (i <= 2) styleHeaderCell(c, { fill: GREEN, size: 10 });
+      const start = ban.number + 1;
+      addOfficialTable(ws, {
+        name: 'JudgmentCard',
+        startRow: start,
+        columns: ['الحقل', 'القيمة'],
+        rows: fields.judgmentCard.map((row) => [row.label, row.value]),
       });
-      for (const row of fields.judgmentCard) {
-        const r = ws.addRow([row.label, row.value, '', '']);
-        ws.mergeCells(r.number, 2, r.number, 4);
-        styleKvLabel(r.getCell(1));
-        styleKvValue(r.getCell(2));
-        styleKvValue(r.getCell(3));
-        styleKvValue(r.getCell(4));
-        r.height = Math.min(80, 18 + Math.ceil(String(row.value || '').length / 45) * 12);
+      // widen value column already set; ensure merges for visual form
+      for (let r = start + 1; r <= start + Math.max(fields.judgmentCard.length, 1); r++) {
+        try {
+          ws.mergeCells(r, 2, r, 4);
+        } catch {
+          /* table may own cells */
+        }
       }
       ws.addRow([]);
     }
@@ -205,11 +252,11 @@ export async function GET(req: NextRequest) {
       const ban = ws.addRow(['جدول الأسماء']);
       ws.mergeCells(ban.number, 1, ban.number, 4);
       styleHeaderCell(ban.getCell(1), { fill: GOLD, color: '1A1A1A' });
-      const head = ws.addRow(['#', 'الاسم', 'رقم الهوية', 'ملاحظات']);
-      head.eachCell((c) => styleHeaderCell(c, { fill: GREEN, size: 10 }));
-      fields.tableRows.forEach((r, i) => {
-        const row = ws.addRow([i + 1, r.name, r.id || '', r.extra || '']);
-        row.eachCell((c) => styleKvValue(c));
+      addOfficialTable(ws, {
+        name: 'PartyNames',
+        startRow: ban.number + 1,
+        columns: ['تسلسل', 'الاسم', 'رقم الهوية', 'ملاحظات'],
+        rows: fields.tableRows.map((r, i) => [i + 1, r.name, r.id || '', r.extra || '']),
       });
     }
 
@@ -226,7 +273,7 @@ export async function GET(req: NextRequest) {
     meta.columns = [{ width: 28 }, { width: 48 }];
     const mTitle = meta.addRow(['بيانات المستند الرسمية']);
     meta.mergeCells(mTitle.number, 1, mTitle.number, 2);
-    styleHeaderCell(mTitle.getCell(1));
+    styleHeaderCell(mTitle.getCell(1), { fill: HEADER });
 
     const metaRows: [string, string][] = [
       ['رقم الصادر', doc.number || '—'],
@@ -270,7 +317,7 @@ export async function GET(req: NextRequest) {
     { header: 'التاريخ', key: 'dateGregorian', width: 14 },
     { header: 'إلى', key: 'recipients', width: 24 },
   ];
-  ws.getRow(1).eachCell((c) => styleHeaderCell(c, { size: 11 }));
+  ws.getRow(1).eachCell((c) => styleHeaderCell(c, { fill: HEADER, size: 11 }));
   for (const d of docs) {
     ws.addRow({
       number: d.number || '',

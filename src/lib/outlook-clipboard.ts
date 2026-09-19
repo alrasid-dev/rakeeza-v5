@@ -168,11 +168,30 @@ ${styles}
 
 /** True when Outlook HTML is MSO/table-based (verify scripts). */
 export function outlookHtmlIsTableBased(html: string): boolean {
+  const src = String(html || '');
   return (
-    /<table[\s>]/i.test(html) &&
-    (/class="brand-row"/i.test(html) || /role="presentation"/i.test(html)) &&
-    (/xmlns:o=/i.test(html) || /xmlns:w=/i.test(html) || /mso/i.test(html) || /<!--\[if mso\]/i.test(html))
+    /<table[\s>]/i.test(src) &&
+    /class="brand-row[^"]*official-header"|class="brand-row official-header"/i.test(src) &&
+    /role="presentation"/i.test(src) &&
+    /align="left"/i.test(src) &&
+    /align="center"/i.test(src) &&
+    /align="right"/i.test(src) &&
+    /class="official-left"/i.test(src) &&
+    /class="official-center"/i.test(src) &&
+    /class="official-right"/i.test(src) &&
+    !/display\s*:\s*flex/i.test(src) &&
+    !/display\s*:\s*grid/i.test(src) &&
+    (/xmlns:o=/i.test(src) || /xmlns:w=/i.test(src) || /mso/i.test(src) || /<!--\[if mso\]/i.test(src))
   );
+}
+
+/** Left column of the official 3-col header carries QR + outgoing number + date. */
+export function outlookHeaderHasQrNumberDate(html: string): boolean {
+  const src = String(html || '');
+  const left = src.match(/<table[^>]*class="official-left"[^>]*>[\s\S]*?<\/table>/i);
+  if (!left) return false;
+  const chunk = left[0];
+  return /QR|qr|alt="QR"/i.test(chunk) && /الرقم/.test(chunk) && /التاريخ/.test(chunk);
 }
 
 /** Legacy table-based letter — kept only if official HTML fails; prefer buildLetterHtml. */

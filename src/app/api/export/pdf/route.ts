@@ -63,7 +63,10 @@ async function renderHtmlToPdf(browser: { newPage: () => Promise<any>; close: ()
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: 'load', timeout: 45000 });
     // Wait until Base64 @font-face faces are loaded before rasterizing PDF
-    await page.evaluate(() => document.fonts.ready);
+    // Explicitly await Base64 @font-face load before page.pdf() so selected font wins.
+    await page.evaluate(async () => {
+      await document.fonts.ready;
+    });
     await new Promise((r) => setTimeout(r, 1200));
     const pdf = await page.pdf({
       format: 'A4',

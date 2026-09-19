@@ -19,6 +19,8 @@ import {
   isJudgmentBriefingDoc,
 } from '@/lib/judgment-card';
 import { buildPdfPrintCss } from '@/lib/pdf-print-css';
+import { pdfInlineFontName } from '@/lib/arabic-font-library';
+import { stampInlineFontFamily } from '@/lib/stamp-inline-font';
 
 export type OfficialLetterDoc = {
   number?: string | null;
@@ -67,9 +69,15 @@ function pre(s: string) {
   return esc(s).replace(/\n/g, '<br/>');
 }
 
+/** Table KV — Outlook Word engine cannot layout flex/grid. */
 function kv(label: string, value?: string) {
   if (!value) return '';
-  return `<div style="display:flex;gap:8px;padding:4px 0;border-bottom:1px solid ${GREEN}22"><b style="color:${GREEN};min-width:7rem">${esc(label)}</b><span>${esc(value)}</span></div>`;
+  return `<table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse:collapse;border-bottom:1px solid ${GREEN}22">
+    <tr>
+      <td width="28%" valign="top" align="right" style="padding:4px 8px 4px 0;color:${GREEN};font-weight:700;white-space:nowrap">${esc(label)}</td>
+      <td valign="top" align="right" style="padding:4px 0">${esc(value)}</td>
+    </tr>
+  </table>`;
 }
 
 function partyBar(label: string, value: string | undefined, tone: 'plaintiff' | 'defendant') {
@@ -77,17 +85,24 @@ function partyBar(label: string, value: string | undefined, tone: 'plaintiff' | 
   const bg = tone === 'plaintiff' ? '#E6F2EB' : '#FFF8E8';
   const bd = tone === 'plaintiff' ? GREEN : GOLD;
   const fg = tone === 'plaintiff' ? GREEN : '#8a6b2e';
-  return `<div style="background:${bg};border:2px solid ${bd};border-radius:6px;padding:8px 10px;margin:6px 0;display:flex;gap:10px;align-items:flex-start">
-    <b style="color:${fg};min-width:6.5rem;font-size:12px">${esc(label)}</b>
-    <span style="flex:1;font-weight:600">${esc(value)}</span>
-  </div>`;
+  return `<table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse:collapse;background:${bg};border:2px solid ${bd};margin:6px 0">
+    <tr>
+      <td width="28%" valign="top" align="right" style="padding:8px 10px;color:${fg};font-weight:700;font-size:12px;white-space:nowrap">${esc(label)}</td>
+      <td valign="top" align="right" style="padding:8px 10px;font-weight:600">${esc(value)}</td>
+    </tr>
+  </table>`;
 }
 
 function studyHtml(s: StudySections) {
   const formation = normalizeFormationOrdinal(s.formation) || s.formation;
   const amount = formatClaimAmount(s.claimAmount) || s.claimAmount;
   const amountHtml = amount
-    ? `<div style="display:flex;gap:8px;padding:4px 0;border-bottom:1px solid ${GREEN}22"><b style="color:${GREEN};min-width:7rem">مقدار المطالبة</b><span dir="ltr" style="unicode-bidi:embed;font-weight:600">${esc(amount)}</span></div>`
+    ? `<table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse:collapse;border-bottom:1px solid ${GREEN}22">
+      <tr>
+        <td width="28%" valign="top" align="right" style="padding:4px 8px 4px 0;color:${GREEN};font-weight:700;white-space:nowrap">مقدار المطالبة</td>
+        <td valign="top" align="right" dir="ltr" style="padding:4px 0;unicode-bidi:embed;font-weight:600">${esc(amount)}</td>
+      </tr>
+    </table>`
     : '';
   return `
   <div class="card-block" style="border:1px solid ${GREEN};border-radius:8px;overflow:hidden;margin:8px 0">
@@ -273,6 +288,10 @@ export function buildOfficialLetterHtml(doc: OfficialLetterDoc, opts?: OfficialL
   const useExportFonts = Boolean(opts?.forPdf || opts?.forOutlook);
   const font = useExportFonts ? exportFontStack(doc.fontFamily) : fontStackFor(doc.fontFamily);
   const size = doc.fontSizePt || 14;
+  /** PDF: single embedded family name. Outlook/preview: full concrete stack. */
+  const paraFont = opts?.forPdf
+    ? `'${pdfInlineFontName(doc.fontFamily)}'`
+    : font;
   const gfImport = useExportFonts
     ? googleFontsImportCss([String(doc.fontFamily || 'Traditional Arabic')])
     : '';
@@ -362,78 +381,84 @@ ${embeddedBlock}`;
   // Outlook Word engine mangles position:absolute SVG overlays — drop decor for paste fidelity
   const hexDecorSafe = opts?.forOutlook ? '' : hexDecor;
 
-  // Official Saudi letterhead (physical LTR): LEFT=QR, CENTER=emblem, RIGHT=kingdom/ministry/court
-  const hexText = `
-          <div style="text-align:right;line-height:1.45;min-width:0;width:100%" dir="rtl">
-            <div style="font-size:13px;color:${GREEN};font-weight:700;mso-line-height-rule:exactly">${esc(BRAND.kingdom)}</div>
-            <div style="font-size:13px;color:${GREEN};font-weight:700;mso-line-height-rule:exactly">${esc(BRAND.ministry)}</div>
-            <div style="font-size:16px;color:${GREEN};font-weight:800;margin-top:3px;mso-line-height-rule:exactly">${esc(court)}</div>
-            <div style="color:${GOLD};font-size:11px;margin-top:3px;mso-line-height-rule:exactly">${esc(BRAND.platform)}</div>
-          </div>`;
-  const brandRow = layout === 'modern-hex'
-    ? (opts?.forOutlook
-      ? `<table class="brand-row official-header" dir="ltr" width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse:collapse;border-bottom:1px solid ${GOLD};table-layout:fixed;background:#F9F7F1">
+  // Official 3-column MSO letterhead (physical LTR, no flex/grid):
+  // LEFT=QR+number+date · CENTER=logo+بطاقة عرض · RIGHT=kingdom/ministry/court
+  const qrImg = layout === 'modern-hex'
+    ? qr.replace('border:1px solid', 'border:1.5px dashed').replace('border:1px dashed', 'border:1.5px dashed')
+    : qr;
+  const centerBadge = underLogoLabel
+    ? esc(underLogoLabel)
+    : layout === 'taameem-circular'
+      ? 'تعميم'
+      : '';
+  const headerCellBg = layout === 'modern-hex' ? 'background:#F9F7F1;' : '';
+  const dateShown = officialDateDisplay(doc.dateHijri, doc.dateGregorian);
+  const leftCol = `<table class="official-left" dir="ltr" align="left" width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse:collapse">
+      <tr><td align="left" valign="top" style="padding:0 0 6px">${qrImg}</td></tr>
+      <tr><td align="left" valign="top" data-field="number" style="padding:2px 0;font-family:${paraFont};font-size:12px;color:${GREEN};font-weight:700;mso-line-height-rule:exactly">الرقم: <span dir="ltr">${esc(doc.number || '—')}</span></td></tr>
+      <tr><td align="left" valign="top" data-field="dateGregorian" style="padding:2px 0;font-family:${paraFont};font-size:12px;color:${GREEN};font-weight:700;mso-line-height-rule:exactly">التاريخ: ${esc(dateShown)}</td></tr>
+    </table>`;
+  const centerCol = `<table class="official-center" align="center" width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse:collapse">
+      <tr><td align="center" valign="top" style="padding:0">${emblem}</td></tr>
+      ${
+        centerBadge
+          ? `<tr><td align="center" valign="top" style="padding:6px 0 0"><table align="center" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse:collapse;border:1px solid ${GOLD};background:#fff"><tr><td align="center" style="padding:2px 10px;font-family:${paraFont};font-size:10px;font-weight:800;color:${GREEN}">${centerBadge}</td></tr></table></td></tr>`
+          : ''
+      }
+    </table>`;
+  const rightLines = (layout === 'modern-hex'
+    ? [BRAND.kingdom, BRAND.ministry, court, BRAND.platform]
+    : [...header, BRAND.platform]
+  )
+    .map((h, i, arr) => {
+      const isPlatform = h === BRAND.platform || i === arr.length - 1;
+      const isCourt = !isPlatform && (h === court || (layout !== 'modern-hex' && i === header.length - 1));
+      const sizePx = isCourt ? 16 : isPlatform ? 12 : 13;
+      const color = isPlatform ? GOLD : GREEN;
+      const weight = isPlatform ? 700 : 800;
+      return `<tr><td class="${isPlatform ? 'sub' : 'court'}" align="right" dir="rtl" style="padding:1px 0;font-family:${paraFont};font-size:${sizePx}px;color:${color};font-weight:${weight};text-align:right;mso-line-height-rule:exactly">${esc(h)}</td></tr>`;
+    })
+    .join('');
+  const rightCol = `<table class="official-right" dir="rtl" align="right" width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse:collapse">${rightLines}</table>`;
+
+  const headerTable = `<table class="brand-row official-header" dir="ltr" width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse:collapse;border-bottom:2px solid ${GOLD};table-layout:fixed;${layout === 'modern-hex' ? 'background:#F9F7F1;' : ''}">
     <tr>
-      <td width="33%" valign="middle" align="left" style="padding:14px 18px;background:#F9F7F1">${qr.replace('border:1px solid', 'border:1.5px dashed').replace('border:1px dashed', 'border:1.5px dashed')}</td>
-      <td width="34%" valign="middle" align="center" style="padding:14px 8px;background:#F9F7F1">${emblem}${underLogoLabel ? `<div style="margin-top:6px;font-size:10px;font-weight:800;color:${GREEN};border:1px solid ${GOLD};padding:2px 10px;background:#fff">${esc(underLogoLabel)}</div>` : ''}</td>
-      <td width="33%" valign="middle" align="right" style="padding:14px 6px 14px 10px;background:#F9F7F1">${hexText}</td>
-    </tr>
-  </table>`
-      : `<div style="position:relative;background:#F9F7F1">
-  ${hexDecorSafe}
-  <table class="brand-row official-header" dir="ltr" width="100%" cellpadding="0" cellspacing="0" role="presentation" style="position:relative;z-index:1;border-collapse:collapse;border-bottom:1px solid ${GOLD}80;table-layout:fixed;background:transparent">
-    <tr>
-      <td width="33%" valign="middle" align="left" style="padding:14px 18px">${qr.replace('border:1px solid', 'border:1.5px dashed').replace('border:1px dashed', 'border:1.5px dashed')}</td>
-      <td width="34%" valign="middle" align="center" style="padding:14px 8px">${emblem}${underLogoLabel ? `<div style="display:inline-block;margin-top:4px;font-size:10px;font-weight:800;color:${GREEN};border:1px solid ${GOLD};border-radius:999px;padding:2px 10px;background:#fff">${esc(underLogoLabel)}</div>` : ''}</td>
-      <td width="33%" valign="middle" align="right" style="padding:14px 6px 14px 10px">${hexText}</td>
-    </tr>
-  </table>
-</div>`)
-    : `
-  <table class="brand-row official-header" dir="ltr" width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse:collapse;border-bottom:2px solid ${GOLD};table-layout:fixed">
-    <tr>
-      <td width="33%" valign="middle" align="left" style="padding:14px 12px;width:33%">${qr}</td>
-      <td width="34%" valign="middle" align="center" style="padding:14px 8px;width:34%">${emblem}${underLogoLabel ? `<div style="display:inline-block;margin-top:4px;font-size:10px;font-weight:800;color:${GREEN};border:1px solid ${GOLD};border-radius:999px;padding:2px 10px;background:#fff">${esc(underLogoLabel)}</div>` : (layout === 'taameem-circular' ? `<div style="display:inline-block;margin-top:4px;font-size:9px;font-weight:700;color:${GREEN};border:1px solid ${GOLD};border-radius:999px;padding:1px 8px">تعميم</div>` : '')}</td>
-      <td width="33%" valign="middle" align="right" style="padding:14px 6px 14px 10px;width:33%" dir="rtl">
-        ${header
-          .map(
-            (h, i) =>
-              `<div class="court" style="font-size:${h === court || i === header.length - 1 ? 16 : 13}px;color:${GREEN};font-weight:800;text-align:right">${esc(h)}</div>`,
-          )
-          .join('')}
-        <div class="sub" style="color:${GOLD};font-size:12px;margin-top:2px;text-align:right">${BRAND.platform}</div>
-      </td>
+      <td class="official-left" width="33%" valign="top" align="left" style="padding:14px 12px;width:33%;${headerCellBg}">${leftCol}</td>
+      <td class="official-center" width="34%" valign="top" align="center" style="padding:14px 8px;width:34%;${headerCellBg}">${centerCol}</td>
+      <td class="official-right" width="33%" valign="top" align="right" style="padding:14px 10px 14px 6px;width:33%;${headerCellBg}">${rightCol}</td>
     </tr>
   </table>`;
+
+  const brandRow =
+    layout === 'modern-hex' && !opts?.forOutlook
+      ? `<div style="position:relative;background:#F9F7F1">${hexDecorSafe}${headerTable}</div>`
+      : headerTable;
 
   const metaLabel = (t: string) =>
     `<span class="label" style="color:${GREEN};font-weight:700">${esc(t)}</span>`;
 
   // Outlook Word engine: table meta (no CSS grid). Preview/PDF may use grid.
   // Outlook ignores margin on tables — pad via outer td; inline theme colors (no border-radius).
+  // Number + date live in letterhead left column — do not duplicate in meta.
   const metaBoxOutlook = `
   <table dir="rtl" width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse:collapse">
     <tr><td style="padding:14px 18px">
   <table class="meta" dir="rtl" width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse:collapse;font-size:${size}px;background:#E6F2EB;border:1px solid ${GREEN}">
     <tr>
-      <td width="50%" valign="top" data-field="number" style="padding:8px 14px;font-family:${font};font-size:${size}px">${metaLabel('الرقم:')} <span dir="ltr">${esc(doc.number || '—')}</span></td>
-      <td width="50%" valign="top" data-field="dateGregorian" style="padding:8px 14px;font-family:${font};font-size:${size}px">${metaLabel('التاريخ:')} ${esc(officialDateDisplay(doc.dateHijri, doc.dateGregorian))}</td>
-    </tr>
-    <tr>
-      <td colspan="2" data-field="recipients" style="padding:6px 14px;font-family:${font};font-size:${size}px">${metaLabel('إلى:')} ${esc(doc.recipients || '—')}</td>
+      <td colspan="2" data-field="recipients" align="right" style="padding:8px 14px;font-family:${paraFont};font-size:${size}px">${metaLabel('إلى:')} ${esc(doc.recipients || '—')}</td>
     </tr>
     ${
       doc.copyTo?.trim()
-        ? `<tr><td colspan="2" class="cc-row" data-field="copyTo" style="padding:6px 14px;font-family:${font};font-size:${size}px">${metaLabel('نسخة إلى:')} ${esc(doc.copyTo)}</td></tr>`
+        ? `<tr><td colspan="2" class="cc-row" data-field="copyTo" align="right" style="padding:6px 14px;font-family:${paraFont};font-size:${size}px">${metaLabel('نسخة إلى:')} ${esc(doc.copyTo)}</td></tr>`
         : ''
     }
     ${
       doc.attachments?.trim()
-        ? `<tr><td colspan="2" style="padding:6px 14px;font-family:${font};font-size:${size}px">${metaLabel('مرفقات:')} ${esc(doc.attachments)}</td></tr>`
+        ? `<tr><td colspan="2" align="right" style="padding:6px 14px;font-family:${paraFont};font-size:${size}px">${metaLabel('مرفقات:')} ${esc(doc.attachments)}</td></tr>`
         : ''
     }
     <tr>
-      <td colspan="2" data-field="subject" style="padding:6px 14px 10px;font-family:${font};font-size:${size}px">${metaLabel('الموضوع:')} ${esc(previewSubject)}</td>
+      <td colspan="2" data-field="subject" align="right" style="padding:6px 14px 10px;font-family:${paraFont};font-size:${size}px">${metaLabel('الموضوع:')} ${esc(previewSubject)}</td>
     </tr>
   </table>
     </td></tr>
@@ -441,8 +466,6 @@ ${embeddedBlock}`;
 
   const metaBoxGrid = `
   <div class="meta">
-    <div data-field="number" style="cursor:pointer"><span class="label">الرقم:</span> <span dir="ltr">${esc(doc.number || '—')}</span></div>
-    <div data-field="dateGregorian" style="cursor:pointer"><span class="label">التاريخ:</span> ${esc(officialDateDisplay(doc.dateHijri, doc.dateGregorian))}</div>
     <div data-field="recipients" style="grid-column:1/-1;cursor:pointer"><span class="label">إلى:</span> ${esc(doc.recipients || '—')}</div>
     ${
       doc.copyTo?.trim()
@@ -465,11 +488,12 @@ ${embeddedBlock}`;
     ? bodyToExportHtml(String(doc.body), {
         escape: esc,
         fallbackAlign: (doc.align as 'right' | 'center' | 'left') || 'right',
+        fontFamily: paraFont,
       })
     : '';
   const bodyInner = `
     ${hasStudy && study ? `<div data-field="studyFields" style="cursor:pointer">${studyHtml(study)}</div>` : ''}
-    ${isBriefing && doc.judgmentCard?.length ? `<div data-field="body" style="cursor:pointer;font-family:${font};font-size:${size}px">${judgmentBriefingHtml(doc, doc.judgmentCard)}</div>` : ''}
+    ${isBriefing && doc.judgmentCard?.length ? `<div data-field="body" style="cursor:pointer;font-family:${paraFont};font-size:${size}px">${judgmentBriefingHtml(doc, doc.judgmentCard)}</div>` : ''}
     ${
       !hasStudy && !isBriefing && doc.parties
         ? `<div data-field="parties" style="cursor:pointer"><h3 style="margin:12px 0 6px;color:${GREEN};font-size:13px;border-bottom:1px solid ${GOLD};padding-bottom:2px">الأطراف</h3><div class="body">${pre(doc.parties)}</div></div>`
@@ -482,7 +506,7 @@ ${embeddedBlock}`;
     }
     ${
       !hasStudy && !isBriefing && bodyHtml
-        ? `<div class="body" data-field="body" style="cursor:pointer;font-family:${font};font-size:${size}px">${bodyHtml}</div>`
+        ? `<div class="body" data-field="body" style="cursor:pointer;font-family:${paraFont};font-size:${size}px">${bodyHtml}</div>`
         : ''
     }
     ${
@@ -491,12 +515,12 @@ ${embeddedBlock}`;
         : ''
     }`;
   const bodySection = opts?.forOutlook
-    ? `<table dir="rtl" width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse:collapse"><tr><td class="section" style="${sectionPad};font-family:${font};font-size:${size}px;color:#111">${bodyInner}</td></tr></table>`
+    ? `<table dir="rtl" width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse:collapse"><tr><td class="section" style="${sectionPad};font-family:${paraFont};font-size:${size}px;color:#111">${bodyInner}</td></tr></table>`
     : `<div class="section" style="${sectionPad}">${bodyInner}</div>`;
 
   // Outlook Word engine mangles position:absolute SVG footers — solid bar + text only
   const footInner = opts?.forOutlook
-    ? `<div style="padding:10px 18px;text-align:center;color:${layout === 'modern-hex' ? '#f5f5f5' : '#555'};font-size:11px;font-family:${font};background:${layout === 'modern-hex' ? '#1B4332' : 'transparent'}">${esc(footer)}</div>`
+    ? `<div style="padding:10px 18px;text-align:center;color:${layout === 'modern-hex' ? '#f5f5f5' : '#555'};font-size:11px;font-family:${paraFont};background:${layout === 'modern-hex' ? '#1B4332' : 'transparent'}">${esc(footer)}</div>`
     : theme.extraChrome
       ? theme.extraChrome + `<div style="padding:8px 18px;text-align:center;color:#555;font-size:11px">${esc(footer)}</div>`
       : esc(footer);
@@ -517,8 +541,8 @@ ${embeddedBlock}`;
   }`;
 
   const paperHtml = opts?.forOutlook
-    ? `<table class="paper" data-paper-layout="${esc(layout)}" width="700" cellpadding="0" cellspacing="0" role="presentation" dir="rtl" style="width:700px;max-width:700px;margin:0 auto;border-collapse:collapse;border:${theme.paperBorder};background:${theme.paperBg};font-family:${font};font-size:${size}px;line-height:1.85;color:#111">
-  <tr><td style="padding:0;font-family:${font};font-size:${size}px;color:#111;background:${theme.paperBg}">
+    ? `<table class="paper" data-paper-layout="${esc(layout)}" width="700" cellpadding="0" cellspacing="0" role="presentation" dir="rtl" style="width:700px;max-width:700px;margin:0 auto;border-collapse:collapse;border:${theme.paperBorder};background:${theme.paperBg};font-family:${paraFont};font-size:${size}px;line-height:1.85;color:#111">
+  <tr><td style="padding:0;font-family:${paraFont};font-size:${size}px;color:#111;background:${theme.paperBg}">
   ${paperInner}
   </td></tr>
 </table>`
@@ -540,11 +564,15 @@ ${embeddedBlock}`;
 }
 .meta .label { color: ${GREEN}; font-weight: 700; }`;
 
-  const inheritRule = opts?.forOutlook
+  // PDF: do not force inherit — TipTap + stamped inline font-family must win.
+  const inheritRule = opts?.forOutlook || opts?.forPdf
     ? ''
     : `.paper, .paper *:not(img):not(svg):not(svg *) {
   font-family: inherit;
 }`;
+
+  const stampedPaper =
+    opts?.forPdf || opts?.forOutlook ? stampInlineFontFamily(paperHtml, paraFont) : paperHtml;
 
   return `<!DOCTYPE html>
 <html lang="ar" dir="rtl">
@@ -557,7 +585,7 @@ ${pageCss}
 body {
   overflow-wrap: anywhere;
   word-break: break-word;
-  font-family: ${font};
+  font-family: ${paraFont};
   color: #111;
   background: #fff;
   font-size: ${size}px;
@@ -571,7 +599,7 @@ body {
   border-radius: 4px;
   overflow: hidden;
   background: ${theme.paperBg};
-  font-family: ${font};
+  font-family: ${paraFont};
   position: relative;
 }
 ${inheritRule}
@@ -595,7 +623,7 @@ ${metaCss}
   border-bottom: 1px solid ${GOLD};
   padding-bottom: 2px;
 }
-.body { font-family: inherit; }
+.body { font-family: ${paraFont}; }
 .foot {
   margin-top: 18px;
   padding: 10px 18px;
@@ -620,7 +648,7 @@ img, svg, .cc-icon { -webkit-user-select: none; user-select: none; cursor: defau
 </style>
 </head>
 <body>
-${paperHtml}
+${stampedPaper}
 </body>
 </html>`;
 }

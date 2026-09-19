@@ -56,7 +56,7 @@ export function editorHtmlToBody(html: string | null | undefined): string {
  */
 export function bodyToExportHtml(
   body: string | null | undefined,
-  opts?: { fallbackAlign?: ParaAlign; escape?: (s: string) => string },
+  opts?: { fallbackAlign?: ParaAlign; escape?: (s: string) => string; fontFamily?: string | null },
 ): string {
   const raw = String(body ?? '');
   if (!raw.trim()) return '';
@@ -64,6 +64,7 @@ export function bodyToExportHtml(
   return bodyBlocksToHtml(raw, {
     escape: opts?.escape || escHtml,
     fallbackAlign: opts?.fallbackAlign || 'right',
+    fontFamily: opts?.fontFamily,
   });
 }
 

@@ -158,12 +158,20 @@ export function leadingSpacesToNbsp(s: string): string {
 
 export function bodyBlocksToHtml(
   body: string,
-  opts?: { fallbackAlign?: ParaAlign; escape: (s: string) => string },
+  opts?: { fallbackAlign?: ParaAlign; escape: (s: string) => string; fontFamily?: string | null },
 ): string {
   const baseEsc = opts?.escape || ((s: string) => s);
   const esc = (s: string) => baseEsc(s).replace(/\u00a0/g, '&nbsp;');
   const blocks = parseBodyBlocks(body, opts?.fallbackAlign || 'right');
   if (!blocks.length) return '';
+  const fontRaw = String(opts?.fontFamily || '').trim();
+  const fontDecl = fontRaw
+    ? `font-family: ${
+        fontRaw.includes(',') || fontRaw.startsWith("'") || fontRaw.startsWith('"')
+          ? fontRaw
+          : `'${fontRaw.replace(/'/g, '')}'`
+      };`
+    : '';
   return blocks
     .map((b) => {
       // Keep blank / space-only lines as vertical gaps (Word-like)
@@ -173,7 +181,7 @@ export function bodyBlocksToHtml(
       const align = cssTextAlign(b.align);
       const html = inlineNodesToHtml(leadingSpacesToNbsp(b.text), esc);
       // align= for Outlook/Word; text-align + pre-wrap for browsers/PDF; NBSP for leading spaces
-      return `<p align="${align}" style="text-align:${align};margin:0 0 0.55em;white-space:pre-wrap;mso-line-height-rule:exactly">${html}</p>`;
+      return `<p align="${align}" style="${fontDecl}text-align:${align};margin:0 0 0.55em;white-space:pre-wrap;mso-line-height-rule:exactly">${html}</p>`;
     })
     .join('');
 }

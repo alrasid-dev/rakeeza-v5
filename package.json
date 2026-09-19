@@ -19,7 +19,8 @@
     "verify:pdf-fonts": "tsx scripts/verify-pdf-fonts.mts",
     "fonts:download": "tsx scripts/download-arabic-fonts.mts",
     "verify:clipboard-a4": "tsx scripts/verify-clipboard-a4.mts",
-    "verify:assistant-linter": "tsx scripts/verify-assistant-linter.mts"
+    "verify:assistant-linter": "tsx scripts/verify-assistant-linter.mts",
+    "verify:export-fixes": "tsx scripts/verify-export-fixes.mts"
   },
   "dependencies": {
     "@libsql/client": "^0.8.1",
@@ -80,7 +81,7 @@
     "tsx": "^4.23.13",
     "typescript": "^5"
   },
-  "description": "\u0631\u0643\u064a\u0632\u0629 \u2014 \u0645\u0643\u062a\u0628\u0629 \u0627\u0644\u0645\u062e\u0627\u0637\u0628\u0627\u062a \u0648\u0627\u0644\u062a\u0639\u0627\u0645\u064a\u0645",
+  "description": "ركيزة — مكتبة المخاطبات والتعاميم",
   "prisma": {
     "seed": "tsx prisma/seed.ts"
   }
