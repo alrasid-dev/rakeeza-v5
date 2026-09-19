@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { addressEmployee, addressEmployees } from '@/lib/honorific';
+import { addressEmployee, addressEmployees, applyActingMarker } from '@/lib/honorific';
 
 type OrgUnit = { id: string; name: string };
 type Employee = {
@@ -33,6 +33,8 @@ export default function RecipientCascade({
   const [multiDept, setMultiDept] = useState(false);
   const [empOpen, setEmpOpen] = useState(false);
   const [deptOpen, setDeptOpen] = useState(false);
+  /** Opt-in: append «المكلف» to the address line when pressed. */
+  const [acting, setActing] = useState(false);
   const empWrapRef = useRef<HTMLDivElement>(null);
   const deptWrapRef = useRef<HTMLDivElement>(null);
 
@@ -92,7 +94,8 @@ export default function RecipientCascade({
   }
 
   /** Employees win; otherwise department names fill «إلى» so the letter shows the pick. */
-  function emitSelection(nextEmpIds: string[], nextDeptIds?: string[]) {
+  function emitSelection(nextEmpIds: string[], nextDeptIds?: string[], actingFlag?: boolean) {
+    const useActing = actingFlag ?? acting;
     const idSet = new Set(nextEmpIds);
     const emps = employees.filter((e) => idSet.has(e.id));
     const deptIds =
@@ -120,7 +123,17 @@ export default function RecipientCascade({
     } else if (deptIds.length) {
       line = lineFromDepts(deptIds);
     }
-    onChange(line, { employeeIds: nextEmpIds, orgUnitIds: deptIds });
+    onChange(applyActingMarker(line, useActing), { employeeIds: nextEmpIds, orgUnitIds: deptIds });
+  }
+
+  function toggleActing() {
+    const next = !acting;
+    setActing(next);
+    if (selectedEmpIds.length || selectedDeptIds.length) {
+      emitSelection(selectedEmpIds, selectedDeptIds, next);
+    } else if (value.trim()) {
+      onChange(applyActingMarker(value, next));
+    }
   }
 
   function toggleEmp(id: string) {
@@ -152,54 +165,6 @@ export default function RecipientCascade({
     emitSelection([], next);
   }
 
-  /** Quick chips: set «إلى» text directly (and pick matching employee when found). */
-  function applyQuickRecipient(label: string) {
-    setManual(false);
-    const q = label.replace(/^فضيلة\s+/, '').replace(/^الأستاذة?\s+/, '');
-    const match = employees.find((e) => {
-      const t = `${e.position?.title || ''} ${e.position?.honorific || ''}`;
-      if (/مكلف/.test(label) && !/مكلف/.test(t)) return false;
-      if (/رئيس\s*المحكمة/.test(label) && /رئيس\s*(محكمة|المحكمة)/.test(t)) return true;
-      if (/موارد\s*بشرية/.test(label) && /موارد\s*بشرية/.test(t)) return true;
-      return t.includes(q) || (e.name && label.includes(e.name));
-    });
-    if (match) {
-      setSelectedEmpIds([match.id]);
-      const unit = match.orgUnitId || match.orgUnit?.id || '';
-      if (unit) setSelectedDeptIds([unit]);
-      emitSelection([match.id], unit ? [unit] : []);
-      return;
-    }
-    setSelectedEmpIds([]);
-    onChange(label);
-  }
-
-  const QUICK_RECIPIENTS = useMemo(() => {
-    const base: { label: string; icon: string }[] = [
-      { label: 'فضيلة رئيس المحكمة المكلف', icon: '⚖️' },
-      { label: 'فضيلة رئيس المحكمة', icon: '🏛️' },
-      { label: 'الأستاذ مدير الموارد البشرية المكلف', icon: '👤' },
-    ];
-    const seen = new Set(base.map((b) => b.label));
-    for (const e of employees) {
-      const title = e.position?.title || '';
-      const hon = e.position?.honorific || '';
-      if (!/مكلف/.test(title) && !/مكلف/.test(hon)) continue;
-      const line = addressEmployee({
-        name: e.name,
-        gender: e.gender,
-        notes: e.notes,
-        position: e.position,
-      });
-      // Chip shows role without repeating the full name twice when long
-      const roleOnly = line.split('/')[0]?.trim() || line;
-      if (!roleOnly || seen.has(roleOnly)) continue;
-      seen.add(roleOnly);
-      base.push({ label: roleOnly, icon: '📌' });
-      if (base.length >= 8) break;
-    }
-    return base;
-  }, [employees]);
 
   const empSummary =
     selectedEmpIds.length === 0
@@ -263,26 +228,21 @@ export default function RecipientCascade({
       </div>
 
       {!manual && (
-        <div className="flex flex-wrap gap-2">
-          {QUICK_RECIPIENTS.map((q) => {
-            const on = value.trim() === q.label || value.includes(q.label);
-            return (
-              <button
-                key={q.label}
-                type="button"
-                title={q.label}
-                onClick={() => applyQuickRecipient(q.label)}
-                className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] transition ${
-                  on
-                    ? 'border-moj-green bg-moj-green text-white'
-                    : 'border-moj-green/30 bg-moj-light/50 text-moj-green hover:bg-moj-light'
-                }`}
-              >
-                <span aria-hidden>{q.icon}</span>
-                <span className="font-semibold">{q.label}</span>
-              </button>
-            );
-          })}
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            title="اضغط لإضافة أو إزالة «المكلف» من سطر الإرسال"
+            onClick={toggleActing}
+            className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition ${
+              acting
+                ? 'border-moj-gold bg-moj-gold/20 text-moj-green'
+                : 'border-gray-300 bg-white text-gray-600 hover:border-moj-gold'
+            }`}
+          >
+            <span aria-hidden>🏷️</span>
+            <span>{acting ? 'مكلف ✓' : 'مكلف؟'}</span>
+          </button>
+          <span className="text-[10px] text-gray-500">اختر المنصب من الدليل، ثم فعّل «مكلف» إن لزم</span>
         </div>
       )}
 

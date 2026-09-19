@@ -110,7 +110,7 @@ function ModernHexHeader({
   return (
     <div
       dir="ltr"
-      className="relative grid grid-cols-[1fr_auto_1fr] items-center gap-3 px-5 py-3 border-b border-[#C5A059]/50 bg-[#F9F7F1]/90"
+      className="relative grid grid-cols-[1fr_auto_1fr] items-center gap-2 pl-4 pr-2 py-3 border-b border-[#C5A059]/50 bg-[#F9F7F1]/90"
     >
       <div className="flex justify-start items-center min-w-0 z-[1]">
         {qrDataUrl ? (
@@ -139,10 +139,10 @@ function ModernHexHeader({
           </span>
         ) : null}
       </div>
-      <div className="flex justify-end z-[1] min-w-0" dir="rtl">
-        <div className="text-right min-w-0 leading-snug">
-          <div className="text-[12px] text-moj-green font-bold">{BRAND.kingdom}</div>
-          <div className="text-[12px] text-moj-green font-bold">{BRAND.ministry}</div>
+      <div className="flex justify-end self-stretch z-[1] min-w-0 w-full" dir="rtl">
+        <div className="text-right w-full leading-snug pe-0">
+          <div className="text-[12px] text-moj-green font-bold whitespace-nowrap">{BRAND.kingdom}</div>
+          <div className="text-[12px] text-moj-green font-bold whitespace-nowrap">{BRAND.ministry}</div>
           <div className="text-moj-green font-extrabold text-[15px] mt-0.5 leading-snug">{court}</div>
           <div className="text-moj-gold text-xs mt-0.5 font-semibold">{BRAND.platform}</div>
         </div>
@@ -479,8 +479,8 @@ function chromeFor(layout: PaperLayoutId): LayoutChrome {
         bismillahBorder: '#006C35',
         brandBorder: 'border-b-2 border-moj-green',
         metaClass:
-          'mx-4 my-3 rounded-lg border-2 border-moj-gold bg-[#fffaf0] px-3 py-2 text-sm grid sm:grid-cols-2 gap-1.5',
-        sectionPad: 'px-4 pb-3 space-y-3 text-sm',
+          'mx-4 my-3 rounded-lg border-2 border-moj-gold bg-[#fffaf0] px-3 py-2 grid sm:grid-cols-2 gap-1.5',
+        sectionPad: 'px-4 pb-3 space-y-3',
         footClass: 'text-center text-xs text-gray-600 py-2.5 border-t-2 bg-[#fff8e8]',
         titleAccent: 'gold',
         showCircularBadge: false,
@@ -493,8 +493,8 @@ function chromeFor(layout: PaperLayoutId): LayoutChrome {
         bismillahBorder: '#C5A059',
         brandBorder: 'border-b border-moj-green/40',
         metaClass:
-          'mx-3 my-2 rounded border border-moj-green/40 bg-[#f3f7f4] px-2 py-1.5 text-xs grid sm:grid-cols-2 gap-1',
-        sectionPad: 'px-3 pb-2 space-y-2 text-sm',
+          'mx-3 my-2 rounded border border-moj-green/40 bg-[#f3f7f4] px-2 py-1.5 grid sm:grid-cols-2 gap-1',
+        sectionPad: 'px-3 pb-2 space-y-2',
         footClass: 'text-center text-[10px] text-gray-500 py-1.5 border-t bg-white',
         titleAccent: 'green',
         showCircularBadge: false,
@@ -507,8 +507,8 @@ function chromeFor(layout: PaperLayoutId): LayoutChrome {
         bismillahBorder: '#C5A059',
         brandBorder: 'border-b-2 border-moj-gold',
         metaClass:
-          'mx-4 my-3 rounded-full border border-moj-green bg-[#E6F2EB] px-4 py-2 text-sm grid sm:grid-cols-2 gap-1.5',
-        sectionPad: 'px-4 pb-3 space-y-3 text-sm',
+          'mx-4 my-3 rounded-full border border-moj-green bg-[#E6F2EB] px-4 py-2 grid sm:grid-cols-2 gap-1.5',
+        sectionPad: 'px-4 pb-3 space-y-3',
         footClass: 'text-center text-xs text-gray-500 py-2.5 border-t-2 bg-[#f0f7f3]',
         titleAccent: 'green',
         showCircularBadge: true,
@@ -521,8 +521,8 @@ function chromeFor(layout: PaperLayoutId): LayoutChrome {
         bismillahBorder: '#C5A059',
         brandBorder: 'border-b-[3px] border-moj-gold',
         metaClass:
-          'mx-4 my-3 rounded-none border-y-2 border-moj-green bg-white px-3 py-2 text-sm grid sm:grid-cols-2 gap-1.5',
-        sectionPad: 'px-4 pb-3 space-y-3 text-sm',
+          'mx-4 my-3 rounded-none border-y-2 border-moj-green bg-white px-3 py-2 grid sm:grid-cols-2 gap-1.5',
+        sectionPad: 'px-4 pb-3 space-y-3',
         footClass: 'text-center text-xs text-gray-500 py-2.5 border-t-4 border-double bg-[#fafcfb]',
         titleAccent: 'green',
         showCircularBadge: false,
@@ -536,8 +536,8 @@ function chromeFor(layout: PaperLayoutId): LayoutChrome {
         bismillahBorder: '#C5A059',
         brandBorder: 'border-b-2 border-[#C5A059]',
         metaClass:
-          'mx-4 my-3 rounded-lg border border-[#E8DCC8] bg-white px-3 py-2 text-sm grid sm:grid-cols-2 gap-1.5 shadow-[0_0_0_1px_rgba(197,160,89,0.2)]',
-        sectionPad: 'px-4 pb-3 space-y-3 text-sm',
+          'mx-4 my-3 rounded-lg border border-[#E8DCC8] bg-white px-3 py-2 grid sm:grid-cols-2 gap-1.5 shadow-[0_0_0_1px_rgba(197,160,89,0.2)]',
+        sectionPad: 'px-4 pb-3 space-y-3',
         footClass: 'text-center text-xs text-gray-600 py-0 bg-transparent border-0',
         titleAccent: 'gold',
         showCircularBadge: false,
@@ -552,8 +552,8 @@ function chromeFor(layout: PaperLayoutId): LayoutChrome {
         bismillahBorder: '#C5A059',
         brandBorder: 'border-b-[3px] border-moj-gold',
         metaClass:
-          'mx-4 my-3 rounded-md border border-[#0B6E4F99] bg-[#F0F7F4] px-3 py-2 text-sm grid sm:grid-cols-2 gap-1.5',
-        sectionPad: 'px-4 pb-3 space-y-3 text-sm',
+          'mx-4 my-3 rounded-md border border-[#0B6E4F99] bg-[#F0F7F4] px-3 py-2 grid sm:grid-cols-2 gap-1.5',
+        sectionPad: 'px-4 pb-3 space-y-3',
         footClass: 'text-center text-xs text-gray-600 py-0 bg-transparent border-0',
         titleAccent: 'green',
         showCircularBadge: false,
@@ -568,8 +568,8 @@ function chromeFor(layout: PaperLayoutId): LayoutChrome {
         bismillahBorder: '#C5A059',
         brandBorder: 'border-b border-[#C5A059]/50',
         metaClass:
-          'mx-6 my-3 rounded-lg border border-[#C5A059]/35 bg-white/95 px-4 py-2.5 text-sm grid sm:grid-cols-2 gap-1.5',
-        sectionPad: 'px-8 pb-4 space-y-3 text-sm relative z-[1]',
+          'mx-6 my-3 rounded-lg border border-[#C5A059]/35 bg-white/95 px-4 py-2.5 grid sm:grid-cols-2 gap-1.5',
+        sectionPad: 'px-8 pb-4 space-y-3 relative z-[1]',
         footClass: 'text-center text-xs text-white/90 py-0 bg-[#1B4332] border-0',
         titleAccent: 'gold',
         showCircularBadge: false,
@@ -587,8 +587,8 @@ function chromeFor(layout: PaperLayoutId): LayoutChrome {
         bismillahBorder: '#C5A059',
         brandBorder: 'border-b-2 border-moj-gold',
         metaClass:
-          'mx-4 my-3 rounded-lg border border-moj-green bg-[#E6F2EB] px-3 py-2 text-sm grid sm:grid-cols-2 gap-1.5',
-        sectionPad: 'px-4 pb-3 space-y-3 text-sm',
+          'mx-4 my-3 rounded-lg border border-moj-green bg-[#E6F2EB] px-3 py-2 grid sm:grid-cols-2 gap-1.5',
+        sectionPad: 'px-4 pb-3 space-y-3',
         footClass: 'text-center text-xs text-gray-500 py-2.5 border-t-2 bg-[#fafcfb]',
         titleAccent: 'green',
         showCircularBadge: false,
@@ -614,7 +614,7 @@ function BrandHeader({
   /** When set (e.g. بطاقة عرض), replaces the «تعميم» badge under the emblem. */
   underLogoLabel?: string | null;
 }) {
-  const pad = compact ? 'px-3 py-2' : 'px-4 py-3';
+  const pad = compact ? 'pl-3 pr-1.5 py-2' : 'pl-4 pr-2 py-3';
   const box = compact ? 'w-12 h-12' : 'w-16 h-16';
   // Official Saudi letterhead (physical LTR): LEFT=QR, CENTER=emblem, RIGHT=kingdom/ministry/court
   return (
@@ -650,19 +650,21 @@ function BrandHeader({
           </span>
         ) : null}
       </div>
-      <div className="text-right min-w-0" dir="rtl">
-        <div className={`${compact ? 'text-[10px]' : 'text-[11px]'} text-moj-green font-semibold`}>
-          المملكة العربية السعودية
+      <div className="flex justify-end w-full min-w-0" dir="rtl">
+        <div className="text-right w-full leading-snug">
+          <div className={`${compact ? 'text-[10px]' : 'text-[11px]'} text-moj-green font-semibold whitespace-nowrap`}>
+            المملكة العربية السعودية
+          </div>
+          <div className={`${compact ? 'text-[10px]' : 'text-[11px]'} text-moj-green font-semibold whitespace-nowrap`}>
+            وزارة العدل
+          </div>
+          <div
+            className={`text-moj-green font-extrabold ${compact ? 'text-sm' : 'text-base'} mt-0.5 leading-snug`}
+          >
+            {court}
+          </div>
+          {!compact && <div className="text-moj-gold text-xs mt-0.5">{BRAND.platform}</div>}
         </div>
-        <div className={`${compact ? 'text-[10px]' : 'text-[11px]'} text-moj-green font-semibold`}>
-          وزارة العدل
-        </div>
-        <div
-          className={`text-moj-green font-extrabold ${compact ? 'text-sm' : 'text-base'} mt-0.5 leading-snug`}
-        >
-          {court}
-        </div>
-        {!compact && <div className="text-moj-gold text-xs mt-0.5">{BRAND.platform}</div>}
       </div>
     </div>
   );
@@ -702,7 +704,7 @@ function JudgmentBriefingView({
     (mechanismText && mechanismText.trim()) ||
     buildMechanismParagraph(getJudgmentCardValue(card, MECHANISM_LABEL));
   return (
-    <div className="mt-1 space-y-3 text-sm leading-relaxed text-justify">
+    <div className="mt-1 space-y-3 leading-relaxed text-justify">
       <div className="font-bold">{address}</div>
       <div>{JUDGMENT_SALUTATION}</div>
       <div>
@@ -715,7 +717,7 @@ function JudgmentBriefingView({
       <div>
         {/* Title «بطاقة عرض» lives under the ministry emblem — not above the table */}
         <div className="overflow-x-auto">
-          <table className="w-full text-sm border border-moj-green">
+          <table className="w-full border border-moj-green">
             <tbody>
               {card.map((r, i) => (
                 <tr key={`${r.label}-${i}`} className="odd:bg-white even:bg-moj-light/40">
@@ -836,6 +838,13 @@ export default function OfficialPaperPreview({
     <div className="w-full max-w-full overflow-x-auto">
       <style>{`@media print { .cc-row, .cc-icon { display: inline-block !important; visibility: visible !important; } }
 .official-paper-root, .official-paper-root *:not(img):not(svg):not(svg *) { font-family: inherit !important; }
+.official-paper-root .paper-meta,
+.official-paper-root .paper-body,
+.official-paper-root .paper-meta *,
+.official-paper-root .paper-body *:not(img):not(svg):not(svg *) {
+  font-size: inherit !important;
+  line-height: 1.7;
+}
 `}</style>
       <div
         dir="rtl"

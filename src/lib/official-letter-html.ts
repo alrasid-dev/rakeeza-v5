@@ -349,7 +349,7 @@ body { margin: 0; color: #111; }
     <tr>
       <td width="33%" valign="middle" align="left" style="padding:14px 18px">${qr.replace('border:1px solid', 'border:1.5px dashed').replace('border:1px dashed', 'border:1.5px dashed')}</td>
       <td width="34%" valign="middle" align="center" style="padding:14px 8px">${emblem}${underLogoLabel ? `<div style="display:inline-block;margin-top:4px;font-size:10px;font-weight:800;color:${GREEN};border:1px solid ${GOLD};border-radius:999px;padding:2px 10px;background:#fff">${esc(underLogoLabel)}</div>` : ''}</td>
-      <td width="33%" valign="middle" align="right" style="padding:14px 18px">${hexText}</td>
+      <td width="33%" valign="middle" align="right" style="padding:14px 6px 14px 10px">${hexText}</td>
     </tr>
   </table>
 </div>`
@@ -358,7 +358,7 @@ body { margin: 0; color: #111; }
     <tr>
       <td width="33%" valign="middle" align="left" style="padding:14px 12px;width:33%">${qr}</td>
       <td width="34%" valign="middle" align="center" style="padding:14px 8px;width:34%">${emblem}${underLogoLabel ? `<div style="display:inline-block;margin-top:4px;font-size:10px;font-weight:800;color:${GREEN};border:1px solid ${GOLD};border-radius:999px;padding:2px 10px;background:#fff">${esc(underLogoLabel)}</div>` : (layout === 'taameem-circular' ? `<div style="display:inline-block;margin-top:4px;font-size:9px;font-weight:700;color:${GREEN};border:1px solid ${GOLD};border-radius:999px;padding:1px 8px">تعميم</div>` : '')}</td>
-      <td width="33%" valign="middle" align="right" style="padding:14px 12px;width:33%" dir="rtl">
+      <td width="33%" valign="middle" align="right" style="padding:14px 6px 14px 10px;width:33%" dir="rtl">
         ${header
           .map(
             (h, i) =>
@@ -415,7 +415,7 @@ body {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 6px 16px;
-  font-size: 13px;
+  font-size: ${size}px;
   ${theme.meta}
 }
 .meta .label { color: ${GREEN}; font-weight: 700; }

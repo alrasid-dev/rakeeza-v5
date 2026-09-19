@@ -224,49 +224,64 @@ export function isActingAppointment(title?: string | null, honorific?: string | 
 }
 
 /**
- * Infer judicial VIP line from position title.
- * Examples: رئيس محكمة مكلف → فضيلة رئيس المحكمة المكلف
+ * Infer judicial VIP line from position title — base office only (no «المكلف»).
+ * «المكلف» is added only when the user toggles the acting flag in the UI.
  */
 export function courtPresidentHonorificFromTitle(title?: string | null): string | null {
-  const t = String(title || '').trim();
+  const t = String(title || '')
+    .trim()
+    .replace(/\s*الم?كلف\s*/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
   if (!t) return null;
-  if (/رئيس\s*(محكمة|المحكمة)\s*الم?كلف|رئيس\s*محكمة\s*مكلف/.test(t)) {
-    return 'فضيلة رئيس المحكمة المكلف';
-  }
-  if (/رئيس\s*(محكمة|المحكمة)/.test(t) && !/مساعد|تشكيل|مكلف/.test(t)) {
+  if (/رئيس\s*(محكمة|المحكمة)/.test(t) && !/مساعد|تشكيل/.test(t)) {
     return 'فضيلة رئيس المحكمة';
   }
-  if (/رئيس\s*تشكيل|رئيس\s*التشكيل/.test(t)) {
-    return /مكلف/.test(t) ? 'فضيلة رئيس التشكيل المكلف' : 'فضيلة رئيس التشكيل';
-  }
-  if (/الرئيس\s*المساعد|مساعد\s*رئيس/.test(t)) {
-    return /مكلف/.test(t) ? 'فضيلة الرئيس المساعد المكلف' : 'فضيلة الرئيس المساعد';
-  }
+  if (/رئيس\s*تشكيل|رئيس\s*التشكيل/.test(t)) return 'فضيلة رئيس التشكيل';
+  if (/الرئيس\s*المساعد|مساعد\s*رئيس/.test(t)) return 'فضيلة الرئيس المساعد';
   return null;
 }
 
+/** Strip «المكلف / مكلف» so the acting toggle can re-apply it cleanly. */
+export function stripActingMarker(line: string): string {
+  return String(line || '')
+    .replace(/\s*المكلف\b/g, '')
+    .replace(/\s*مكلف\b/g, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
+/** Append «المكلف» to a role line (before سلمه الله or before / name). */
+export function applyActingMarker(line: string, acting: boolean): string {
+  const base = stripActingMarker(line);
+  if (!acting || !base) return base;
+  if (/\//.test(base)) {
+    const i = base.indexOf('/');
+    const role = base.slice(0, i).trim();
+    const rest = base.slice(i + 1).trim();
+    return `${role} المكلف / ${rest}`.replace(/\s+/g, ' ').trim();
+  }
+  if (/سلمه الله|سلمها الله/.test(base)) {
+    return base.replace(/\s*(سلمه الله|سلمها الله)/, ' المكلف $1').replace(/\s+/g, ' ').trim();
+  }
+  return `${base} المكلف`;
+}
+
 /**
- * Address line for internal letters.
- * If the person is مكلف, include the full acting title so the letter shows e.g.
- * «فضيلة رئيس المحكمة المكلف / …» or «الأستاذ مدير الموارد البشرية المكلف / …».
+ * Address line for internal letters — base title only.
+ * Acting (مكلف) is opt-in via RecipientCascade toggle, not forced here.
  */
 export function addressEmployee(emp: HonorificEmployee, opts?: { peerPrefix?: string }) {
-  const rawHonorific = emp.position?.honorific?.trim() || '';
-  const title = emp.position?.title?.trim() || '';
-  const acting = isActingAppointment(title, rawHonorific);
+  const rawHonorific = stripActingMarker(emp.position?.honorific?.trim() || '');
+  const title = stripActingMarker(emp.position?.title?.trim() || '');
   const fromTitle = courtPresidentHonorificFromTitle(title);
 
   let vipLine = '';
   if (rawHonorific && isVipHonorific(rawHonorific) && !isSaadaOrEmptyStaff(rawHonorific)) {
     vipLine = vipHonorificFor(emp, rawHonorific);
   }
-  if (fromTitle) {
-    if (!vipLine || acting || /مكلف/.test(fromTitle)) {
-      vipLine = fromTitle;
-    }
-  }
-  if (/رئيس\s*المحكمة\s*المكلف/.test(rawHonorific)) {
-    vipLine = 'فضيلة رئيس المحكمة المكلف';
+  if (fromTitle && (!vipLine || /رئيس\s*المحكمة|رئيس\s*التشكيل|الرئيس\s*المساعد/.test(fromTitle))) {
+    vipLine = fromTitle;
   }
 
   if (vipLine) {
@@ -274,15 +289,6 @@ export function addressEmployee(emp: HonorificEmployee, opts?: { peerPrefix?: st
   }
 
   const peer = opts?.peerPrefix?.trim() || peerTitleFor(emp);
-
-  // Acting staff (non-VIP): show peer + full title with المكلف
-  if (acting && title) {
-    let role = title;
-    role = role.replace(/^الأستاذة?\s*/, '').replace(/^سعاد[ةه]\s*/, '').trim();
-    if (!/مكلف/.test(role)) role = `${role} المكلف`;
-    return `${peer} ${role} / ${emp.name}`.replace(/\s+/g, ' ').trim();
-  }
-
   return `${peer} / ${emp.name}`.replace(/\s+/g, ' ').trim();
 }
 
