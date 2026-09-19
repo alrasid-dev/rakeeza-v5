@@ -119,3 +119,46 @@ html.dark main {
   background: rgba(26, 43, 37, 0.72) !important;
   border-color: rgba(255,255,255,0.08) !important;
 }
+
+/* TipTap body editor — RTL MOJ letter body only (letterhead stays outside) */
+.tiptap-body-shell .tiptap-body-editor {
+  min-height: inherit;
+  outline: none;
+  line-height: 1.75;
+  color: inherit;
+}
+.tiptap-body-shell .tiptap-body-editor p {
+  margin: 0 0 0.55em;
+}
+.tiptap-body-shell .tiptap-body-editor p.is-editor-empty:first-child::before {
+  color: #9ca3af;
+  content: attr(data-placeholder);
+  float: right;
+  height: 0;
+  pointer-events: none;
+}
+.tiptap-body-shell .tiptap-body-editor table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.5em 0;
+  table-layout: fixed;
+}
+.tiptap-body-shell .tiptap-body-editor td,
+.tiptap-body-shell .tiptap-body-editor th {
+  border: 1px solid #006C35;
+  padding: 4px 8px;
+  vertical-align: top;
+  min-width: 2rem;
+}
+.tiptap-body-shell .tiptap-body-editor th {
+  background: #e6f2eb;
+  font-weight: 700;
+  color: #006C35;
+}
+.tiptap-body-shell .tiptap-body-editor .selectedCell {
+  background: rgba(197, 160, 89, 0.25);
+}
+.tiptap-body-shell .tiptap-body-editor mark {
+  border-radius: 2px;
+  padding: 0 1px;
+}

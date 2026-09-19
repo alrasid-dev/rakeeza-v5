@@ -7,8 +7,18 @@ import PageHeader from '@/components/PageHeader';
 import OfficialPaperPreview, { normalizeBodyText } from '@/components/OfficialPaperPreview';
 import RecipientCascade from '@/components/RecipientCascade';
 import StyleToolbar, { type DocStyle } from '@/components/StyleToolbar';
-import { applyAlignToRange } from '@/lib/body-align';
-import { applyInlineToRange, clearInlineInRange, type InlineKind } from '@/lib/body-inline';
+import TiptapBodyEditor, {
+  type TiptapBodyEditorHandle,
+  editorApplyAlign,
+  editorApplyBackground,
+  editorApplyBold,
+  editorApplyColor,
+  editorApplyEnlarge,
+  editorApplyFontFamily,
+  editorApplyFontSize,
+  editorClearMarks,
+  editorInsertTable,
+} from '@/components/TiptapBodyEditor';
 import { formatCourtPresidentLine } from '@/lib/honorific';
 import PaperLayoutPicker from '@/components/PaperLayoutPicker';
 import ExportToolbar from '@/components/ExportToolbar';
@@ -152,6 +162,7 @@ function NewDocumentInner() {
   const [savedDocId, setSavedDocId] = useState<string | null>(null);
   const [subjectManual, setSubjectManual] = useState(false);
   const fieldRefs = useRef<Record<string, HTMLElement | null>>({});
+  const bodyEditorRef = useRef<TiptapBodyEditorHandle | null>(null);
   const skipSave = useRef(true);
 
   useEffect(() => {
@@ -658,6 +669,12 @@ function NewDocumentInner() {
   function focusField(field: string) {
     setStep(3);
     window.setTimeout(() => {
+      if (field === 'body') {
+        bodyEditorRef.current?.focus();
+        const shell = document.querySelector('.tiptap-body-shell');
+        shell?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
       const el = fieldRefs.current[field];
       if (el) {
         el.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -748,72 +765,73 @@ function NewDocumentInner() {
     fontSize: style.fontSizePt ? `${style.fontSizePt}pt` : undefined,
   };
 
-  const applyBodyAlign = (align: DocStyle['align']) => {
-    const el = fieldRefs.current.body as HTMLTextAreaElement | undefined | null;
-    if (el && typeof el.selectionStart === 'number') {
-      const start = el.selectionStart;
-      const end = el.selectionEnd;
-      const next = applyAlignToRange(form.body || '', start, end, align);
-      setBodyField(next);
-      // restore selection roughly
-      requestAnimationFrame(() => {
-        const box = fieldRefs.current.body as HTMLTextAreaElement | null;
-        if (box) {
-          box.focus();
-          try {
-            box.setSelectionRange(start, Math.max(start, end));
-          } catch {
-            /* ignore */
-          }
-        }
-      });
-      return;
+  const requireBodyEditor = () => {
+    const ed = bodyEditorRef.current?.getEditor() || null;
+    if (!ed) {
+      setError('محرر المكاتبة غير جاهز — انتظر لحظة ثم أعد المحاولة');
+      return null;
     }
-    // no body focus: still update default for inference fallback
+    setError('');
+    return ed;
   };
 
-
-  const withBodySelection = (fn: (body: string, start: number, end: number) => string) => {
-    const el = fieldRefs.current.body as HTMLTextAreaElement | undefined | null;
-    if (!el || typeof el.selectionStart !== 'number') {
-      setError('حدّد كلمة أو جملة في خانة المكاتبة أولاً');
-      return;
-    }
-    const start = el.selectionStart;
-    const end = el.selectionEnd;
-    if (start === end) {
-      setError('حدّد نصاً أولاً ثم اضغط الزر (مثل وورد)');
-      return;
-    }
-    const next = fn(form.body || '', start, end);
-    if (next === (form.body || '')) return;
-    setBodyField(next);
-    setError('');
-    requestAnimationFrame(() => {
-      const box = fieldRefs.current.body as HTMLTextAreaElement | null;
-      if (!box) return;
-      box.focus();
-      try {
-        // selection shifts by marker length — keep rough highlight on content
-        box.setSelectionRange(start, Math.min(next.length, end + (next.length - (form.body || '').length)));
-      } catch {
-        /* ignore */
-      }
-    });
+  const applyBodyAlign = (align: DocStyle['align']) => {
+    const ed = requireBodyEditor();
+    if (!ed) return;
+    editorApplyAlign(ed, align);
   };
 
   const applyBodyColor = (hex: string) => {
-    withBodySelection((body, s, e) => applyInlineToRange(body, s, e, 'color', hex));
+    const ed = requireBodyEditor();
+    if (!ed) return;
+    if (ed.state.selection.empty) {
+      setError('حدّد نصاً أولاً ثم اضغط اللون (مثل وورد)');
+      return;
+    }
+    editorApplyColor(ed, hex);
+  };
+  const applyBodyBackground = (hex: string) => {
+    const ed = requireBodyEditor();
+    if (!ed) return;
+    if (ed.state.selection.empty) {
+      setError('حدّد نصاً أولاً ثم اضغط لون الخلفية');
+      return;
+    }
+    editorApplyBackground(ed, hex);
   };
   const applyBodyEnlarge = (level: 1 | 2) => {
-    const kind: InlineKind = level === 2 ? 'enlarge2' : 'enlarge';
-    withBodySelection((body, s, e) => applyInlineToRange(body, s, e, kind));
+    const ed = requireBodyEditor();
+    if (!ed) return;
+    if (ed.state.selection.empty) {
+      setError('حدّد نصاً أولاً ثم اضغط أ⁺');
+      return;
+    }
+    editorApplyEnlarge(ed, level);
   };
   const applyBodyBold = () => {
-    withBodySelection((body, s, e) => applyInlineToRange(body, s, e, 'bold'));
+    const ed = requireBodyEditor();
+    if (!ed) return;
+    editorApplyBold(ed);
   };
   const clearBodyInline = () => {
-    withBodySelection((body, s, e) => clearInlineInRange(body, s, e));
+    const ed = requireBodyEditor();
+    if (!ed) return;
+    editorClearMarks(ed);
+  };
+  const applyBodyFontFamily = (fontFamily: string) => {
+    const ed = bodyEditorRef.current?.getEditor() || null;
+    if (!ed || ed.state.selection.empty) return;
+    editorApplyFontFamily(ed, fontFamily);
+  };
+  const applyBodyFontSize = (pt: number) => {
+    const ed = bodyEditorRef.current?.getEditor() || null;
+    if (!ed || ed.state.selection.empty) return;
+    editorApplyFontSize(ed, pt);
+  };
+  const insertBodyTable = () => {
+    const ed = requireBodyEditor();
+    if (!ed) return;
+    editorInsertTable(ed, 3, 3);
   };
 
 
@@ -941,9 +959,13 @@ function NewDocumentInner() {
               onChange={setStyle}
               onAlignSelection={applyBodyAlign}
               onColorSelection={applyBodyColor}
+              onBackgroundSelection={applyBodyBackground}
               onEnlargeSelection={applyBodyEnlarge}
               onBoldSelection={applyBodyBold}
               onClearInline={clearBodyInline}
+              onFontFamilySelection={applyBodyFontFamily}
+              onFontSizeSelection={applyBodyFontSize}
+              onInsertTable={insertBodyTable}
             />
             <button
               type="button"
@@ -1292,15 +1314,13 @@ function NewDocumentInner() {
                       حدّد سطراً ثم يمين/وسط/يسار من شريط التنسيق. اضغط Space في بداية السطر لإزاحة أفقية مثل Word.
                       التحية والخاتمة جزء من النص — ليست قفلًا تلقائياً.
                     </p>
-                    <textarea
-                      ref={(el) => {
-                        fieldRefs.current.body = el;
-                      }}
-                      className="input min-h-[200px] whitespace-pre-wrap"
-                      style={editorFontStyle}
+                    <TiptapBodyEditor
+                      ref={bodyEditorRef}
                       value={form.body}
-                      dir="rtl"
-                      onChange={(e) => setBodyField(e.target.value)}
+                      onChange={setBodyField}
+                      style={style}
+                      minHeight={200}
+                      placeholder="نص بطاقة العرض (التحية → الخاتمة) — حدّد ثم نسّق من الشريط"
                     />
                   </div>
                 </div>
@@ -1365,14 +1385,13 @@ function NewDocumentInner() {
                       حدّد سطراً أو فقرة ثم يمين / وسط / يسار من شريط التنسيق.
                       Space في بداية السطر يزيح النص أفقياً مثل Word. التحية/الخاتمة تُوسَّطان افتراضياً ويمكن تغييرهما.
                     </p>
-                    <textarea
-                      ref={(el) => {
-                        fieldRefs.current.body = el;
-                      }}
-                      className="input min-h-[140px]"
-                      style={editorFontStyle}
+                    <TiptapBodyEditor
+                      ref={bodyEditorRef}
                       value={form.body}
-                      onChange={(e) => setBodyField(e.target.value)}
+                      onChange={setBodyField}
+                      style={style}
+                      minHeight={140}
+                      placeholder="نص المكاتبة — حدّد كلمة ثم اللون / الوسط / الجدول من الشريط"
                     />
                   </div>
                 </>

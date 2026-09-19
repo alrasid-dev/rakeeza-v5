@@ -13,7 +13,7 @@ import { formatClaimAmount, normalizeFormationOrdinal } from '@/lib/arabic-norma
 import { enrichStudySections, hasStudyContent, studyDisplayMeta } from '@/lib/study-display';
 import { BRAND } from '@/lib/brand';
 import { exportFontStack, fontStackFor, googleFontsImportCss } from '@/lib/font-stacks';
-import { bodyBlocksToHtml } from '@/lib/body-align';
+import { bodyToExportHtml } from '@/lib/body-html-bridge';
 import {
   buildJudgmentBriefingBlockHtml,
   isJudgmentBriefingDoc,
@@ -463,7 +463,7 @@ ${embeddedBlock}`;
   const sectionPad = layout === 'modern-hex' ? 'padding:4px 28px 10px' : 'padding:4px 18px 10px';
   // Do not .trim() body — leading spaces are Word-like horizontal positioning
   const bodyHtml = doc.body
-    ? bodyBlocksToHtml(String(doc.body), {
+    ? bodyToExportHtml(String(doc.body), {
         escape: esc,
         fallbackAlign: (doc.align as 'right' | 'center' | 'left') || 'right',
       })

@@ -44,9 +44,14 @@ export type OfficialPaperFields = {
 
 /** Collapse accidental duplicated consecutive blocks (old+new paste ghost). */
 export function normalizeBodyText(raw: string | null | undefined): string {
+  const rawStr = String(raw ?? '');
+  // TipTap HTML bodies: do not run marker/line dedupe — preserve structure for export.
+  if (/<(p|div|table|h[1-6]|ul|ol|blockquote|span)\b/i.test(rawStr) && !/【|〔/.test(rawStr)) {
+    return rawStr.replace(/\r\n/g, '\n').replace(/^\n+/, '').replace(/\n+$/, '');
+  }
   // Preserve leading/trailing spaces on lines — Word-like Space positioning.
   // Only normalize newlines and strip blank lines at the very ends.
-  let text = String(raw ?? '')
+  let text = rawStr
     .replace(/\r\n/g, '\n')
     .replace(/\u00a0/g, ' ');
   text = text.replace(/^\n+/, '').replace(/\n+$/, '');

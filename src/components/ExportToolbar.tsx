@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { buildLetterHtml, copyOutlookHtml } from '@/lib/outlook-clipboard';
 import { normalizeBodyText } from '@/components/OfficialPaperPreview';
 import { hasOfficialOutgoingNumber } from '@/lib/honorific';
-import { stripInlineMarks } from '@/lib/body-inline';
+import { bodyToPlainText } from '@/lib/body-html-bridge';
 import { officialDateDisplay } from '@/lib/hijri';
 import type { PaperLayoutId } from '@/lib/paper-layouts';
 import type { StudySections } from '@/lib/parse-study';
@@ -67,7 +67,7 @@ function contentFingerprint(doc: ExportDoc) {
 }
 
 function buildPlainLetter(doc: ExportDoc) {
-  const body = stripInlineMarks(normalizeBodyText(doc.body));
+  const body = bodyToPlainText(normalizeBodyText(doc.body));
   const lines = [
     'المملكة العربية السعودية',
     'وزارة العدل',

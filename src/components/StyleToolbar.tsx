@@ -11,14 +11,26 @@ export type DocStyle = {
 
 const SIZES = [11, 12, 13, 14, 16, 18, 20, 22];
 
+const BG_COLORS: { id: string; label: string; hex: string }[] = [
+  { id: 'none', label: 'بلا', hex: 'transparent' },
+  { id: 'cream', label: 'كريمي', hex: '#FFF8E8' },
+  { id: 'green', label: 'أخضر فاتح', hex: '#E6F2EB' },
+  { id: 'gold', label: 'ذهبي فاتح', hex: '#F5E6C8' },
+  { id: 'yellow', label: 'أصفر', hex: '#FFF59D' },
+];
+
 export default function StyleToolbar({
   value,
   onChange,
   onAlignSelection,
   onColorSelection,
+  onBackgroundSelection,
   onEnlargeSelection,
   onBoldSelection,
   onClearInline,
+  onFontFamilySelection,
+  onFontSizeSelection,
+  onInsertTable,
 }: {
   value: DocStyle;
   onChange: (next: DocStyle) => void;
@@ -26,10 +38,16 @@ export default function StyleToolbar({
   onAlignSelection?: (align: DocStyle['align']) => void;
   /** لون الجزء المحدد في نص المكاتبة */
   onColorSelection?: (hex: string) => void;
-  /** تكبير / تصغير الجزء المحدد (1 = أكبر، 2 = أكبر أكثر، -1 = إزالة التكبير من التحديد) */
+  /** خلفية التحديد */
+  onBackgroundSelection?: (hex: string) => void;
+  /** تكبير / تصغير الجزء المحدد (1 = أكبر، 2 = أكبر أكثر) */
   onEnlargeSelection?: (level: 1 | 2) => void;
   onBoldSelection?: () => void;
   onClearInline?: () => void;
+  /** Apply font to current TipTap selection (doc-level still via onChange). */
+  onFontFamilySelection?: (fontFamily: string) => void;
+  onFontSizeSelection?: (pt: number) => void;
+  onInsertTable?: () => void;
 }) {
   return (
     <div className="flex flex-wrap items-end gap-2 rounded-xl border border-moj-green/20 bg-white dark:bg-[var(--surface)] p-2 text-sm">
@@ -38,7 +56,11 @@ export default function StyleToolbar({
         <select
           className="input py-1.5 min-w-[12rem]"
           value={value.fontFamily}
-          onChange={(e) => onChange({ ...value, fontFamily: e.target.value })}
+          onChange={(e) => {
+            const fontFamily = e.target.value;
+            onChange({ ...value, fontFamily });
+            onFontFamilySelection?.(fontFamily);
+          }}
           style={{ fontFamily: FONT_OPTIONS.find((f) => f.id === value.fontFamily)?.stack }}
         >
           {FONT_OPTIONS.map((f) => (
@@ -53,7 +75,11 @@ export default function StyleToolbar({
         <select
           className="input py-1.5 w-20"
           value={value.fontSizePt}
-          onChange={(e) => onChange({ ...value, fontSizePt: Number(e.target.value) })}
+          onChange={(e) => {
+            const fontSizePt = Number(e.target.value);
+            onChange({ ...value, fontSizePt });
+            onFontSizeSelection?.(fontSizePt);
+          }}
         >
           {SIZES.map((n) => (
             <option key={n} value={n}>
@@ -92,7 +118,11 @@ export default function StyleToolbar({
         </div>
       </div>
 
-      {(onColorSelection || onEnlargeSelection || onBoldSelection) && (
+      {(onColorSelection ||
+        onBackgroundSelection ||
+        onEnlargeSelection ||
+        onBoldSelection ||
+        onInsertTable) && (
         <div className="flex flex-col gap-0.5 pb-0.5 border-r border-moj-green/15 pr-2 mr-0.5">
           <span className="label text-xs mb-0">تنسيق التحديد (مثل وورد)</span>
           <div className="flex flex-wrap items-center gap-1">
@@ -123,6 +153,21 @@ export default function StyleToolbar({
                 </span>
               </label>
             )}
+            {onBackgroundSelection &&
+              BG_COLORS.filter((c) => c.hex !== 'transparent').map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  title={`خلفية: ${c.label}`}
+                  className="w-7 h-7 rounded-md border border-gray-300 dark:border-white/20 shadow-sm relative"
+                  style={{ background: c.hex }}
+                  onClick={() => onBackgroundSelection(c.hex)}
+                >
+                  <span className="absolute bottom-0 left-0 right-0 text-[7px] leading-none text-center bg-black/40 text-white">
+                    خ
+                  </span>
+                </button>
+              ))}
             {onEnlargeSelection && (
               <>
                 <button
@@ -153,6 +198,16 @@ export default function StyleToolbar({
                 ع
               </button>
             )}
+            {onInsertTable && (
+              <button
+                type="button"
+                title="إدراج جدول 3×3"
+                className="px-2 py-1.5 rounded-lg border border-moj-green/40 text-xs text-moj-green font-bold"
+                onClick={() => onInsertTable()}
+              >
+                جدول
+              </button>
+            )}
             {onClearInline && (
               <button
                 type="button"
@@ -164,8 +219,8 @@ export default function StyleToolbar({
               </button>
             )}
           </div>
-          <span className="text-[10px] text-gray-500 dark:text-white/40 max-w-[18rem] leading-snug">
-            حدّد كلمة أو جملة في خانة المكاتبة ثم اضغط اللون أو أ⁺ أو ع
+          <span className="text-[10px] text-gray-500 dark:text-white/40 max-w-[22rem] leading-snug">
+            حدّد كلمة أو جملة في محرر المكاتبة ثم اضغط اللون / الخلفية / أ⁺ / ع / جدول — تعديلات موجّهة للعقدة فقط
           </span>
         </div>
       )}
