@@ -18,6 +18,7 @@ import {
   buildJudgmentBriefingBlockHtml,
   isJudgmentBriefingDoc,
 } from '@/lib/judgment-card';
+import { buildPdfPrintCss } from '@/lib/pdf-print-css';
 
 export type OfficialLetterDoc = {
   number?: string | null;
@@ -89,7 +90,7 @@ function studyHtml(s: StudySections) {
     ? `<div style="display:flex;gap:8px;padding:4px 0;border-bottom:1px solid ${GREEN}22"><b style="color:${GREEN};min-width:7rem">مقدار المطالبة</b><span dir="ltr" style="unicode-bidi:embed;font-weight:600">${esc(amount)}</span></div>`
     : '';
   return `
-  <div style="border:1px solid ${GREEN};border-radius:8px;overflow:hidden;margin:8px 0">
+  <div class="card-block" style="border:1px solid ${GREEN};border-radius:8px;overflow:hidden;margin:8px 0">
     <div style="background:${GREEN};color:#fff;text-align:center;font-weight:700;padding:6px;font-size:12px">بيانات القضية</div>
     <div style="padding:8px">
       ${kv('رقم القضية', s.caseNumber)}
@@ -104,7 +105,7 @@ function studyHtml(s: StudySections) {
   </div>
   ${
     s.summaryPlaintiff || s.summaryDefendant
-      ? `<div style="border:1px solid ${GREEN};border-radius:8px;overflow:hidden;margin:8px 0">
+      ? `<div class="card-block" style="border:1px solid ${GREEN};border-radius:8px;overflow:hidden;margin:8px 0">
     <div style="background:${GREEN};color:#fff;text-align:center;font-weight:700;padding:6px;font-size:12px">ملخص الدعوى</div>
     <div style="padding:8px">
       <div style="margin-bottom:8px;padding:8px;border:1px solid ${GREEN}44;border-radius:6px;background:#f7faf8"><div style="color:${GOLD};font-weight:700;font-size:11px;margin-bottom:4px">دعوى المدعي</div>${pre(s.summaryPlaintiff || '—')}</div>
@@ -113,7 +114,7 @@ function studyHtml(s: StudySections) {
   </div>`
       : ''
   }
-  <div style="border:1px solid ${GOLD};border-radius:8px;overflow:hidden;margin:8px 0">
+  <div class="card-block" style="border:1px solid ${GOLD};border-radius:8px;overflow:hidden;margin:8px 0">
     <div style="background:${GOLD};color:#fff;text-align:center;font-weight:700;padding:6px;font-size:12px">الخلاصة</div>
     <div style="padding:8px">
       ${kv('المشكلة', s.problem)}
@@ -277,11 +278,7 @@ export function buildOfficialLetterHtml(doc: OfficialLetterDoc, opts?: OfficialL
     : '';
 
   const pageCss = opts?.forPdf
-    ? `@page { size: A4; margin: 12mm; }
-body { margin: 0; color: #111; }
-/* Default stack only — TipTap inline font-family must override (no * !important) */
-.paper { font-family: ${font}; font-weight: 400; color: #111 !important; }
-.bismillah, .bismillah * { color: #fff !important; font-weight: 400 !important; }`
+    ? buildPdfPrintCss({ fontStack: font, bodyColor: '#111' })
     : '';
 
   const embeddedBlock = opts?.embeddedFontCss
@@ -375,7 +372,7 @@ ${embeddedBlock}`;
           </div>`;
   const brandRow = layout === 'modern-hex'
     ? (opts?.forOutlook
-      ? `<table class="brand-row" dir="ltr" width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse:collapse;border-bottom:1px solid ${GOLD};table-layout:fixed;background:#F9F7F1">
+      ? `<table class="brand-row official-header" dir="ltr" width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse:collapse;border-bottom:1px solid ${GOLD};table-layout:fixed;background:#F9F7F1">
     <tr>
       <td width="33%" valign="middle" align="left" style="padding:14px 18px;background:#F9F7F1">${qr.replace('border:1px solid', 'border:1.5px dashed').replace('border:1px dashed', 'border:1.5px dashed')}</td>
       <td width="34%" valign="middle" align="center" style="padding:14px 8px;background:#F9F7F1">${emblem}${underLogoLabel ? `<div style="margin-top:6px;font-size:10px;font-weight:800;color:${GREEN};border:1px solid ${GOLD};padding:2px 10px;background:#fff">${esc(underLogoLabel)}</div>` : ''}</td>
@@ -384,7 +381,7 @@ ${embeddedBlock}`;
   </table>`
       : `<div style="position:relative;background:#F9F7F1">
   ${hexDecorSafe}
-  <table class="brand-row" dir="ltr" width="100%" cellpadding="0" cellspacing="0" role="presentation" style="position:relative;z-index:1;border-collapse:collapse;border-bottom:1px solid ${GOLD}80;table-layout:fixed;background:transparent">
+  <table class="brand-row official-header" dir="ltr" width="100%" cellpadding="0" cellspacing="0" role="presentation" style="position:relative;z-index:1;border-collapse:collapse;border-bottom:1px solid ${GOLD}80;table-layout:fixed;background:transparent">
     <tr>
       <td width="33%" valign="middle" align="left" style="padding:14px 18px">${qr.replace('border:1px solid', 'border:1.5px dashed').replace('border:1px dashed', 'border:1.5px dashed')}</td>
       <td width="34%" valign="middle" align="center" style="padding:14px 8px">${emblem}${underLogoLabel ? `<div style="display:inline-block;margin-top:4px;font-size:10px;font-weight:800;color:${GREEN};border:1px solid ${GOLD};border-radius:999px;padding:2px 10px;background:#fff">${esc(underLogoLabel)}</div>` : ''}</td>
@@ -393,7 +390,7 @@ ${embeddedBlock}`;
   </table>
 </div>`)
     : `
-  <table class="brand-row" dir="ltr" width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse:collapse;border-bottom:2px solid ${GOLD};table-layout:fixed">
+  <table class="brand-row official-header" dir="ltr" width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse:collapse;border-bottom:2px solid ${GOLD};table-layout:fixed">
     <tr>
       <td width="33%" valign="middle" align="left" style="padding:14px 12px;width:33%">${qr}</td>
       <td width="34%" valign="middle" align="center" style="padding:14px 8px;width:34%">${emblem}${underLogoLabel ? `<div style="display:inline-block;margin-top:4px;font-size:10px;font-weight:800;color:${GREEN};border:1px solid ${GOLD};border-radius:999px;padding:2px 10px;background:#fff">${esc(underLogoLabel)}</div>` : (layout === 'taameem-circular' ? `<div style="display:inline-block;margin-top:4px;font-size:9px;font-weight:700;color:${GREEN};border:1px solid ${GOLD};border-radius:999px;padding:1px 8px">تعميم</div>` : '')}</td>

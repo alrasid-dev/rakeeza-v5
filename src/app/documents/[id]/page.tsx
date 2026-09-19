@@ -142,6 +142,7 @@ export default function DocumentDetailPage() {
             fontSizePt: fields.style?.fontSizePt,
             qrDataUrl: fields.qrDataUrl,
             judgmentCard: fields.judgmentBriefing ? fields.judgmentCard : null,
+            tableRows: fields.judgmentBriefing ? [] : fields.tableRows,
             judgmentBriefing: Boolean(fields.judgmentBriefing),
             briefingTitle: fields.briefingTitle,
             observationText: fields.observationText,

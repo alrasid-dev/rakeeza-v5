@@ -851,6 +851,7 @@ function NewDocumentInner() {
     paperLayout,
     studySections: isBriefing ? null : studySections,
     judgmentCard: isBriefing ? judgmentCard : null,
+    tableRows: isBriefing ? [] : tableRows,
     judgmentBriefing: isBriefing,
     observationText: isBriefing ? (observationText || form.body) : undefined,
 

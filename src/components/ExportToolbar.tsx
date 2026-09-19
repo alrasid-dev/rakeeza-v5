@@ -2,6 +2,12 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { buildLetterHtml, copyOutlookHtml } from '@/lib/outlook-clipboard';
+import {
+  buildExcelKvTableHtml,
+  buildExcelPartyTableHtml,
+  copyExcelTableHtml,
+  excelTableToPlainTsv,
+} from '@/lib/excel-clipboard';
 import { normalizeBodyText } from '@/components/OfficialPaperPreview';
 import { hasOfficialOutgoingNumber } from '@/lib/honorific';
 import { bodyToPlainText } from '@/lib/body-html-bridge';
@@ -30,6 +36,7 @@ export type ExportDoc = {
   qrDataUrl?: string | null;
   headerLines?: string[] | null;
   judgmentCard?: { label: string; value: string }[] | null;
+  tableRows?: { name: string; id?: string; extra?: string }[] | null;
   judgmentBriefing?: boolean | null;
   briefingTitle?: string | null;
   observationText?: string | null;
@@ -341,6 +348,50 @@ export default function ExportToolbar({
     }
   }
 
+
+  async function copyExcelTable() {
+    if (!canExport) {
+      setMsg(BLOCK_MSG);
+      onRequestIssue?.();
+      return;
+    }
+    let html = '';
+    let plain = '';
+    if (doc.judgmentCard?.length) {
+      html = buildExcelKvTableHtml(doc.judgmentCard);
+      plain = excelTableToPlainTsv(
+        doc.judgmentCard.map((r) => [r.label, r.value]),
+        ['الحقل', 'القيمة'],
+      );
+    } else if (doc.tableRows?.length) {
+      html = buildExcelPartyTableHtml(doc.tableRows);
+      plain = excelTableToPlainTsv(
+        doc.tableRows.map((r) => [r.name || '', r.id || '', r.extra || '']),
+        ['الاسم', 'الهوية', 'ملاحظات'],
+      );
+    } else {
+      const metaRows = [
+        { label: 'الرقم', value: doc.number || '' },
+        { label: 'التاريخ', value: officialDateDisplay(doc.dateHijri, doc.dateGregorian) },
+        { label: 'إلى', value: doc.recipients || '' },
+        ...(doc.copyTo?.trim() ? [{ label: 'نسخة إلى', value: doc.copyTo.trim() }] : []),
+        { label: 'الموضوع', value: doc.subject || '' },
+      ];
+      html = buildExcelKvTableHtml(metaRows);
+      plain = excelTableToPlainTsv(
+        metaRows.map((r) => [r.label, r.value]),
+        ['الحقل', 'القيمة'],
+      );
+    }
+    const ok = await copyExcelTableHtml(html, plain);
+    if (ok) {
+      markExported();
+      setMsg('تم نسخ الجدول — الصق في Excel (Ctrl+V) ليظهر في خلايا منفصلة');
+    } else {
+      setMsg('فشل نسخ الجدول — اسمح بالوصول للحافظة');
+    }
+  }
+
   return (
     <div
       className={`rounded-xl border border-moj-green/25 bg-white dark:bg-[var(--surface)] p-3 space-y-3 ${className}`}
@@ -462,6 +513,19 @@ export default function ExportToolbar({
           title="نسخ نص الخطاب فقط — قابل للتحديد واللصق لدى المستلم"
         >
           نسخ النص
+        </button>
+        <button
+          type="button"
+          className={`text-sm px-4 py-2.5 rounded-xl font-medium border transition ${
+            canExport
+              ? 'btn-outline'
+              : 'border-gray-300 text-gray-400 cursor-not-allowed bg-gray-50 dark:bg-white/5 dark:border-white/10'
+          }`}
+          disabled={!canExport || busy}
+          onClick={() => void copyExcelTable()}
+          title="نسخ جدول HTML بحدود صريحة للصق في Excel كخلايا منفصلة"
+        >
+          نسخ جدول Excel
         </button>
       </div>
 

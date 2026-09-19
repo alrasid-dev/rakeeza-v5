@@ -7,18 +7,23 @@ import { BRAND } from '@/lib/brand';
 import { bodyBlocksToHtml } from '@/lib/body-align';
 import { exportFontStack, fontStackFor } from '@/lib/font-stacks';
 
-/** Client helper: copy Outlook-friendly full official letter HTML — same layout as preview/PDF */
+/**
+ * Outlook / MSO clipboard helpers.
+ * Construct text/html Clipboard Blobs with clean inline CSS + table-based
+ * MSO-compatible markup so Microsoft Outlook pastes the official letter intact.
+ */
 
-export async function copyOutlookHtml(html: string, plainFallback?: string) {
-  const blob = new Blob([html], { type: 'text/html' });
+/** Shared primitive: write HTML + plain to the clipboard as Clipboard Blobs. */
+export async function writeHtmlClipboard(html: string, plainFallback?: string): Promise<boolean> {
   const plainText =
     plainFallback ||
     html
       .replace(/<br\s*\/?>/gi, '\n')
-      .replace(/<\/(p|div|tr|h[1-6]|li|td)>/gi, '\n')
+      .replace(/<\/(p|div|tr|h[1-6]|li|td|th)>/gi, '\n')
       .replace(/<[^>]+>/g, '')
       .replace(/\n{3,}/g, '\n\n')
       .trim();
+  const blob = new Blob([html], { type: 'text/html' });
   const plain = new Blob([plainText], { type: 'text/plain' });
   try {
     await navigator.clipboard.write([
@@ -49,6 +54,11 @@ export async function copyOutlookHtml(html: string, plainFallback?: string) {
       return false;
     }
   }
+}
+
+/** Client helper: copy Outlook-friendly full official letter HTML — same layout as preview/PDF */
+export async function copyOutlookHtml(html: string, plainFallback?: string) {
+  return writeHtmlClipboard(html, plainFallback);
 }
 
 function esc(s: string) {
@@ -154,6 +164,15 @@ ${styles}
 </html>`;
 
   return absolutizeHtmlForOutlook(wrapped, origin);
+}
+
+/** True when Outlook HTML is MSO/table-based (verify scripts). */
+export function outlookHtmlIsTableBased(html: string): boolean {
+  return (
+    /<table[\s>]/i.test(html) &&
+    (/class="brand-row"/i.test(html) || /role="presentation"/i.test(html)) &&
+    (/xmlns:o=/i.test(html) || /xmlns:w=/i.test(html) || /mso/i.test(html) || /<!--\[if mso\]/i.test(html))
+  );
 }
 
 /** Legacy table-based letter — kept only if official HTML fails; prefer buildLetterHtml. */

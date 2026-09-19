@@ -648,7 +648,7 @@ export function buildJudgmentBriefingBlockHtml(opts: {
         </tr>`,
     )
     .join('');
-  return `<div class="judgment-briefing" style="margin:4px 0 12px;line-height:1.9">
+  return `<div class="judgment-briefing card-block" style="margin:4px 0 12px;line-height:1.9">
   ${proseHtml}
   <table dir="rtl" width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse:collapse;border:1px solid ${GREEN};margin:6px 0 4px;font-size:13px">
     <tbody>${cells}</tbody>
