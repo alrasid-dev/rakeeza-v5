@@ -2,6 +2,7 @@ import { officialDateDisplay } from '@/lib/hijri';
 import { BRAND } from '@/lib/brand';
 import { bodyBlocksToHtml } from '@/lib/body-align';
 import { buildJudgmentBriefingBlockHtml } from '@/lib/judgment-card';
+import { fontStackFor } from '@/lib/font-stacks';
 
 /** Client helper: copy Outlook-friendly full official letter HTML */
 
@@ -82,6 +83,8 @@ export type OutlookLetterDoc = {
   observationText?: string | null;
   mechanismText?: string | null;
   underLogoLabel?: string | null;
+  fontFamily?: string | null;
+  fontSizePt?: number | null;
 };
 
 /**
@@ -90,6 +93,8 @@ export type OutlookLetterDoc = {
  * No بسم الله — removed per MOJ user request.
  */
 export function buildLetterHtml(doc: OutlookLetterDoc) {
+  const letterFont = fontStackFor(doc.fontFamily);
+  const letterSize = doc.fontSizePt ? `${doc.fontSizePt}pt` : '15pt';
   const court = doc.courtName || 'المحكمة العمالية بالرياض';
   const header =
     doc.headerLines?.filter(Boolean) ||
@@ -154,8 +159,8 @@ export function buildLetterHtml(doc: OutlookLetterDoc) {
   const section = (title: string, content?: string) => {
     const c = String(content || '').trim();
     if (!c) return '';
-    return `<tr><td style="padding:6px 16px 2px;font-family:Tahoma,Arial,sans-serif;font-size:12pt;color:${GREEN};font-weight:bold;direction:rtl;text-align:right;border-bottom:1px solid ${GOLD}">${esc(title)}</td></tr>
-<tr><td style="padding:8px 16px 12px;font-family:Tahoma,Arial,sans-serif;font-size:14px;direction:rtl;text-align:right;line-height:1.75">${esc(c).replace(/\n/g, '<br/>')}</td></tr>`;
+    return `<tr><td style="padding:6px 16px 2px;font-family:${letterFont};font-size:${letterSize};color:${GREEN};font-weight:bold;direction:rtl;text-align:right;border-bottom:1px solid ${GOLD}">${esc(title)}</td></tr>
+<tr><td style="padding:8px 16px 12px;font-family:${letterFont};font-size:${letterSize};direction:rtl;text-align:right;line-height:1.75">${esc(c).replace(/\n/g, '<br/>')}</td></tr>`;
   };
 
   return `<!DOCTYPE html>
@@ -167,7 +172,7 @@ export function buildLetterHtml(doc: OutlookLetterDoc) {
 </head>
 <body style="margin:0;padding:12px;background:#f5f5f5" dir="rtl" lang="ar">
 <!--[if mso]><table role="presentation" width="700" cellpadding="0" cellspacing="0" align="center"><tr><td><![endif]-->
-<table dir="rtl" width="700" cellpadding="0" cellspacing="0" role="presentation" align="center" style="width:700px;max-width:100%;border:2px solid ${GREEN};border-collapse:collapse;font-family:Tahoma,'Traditional Arabic',Arial,sans-serif;font-size:15pt;line-height:1.8;color:#111;background:#ffffff;margin:0 auto">
+<table dir="rtl" width="700" cellpadding="0" cellspacing="0" role="presentation" align="center" style="width:700px;max-width:100%;border:2px solid ${GREEN};border-collapse:collapse;font-family:${letterFont};font-size:${letterSize};line-height:1.8;color:#111;background:#ffffff;margin:0 auto">
   <tr>
     <td style="padding:0;border-bottom:2px solid ${GOLD};background:#ffffff">
       <table dir="ltr" width="100%" cellpadding="0" cellspacing="0" role="presentation" style="width:100%;border-collapse:collapse">
@@ -185,7 +190,7 @@ export function buildLetterHtml(doc: OutlookLetterDoc) {
   <tr>
     <td style="padding:14px 16px;background:#ffffff">
       <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="width:100%;border-collapse:collapse;background:${LIGHT};border:1px solid ${GREEN}">
-        <tr><td style="padding:10px 12px;font-size:12pt;direction:rtl;text-align:right;font-family:Tahoma,Arial,sans-serif;line-height:1.7">
+        <tr><td style="padding:10px 12px;font-size:${letterSize};direction:rtl;text-align:right;font-family:${letterFont};line-height:1.7">
           <div><b style="color:${GREEN}">الرقم:</b> <span dir="ltr" style="unicode-bidi:embed">${esc(doc.number || '—')}</span></div>
           <div><b style="color:${GREEN}">التاريخ:</b> ${esc(officialDateDisplay(doc.dateHijri, doc.dateGregorian))}</div>
           <div><b style="color:${GREEN}">إلى:</b> ${esc(doc.recipients || '')}</div>
@@ -198,7 +203,7 @@ export function buildLetterHtml(doc: OutlookLetterDoc) {
   ${!isBriefing ? section('الأطراف', doc.parties) : ''}
   ${!isBriefing ? section('الأسباب', doc.reasons) : ''}
   <tr>
-    <td style="padding:10px 16px 16px;font-size:14pt;direction:rtl;text-align:right;font-family:'Traditional Arabic',Tahoma,Arial,serif;line-height:1.85;background:#ffffff">${bodyInner}</td>
+    <td style="padding:10px 16px 16px;direction:rtl;text-align:right;font-family:${letterFont};font-size:${letterSize};line-height:1.85;background:#ffffff">${bodyInner}</td>
   </tr>
   ${!isBriefing ? section('الدراسة', doc.studyFields) : ''}
   <tr>

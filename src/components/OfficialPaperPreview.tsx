@@ -836,9 +836,11 @@ export default function OfficialPaperPreview({
   return (
     <div className="w-full max-w-full overflow-x-auto">
       <style>{`@media print { .cc-row, .cc-icon { display: inline-block !important; visibility: visible !important; } }
-.official-paper-root, .official-paper-root *:not(img):not(svg):not(svg *) { font-family: inherit !important; }
+/* Root keeps inline fontFamily/fontSize; children inherit it (do NOT put inherit on the root — that cancelled the picker). */
+.official-paper-root *:not(img):not(svg):not(svg *) { font-family: inherit !important; }
 .official-paper-root .paper-meta,
 .official-paper-root .paper-body {
+  font-family: inherit !important;
   font-size: inherit !important;
   line-height: 1.75;
   overflow-wrap: anywhere;
@@ -847,6 +849,7 @@ export default function OfficialPaperPreview({
 }
 .official-paper-root .paper-meta *,
 .official-paper-root .paper-body *:not(img):not(svg):not(svg *) {
+  font-family: inherit !important;
   font-size: inherit !important;
   max-width: 100%;
   overflow-wrap: anywhere;
@@ -886,7 +889,7 @@ export default function OfficialPaperPreview({
           />
         )}
 
-        <div className={`${chrome.metaClass} text-gray-900`} style={letterFontStyle}>
+        <div className={`paper-meta ${chrome.metaClass} text-gray-900`} style={letterFontStyle}>
           <Clickable field="number" onFieldClick={onFieldClick}>
             <span className="text-moj-green font-bold">الرقم: </span>
             <span dir="ltr">{doc.number || '—'}</span>
@@ -919,7 +922,7 @@ export default function OfficialPaperPreview({
           </Clickable>
         </div>
 
-        <div className={`${chrome.sectionPad} text-gray-900`} style={letterFontStyle}>
+        <div className={`paper-body ${chrome.sectionPad} text-gray-900`} style={letterFontStyle}>
           {hasStudy && study && (
             <Clickable field="studyFields" onFieldClick={onFieldClick}>
               <StudyFormView s={study} />

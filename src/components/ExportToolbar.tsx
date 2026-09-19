@@ -182,6 +182,8 @@ export default function ExportToolbar({
           observationText: doc.observationText || undefined,
           mechanismText: doc.mechanismText || undefined,
           underLogoLabel: doc.judgmentBriefing ? doc.briefingTitle || 'بطاقة عرض' : undefined,
+          fontFamily: doc.fontFamily || undefined,
+          fontSizePt: doc.fontSizePt || undefined,
         });
         const ok = await copyOutlookHtml(html, buildPlainLetter(doc));
         if (ok) {
@@ -296,6 +298,8 @@ export default function ExportToolbar({
           observationText: doc.observationText || undefined,
           mechanismText: doc.mechanismText || undefined,
           underLogoLabel: doc.judgmentBriefing ? doc.briefingTitle || 'بطاقة عرض' : undefined,
+      fontFamily: doc.fontFamily || undefined,
+      fontSizePt: doc.fontSizePt || undefined,
     });
     try {
       const ok = await copyOutlookHtml(html, plain);

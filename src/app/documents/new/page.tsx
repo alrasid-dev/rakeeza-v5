@@ -1289,7 +1289,7 @@ function NewDocumentInner() {
                 معاينة ورقية رسمية — انقر قسماً للتحرير
               </div>
               <OfficialPaperPreview
-                key={`preview-${paperLayout}-${previewBody.length}`}
+                key={`preview-${paperLayout}-${style.fontFamily}-${style.fontSizePt}-${previewBody.length}`}
                 style={style}
                 paperLayout={paperLayout}
                 onFieldClick={focusField}
