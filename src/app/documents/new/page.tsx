@@ -22,10 +22,9 @@ import TiptapBodyEditor, {
 import { formatCourtPresidentLine } from '@/lib/honorific';
 import PaperLayoutPicker from '@/components/PaperLayoutPicker';
 import ExportToolbar from '@/components/ExportToolbar';
-import { parsePaste, type TableRow } from '@/lib/parse-paste';
+import { type TableRow } from '@/lib/parse-paste';
 import { buildPasteStatePatch } from '@/lib/paste-state';
 import type { StudySections } from '@/lib/parse-study';
-import { enrichStudySections } from '@/lib/study-display';
 import { clearDraft, clearAllDrafts, loadDraft, saveDraft } from '@/lib/draft-store';
 import { suggestFont } from '@/lib/font-suggest';
 import { applyPolishFix, findPolishIssues, suggestLegalPhrases, type PolishIssue, type LegalPhraseSuggestion } from '@/lib/arabic-polish';
@@ -48,14 +47,10 @@ import {
   MECHANISM_LABEL,
   PROCESSING_MECHANISMS,
   defaultJudgmentLetterBody,
-  detectBriefingTitle,
-  detectJudgmentPriority,
-  extractJudgmentProseFromPaste,
   isBriefingTitle,
   isJudgmentBriefingFormSlug,
   isJudgmentBriefingMeta,
   isKnownMechanism,
-  mergeJudgmentCardFromPaste,
   normalizeJudgmentCard,
   parseTemplateFieldsJson,
   setJudgmentCardValue,
@@ -66,7 +61,6 @@ import {
 import { fontStackFor } from '@/lib/font-stacks';
 import {
   formatHijri,
-  looksLikeHijri,
   normalizeHijriDisplay,
   syncDatesFromGregorian,
   todayGregorianISO,
@@ -95,6 +89,9 @@ const EMPTY_FORM = {
   dateHijri: todayHijri(),
   docType: 'مكاتبة',
 };
+
+/** Visible proof that strict-paste wire-up is loaded in the client bundle. */
+const PASTE_BUILD_ID = 'RAKEEZA-PASTE-20260919-A';
 
 function NewDocumentInner() {
   const router = useRouter();
@@ -158,6 +155,7 @@ function NewDocumentInner() {
   const [error, setError] = useState('');
   const [draftRestored, setDraftRestored] = useState(false);
   const [detectedKind, setDetectedKind] = useState<string>('');
+  const [pasteToast, setPasteToast] = useState('');
   const [fontCorrections, setFontCorrections] = useState<
     { location: string; issue: string; suggestion: string }[]
   >([]);
@@ -401,163 +399,107 @@ function NewDocumentInner() {
     return () => window.clearTimeout(handle);
   }, [form.body, form.reasons, form.studyFields, form.subject, form.parties, form.recipients, form.copyTo, linterDismissed]);
 
-  /** Smart paste: judgment template → briefing; else study → study; else ordinary letter. */
+  /** Smart paste: apply strictPatch as sole source of truth for form/card/study. */
   function applyPaste() {
-    const parsed = parsePaste(paste);
-    const tplForStrict = templates.find((t) => t.id === templateId);
-    const metaForStrict = parseTemplateFieldsJson(tplForStrict?.fieldsJson);
+    const tpl = templates.find((t) => t.id === templateId);
+    const meta = parseTemplateFieldsJson(tpl?.fieldsJson);
+    const templateIsBriefing =
+      isJudgmentBriefingMeta(meta) || isJudgmentBriefingFormSlug(formSlug);
+
     const strictPatch = buildPasteStatePatch(paste, {
-      briefingTemplate:
-        isJudgmentBriefingMeta(metaForStrict) || isJudgmentBriefingFormSlug(formSlug),
+      // Explicit briefing template forces card path; otherwise paste detection wins
+      // (displayCard/reminder→briefing, study→study, letter/notice/memo→letter).
+      briefingTemplate: templateIsBriefing,
       formName: formName || undefined,
       keepDates: {
         gregorian: form.dateGregorian || todayGregorianISO(),
         hijri: form.dateHijri || todayHijri(),
       },
     });
-    const tpl = templates.find((t) => t.id === templateId);
-    const meta = parseTemplateFieldsJson(tpl?.fieldsJson);
-    const seedMeta = meta.seed;
-    const templateIsBriefing =
-      isJudgmentBriefingMeta(meta) || isJudgmentBriefingFormSlug(formSlug);
 
-    // Required detection order — never force briefing from leftover judgmentCard alone
-    const studyDetected =
-      !templateIsBriefing &&
-      (parsed.detectedKind === 'study' || Boolean(parsed.studySections));
-    const briefing = templateIsBriefing;
+    const patchForm = strictPatch.form;
+    const nextBody = normalizeBodyText(patchForm.body || '');
+    const nextDocType =
+      patchForm.docType ||
+      formName ||
+      form.docType ||
+      (strictPatch.detectedKind === 'study'
+        ? 'نموذج تحليل حكم (شكوى)'
+        : strictPatch.detectedKind === 'briefing'
+          ? 'مدخلات الأحكام بطاقة عرض'
+          : 'مكاتبة');
 
-    if (briefing) {
-      const detectedTitle =
-        detectBriefingTitle(paste) ||
-        detectBriefingTitle(parsed.subject || '') ||
-        briefingTitle;
-      if (detectedTitle) setBriefingTitle(detectedTitle);
-      const detectedPri = detectJudgmentPriority(paste) || detectJudgmentPriority(parsed.subject || '');
-      if (detectedPri) setJudgmentPriority(detectedPri);
-
-      setTableRows([]);
-      setStudySections(null);
-      setDetectedKind('briefing');
-      const mergedCard = mergeJudgmentCardFromPaste(
-        judgmentCard,
-        paste,
-        { ...(parsed.judgmentCardFields || {}) },
-        { strict: true },
-      );
-      setJudgmentCard(mergedCard);
-      const prose = extractJudgmentProseFromPaste(paste);
-      if (prose.observation) setObservationText(prose.observation);
-      else setObservationText('');
-      if (prose.mechanismText) setMechanismText(prose.mechanismText);
-      else setMechanismText('');
-      // Strict: never invent financial/name prose when paste has no observation
-      const letterBody =
-        (parsed.body && parsed.body.trim()) ||
-        (prose.observation || prose.mechanismText
-          ? defaultJudgmentLetterBody(mergedCard, prose.observation, prose.mechanismText)
-          : '');
-      const nextSubject =
-        (parsed.subject && parsed.subject.trim()) ||
-        form.subject ||
-        seedMeta?.subject ||
-        JUDGMENT_CARD_SUBJECT;
-      setFontCorrections([]);
-      setForm({
-        ...EMPTY_FORM,
-        subject: nextSubject,
-        recipients:
-          (parsed.recipients && parsed.recipients.trim()) ||
-          form.recipients ||
-          seedMeta?.recipients ||
-          JUDGMENT_CARD_RECIPIENTS,
-        parties: '',
-        reasons: '',
-        studyFields: '',
-        body: letterBody,
-        dateGregorian: (() => {
-          const raw = parsed.date || '';
-          if (raw && looksLikeHijri(raw)) return todayGregorianISO();
-          if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
-          return todayGregorianISO();
-        })(),
-        dateHijri: (() => {
-          const raw = parsed.date || '';
-          if (raw && looksLikeHijri(raw)) return normalizeHijriDisplay(raw);
-          if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return formatHijri(raw);
-          return todayHijri();
-        })(),
-        docType: formName || form.docType || 'مدخلات الأحكام بطاقة عرض',
-      });
-      setSavedDocId(null);
-      setStep(3);
-      return;
-    }
-
-    // Clear judgment card whenever leaving briefing path
-    setJudgmentCard(null);
-
-    const nextBody = normalizeBodyText(parsed.body || '');
-    const enrichedStudy = studyDetected && parsed.studySections
-      ? enrichStudySections(parsed.studySections, {
-          subject: parsed.subject,
-          parties: parsed.parties,
-          reasons: parsed.reasons,
-          studyFields: parsed.studyFields,
-          body: nextBody,
-          recipients: parsed.recipients,
-        })
-      : studyDetected
-        ? parsed.studySections || null
-        : null;
-    const caseNumber = (enrichedStudy?.caseNumber || parsed.studySections?.caseNumber || '').replace(/\s+/g, '');
-    const nextSubject = studyDetected
-      ? (parsed.subject && parsed.subject.trim()) ||
-        (caseNumber ? `دراسة شكوى — ${caseNumber}` : '')
-      : (parsed.subject && parsed.subject.trim()) || '';
-
-    setTableRows(parsed.tableRows || []);
-    setStudySections(studyDetected ? enrichedStudy || parsed.studySections || null : null);
-    setDetectedKind(studyDetected ? 'study' : parsed.detectedKind || 'letter');
-    if (parsed.fontHint) {
-      setStyle((s) => ({
-        ...s,
-        fontFamily: parsed.fontHint!.family,
-        fontSizePt: parsed.fontHint!.sizePt,
-      }));
-    }
-    if (studyDetected) {
-      setPaperLayout('study-report');
-    } else if (parsed.detectedKind === 'letter' && /تعميم/.test(parsed.subject || paste)) {
-      setPaperLayout('taameem-circular');
-    }
-    const { corrections } = suggestFont(form.docType || formName, nextBody);
-    setFontCorrections(corrections);
     setForm({
       ...EMPTY_FORM,
-      subject: nextSubject,
-      recipients: (strictPatch.form.recipients && strictPatch.form.recipients.trim()) || (parsed.recipients && parsed.recipients.trim()) || '',
-      copyTo: strictPatch.form.copyTo || '',
-      parties: strictPatch.form.parties || '',
-      reasons: strictPatch.form.reasons || '',
-      studyFields: studyDetected ? (strictPatch.form.studyFields || '') : '',
-      body: nextBody || strictPatch.form.body || '',
-      dateGregorian: (() => {
-        const raw = parsed.date || '';
-        if (raw && looksLikeHijri(raw)) return todayGregorianISO();
-        if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
-        return todayGregorianISO();
-      })(),
-      dateHijri: (() => {
-        const raw = parsed.date || '';
-        if (raw && looksLikeHijri(raw)) return normalizeHijriDisplay(raw);
-        if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return formatHijri(raw);
-        return todayHijri();
-      })(),
-      docType: studyDetected
-        ? formName || 'نموذج تحليل حكم (شكوى)'
-        : formName || form.docType || 'مكاتبة',
+      subject: patchForm.subject ?? '',
+      recipients: patchForm.recipients ?? '',
+      copyTo: patchForm.copyTo ?? '',
+      parties: patchForm.parties ?? '',
+      reasons: patchForm.reasons ?? '',
+      studyFields: patchForm.studyFields ?? '',
+      body: nextBody,
+      dateGregorian: patchForm.dateGregorian || todayGregorianISO(),
+      dateHijri: patchForm.dateHijri || todayHijri(),
+      docType: nextDocType,
     });
+    setJudgmentCard(strictPatch.judgmentCard);
+    setStudySections(strictPatch.studySections);
+    setTableRows(strictPatch.tableRows || []);
+    setDetectedKind(strictPatch.detectedKind);
+    if (strictPatch.briefingTitle) setBriefingTitle(strictPatch.briefingTitle);
+    if (strictPatch.judgmentPriority) setJudgmentPriority(strictPatch.judgmentPriority);
+    setObservationText(strictPatch.observationText || '');
+    setMechanismText(strictPatch.mechanismText || '');
+
+    if (strictPatch.raw.fontHint) {
+      setStyle((s) => ({
+        ...s,
+        fontFamily: strictPatch.raw.fontHint!.family,
+        fontSizePt: strictPatch.raw.fontHint!.sizePt,
+      }));
+    }
+
+    // Paper layout heuristics (study / تعميم)
+    if (
+      strictPatch.detectedKind === 'study' ||
+      strictPatch.json.templateKind === 'study'
+    ) {
+      setPaperLayout('study-report');
+    } else if (
+      (strictPatch.detectedKind === 'letter' ||
+        strictPatch.json.templateKind === 'officialLetter' ||
+        strictPatch.json.templateKind === 'notice' ||
+        strictPatch.json.templateKind === 'memorandum') &&
+      /تعميم/.test(patchForm.subject || paste)
+    ) {
+      setPaperLayout('taameem-circular');
+    }
+
+    const { corrections } = suggestFont(nextDocType, nextBody);
+    setFontCorrections(corrections);
+
+    const filled: string[] = [];
+    if ((patchForm.subject || '').trim()) filled.push('الموضوع');
+    if ((patchForm.recipients || '').trim()) filled.push('إلى');
+    if (nextBody.trim()) filled.push('الجسم');
+    if ((patchForm.copyTo || '').trim()) filled.push('نسخة');
+    if ((patchForm.parties || '').trim()) filled.push('الأطراف');
+    if ((patchForm.reasons || '').trim()) filled.push('الأسباب');
+    if ((patchForm.studyFields || '').trim()) filled.push('حقول الدراسة');
+    if (strictPatch.judgmentCard?.some((r) => (r.value || '').trim())) filled.push('بطاقة');
+    if (strictPatch.studySections) filled.push('دراسة');
+    if ((strictPatch.tableRows || []).length) filled.push('جدول');
+
+    console.log(
+      '[RAKEEZA]',
+      PASTE_BUILD_ID,
+      strictPatch.json.templateKind,
+      strictPatch.form,
+    );
+    setPasteToast(
+      `تم تطبيق اللصق الصارم — ${PASTE_BUILD_ID} — حقول: ${filled.length ? filled.join('/') : '—'}`,
+    );
+
     setSavedDocId(null);
     setStep(3);
   }
@@ -966,8 +908,30 @@ function NewDocumentInner() {
         </div>
       )}
 
+      {pasteToast && (
+        <div
+          className="fixed top-3 left-1/2 z-50 -translate-x-1/2 max-w-xl w-[min(92vw,36rem)] rounded-lg border border-moj-gold bg-[#fff8e8] dark:bg-[#2a2418] px-4 py-2 text-sm text-moj-green shadow-lg"
+          role="status"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <span className="font-arabic leading-relaxed">{pasteToast}</span>
+            <button
+              type="button"
+              className="shrink-0 text-xs opacity-70 hover:opacity-100"
+              onClick={() => setPasteToast('')}
+              aria-label="إغلاق"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
       {step === 2 && (
         <div className="bg-white dark:bg-[var(--surface)] rounded-xl border dark:border-white/10 p-3 sm:p-4 space-y-3">
+          <div className="inline-flex items-center rounded-full border border-moj-gold/50 bg-[#fff8e8] dark:bg-[#2a2418] px-2.5 py-0.5 text-[11px] font-mono text-moj-green">
+            بناء اللصق: {PASTE_BUILD_ID}
+          </div>
           <label className="label">
             الصق نص المكاتبة أو نموذج الدراسة من Excel — يُكتشف النوع تلقائياً دون اختيار مسبق
           </label>
