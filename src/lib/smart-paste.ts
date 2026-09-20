@@ -111,6 +111,10 @@ function detectKind(raw: ParsedPaste, paste: string, opts: SmartPasteOptions): T
   }
   if (opts.preferredKind) return opts.preferredKind;
   if (raw.detectedKind === 'study' || raw.studySections) return 'study';
+  // A flat multi-row / multi-column table (judgment grid, كشف أسماء, …) must render
+  // as a table — never mis-classify it as a briefing card just because its header
+  // contains a keyword like «مصدر الحكم».
+  if (raw.detectedKind === 'table') return 'officialLetter';
 
   const head = paste.slice(0, 120);
   if (/إشعار|موعد(?:كم| الجلسة)/.test(paste) && !/خطاب|مذكرة|بطاقة/.test(head)) return 'notice';
