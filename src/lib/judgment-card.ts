@@ -1,6 +1,7 @@
 import { polishSpelling } from '@/lib/arabic-polish';
 import { bodyBlocksToHtml } from '@/lib/body-align';
 import { bodyToExportHtml, isBodyHtml } from '@/lib/body-html-bridge';
+import { parseAnyTable } from '@/lib/universal-table-parser';
 /** Key/value judgment-monitoring card — عرض شف (oral briefing) for court workflow */
 
 export type JudgmentCardRow = { label: string; value: string };
@@ -226,9 +227,48 @@ function stripHonorificPrefix(name: string) {
 }
 
 /**
+ * Flat-table fallback: Excel/TSV clipboard may contain a header row (labels)
+ * followed by data row(s) — e.g. «التشكيل / رقم القضية / مصدر الحكم …». The
+ * line-based loop above mis-reads the header row as «label = rest of header»,
+ * so here we locate a row whose cells mostly match field aliases and map its
+ * columns onto the next (data) row.
+ */
+function extractCardFromFlatTable(raw: string, out: Partial<Record<string, string>>): void {
+  const table = parseAnyTable(raw);
+  if (!(table.grid.length >= 2 && table.grid[0].length >= 2)) return;
+  const grid = table.grid.map((r) => r.map((c) => String(c ?? '').trim()));
+
+  for (let r = 0; r < grid.length - 1; r += 1) {
+    const row = grid[r];
+    const matched = row.filter((c) =>
+      PASTE_FIELD_ALIASES.some((f) => f.aliases.test(c.replace(/\s+/g, ' ').trim())),
+    ).length;
+    if (matched < 2) continue;
+
+    const dataRow = grid[r + 1];
+    row.forEach((label, i) => {
+      const value = String(dataRow?.[i] ?? '').trim();
+      if (!value) return;
+      const normLabel = label.replace(/\s+/g, ' ').trim();
+      for (const field of PASTE_FIELD_ALIASES) {
+        if (field.aliases.test(normLabel)) {
+          let v = value;
+          if (field.key === JUDGMENT_SOURCE_LABEL) v = stripHonorificPrefix(v);
+          if (field.key === MECHANISM_LABEL) v = detectProcessingMechanism(v) || v;
+          if (v) out[field.key] = v;
+          break;
+        }
+      }
+    });
+    return;
+  }
+}
+
+/**
  * Extract key/value pairs for the judgment card from pasted text
  * (lines like «التشكيل: …» / tab-separated / «مصدر الحكم فضيلة الشيخ …»).
- * Also scans free text for mechanism phrases (صك مستبدل / رفع تذكرة / تحديد موعد).
+ * Also scans free text for mechanism phrases (صك مستبدل / رفع تذكرة / تحديد موعد),
+ * and falls back to a flat header+data table (Excel/TSV) when present.
  */
 export function extractJudgmentCardFromPaste(raw: string): Partial<Record<string, string>> {
   const text = String(raw || '').replace(/\r\n/g, '\n');
@@ -264,6 +304,9 @@ export function extractJudgmentCardFromPaste(raw: string): Partial<Record<string
       if (name && !/^(?:فضيلة|الشيخ)$/.test(name)) out[JUDGMENT_SOURCE_LABEL] = name;
     }
   }
+
+  // Flat header+data table fallback — overwrites the header-row mis-read above.
+  extractCardFromFlatTable(text, out);
 
   // Free-text mechanism scan (body prose like «وفي حال اقتضى الأمر إصدار صك مستبدل…»)
   if (!out[MECHANISM_LABEL]) {
