@@ -396,9 +396,16 @@ export function parseRichPaste(raw: string): ParsedPaste {
 
   if (isTable) {
     const rows = gridToTableRows(table.grid);
-    // A genuine party list has a real ID column (9–15 digit IDs); otherwise it
-    // is a generic flat grid that should render as a styled HTML table.
-    const isPartyTable = rows.length >= 2 && rows.some((r) => r.id);
+    const headerRow =
+      table.headerRowIndex >= 0
+        ? table.grid[table.headerRowIndex].map((c) => String(c || '').trim())
+        : [];
+    const headerText = headerRow.join(' ');
+    // «كشف أسماء» فقط عندما تشير الرؤوس إلى اسم + رقم/هوية؛ أي جدول آخر (حكم/قضايا…) يبقى جدولاً عاماً.
+    const isPartyTable = headerText
+      ? /(?:الاسم|الأسماء|الموظف|الموظفين)/.test(headerText) && /(?:رقم|الهوية|الهويه)/.test(headerText)
+      : rows.length >= 2 && rows.some((r) => r.id);
+
     const tsv = htmlToPasteText(input) || table.grid.map((r) => r.join('\t')).join('\n');
     const base = parsePaste(tsv);
 
@@ -407,13 +414,14 @@ export function parseRichPaste(raw: string): ParsedPaste {
       return { ...base, body: '', tableRows: rows, detectedKind: 'table' };
     }
 
-    // Generic flat grid — render a styled, bordered HTML table in the body.
+    // Generic flat grid (judgment / any columns) — render a styled HTML table in the body.
     const bodyHtml = gridToEditorTableHtml(table.grid, {
       bordered: true,
       headers: table.hasHeader,
     });
     return { ...base, body: bodyHtml, tableRows: [], detectedKind: 'table' };
   }
+  // Not a table — keep as plain text (letters, study forms, …).
   return parsePaste(input);
 }
 
