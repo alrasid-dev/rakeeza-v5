@@ -51,6 +51,9 @@ export function normalizeForPresence(s: string): string {
 export function onlyIfPresent(rawPaste: string, value: string | null | undefined): string {
   const v = String(value ?? '').trim();
   if (!v) return '';
+  // Generated HTML table bodies (adapted from a pasted grid) are derived from
+  // the paste — keep them intact instead of treating them as invented text.
+  if (/^<table\b/i.test(v)) return v;
   const hay = normalizeForPresence(rawPaste);
   if (!hay) return '';
   const needle = normalizeForPresence(v);
