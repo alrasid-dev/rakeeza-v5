@@ -317,3 +317,13 @@ export function editorInsertTable(
   if (!editor) return false;
   return editor.chain().focus().insertTable({ rows, cols, withHeaderRow: true }).run();
 }
+
+/**
+ * Insert an adapted/aggregated HTML table (from the Universal Table &
+ * Model Adaptor) at the end of the document — never replaces the whole body.
+ */
+export function editorInsertAdaptedTable(editor: Editor | null, html: string): boolean {
+  if (!editor || editor.isDestroyed) return false;
+  const content = `<p></p>${html}`;
+  return editor.chain().focus().insertContentAt(editor.state.doc.content.size, content).run();
+}

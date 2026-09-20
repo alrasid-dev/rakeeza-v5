@@ -9,7 +9,7 @@ type U = { id: string; email: string; name: string; role: string; active: boolea
 export default function AdminUsersPage() {
   const [user, setUser] = useState<{ name: string; role: string } | null>(null);
   const [users, setUsers] = useState<U[]>([]);
-  const [form, setForm] = useState({ email: '', name: '', role: 'Employee', password: 'ChangeMe123!' });
+  const [form, setForm] = useState({ email: '', name: '', role: 'Employee', pin: '' });
   const [error, setError] = useState('');
 
   async function load() {
@@ -38,7 +38,7 @@ export default function AdminUsersPage() {
       setError(data.error || 'فشل');
       return;
     }
-    setForm({ email: '', name: '', role: 'Employee', password: 'ChangeMe123!' });
+    setForm({ email: '', name: '', role: 'Employee', pin: '' });
     load();
   }
 
@@ -56,7 +56,16 @@ export default function AdminUsersPage() {
           <option value="Judge">قاضي (Judge)</option>
           <option value="Employee">موظف (Employee)</option>
         </select>
-        <input className="input" type="password" dir="ltr" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
+        <input
+          className="input"
+          dir="ltr"
+          inputMode="numeric"
+          maxLength={6}
+          placeholder="رمز أولي (٦ أرقام) — اختياري"
+          title="اتركه فارغاً ليبرمج الموظف رمزه بنفسه عند أول دخول"
+          value={form.pin}
+          onChange={(e) => setForm({ ...form, pin: e.target.value.replace(/\D/g, '').slice(0, 6) })}
+        />
         <button className="btn-primary" type="submit">إضافة</button>
       </form>
       <div className="table-wrap">
@@ -66,7 +75,7 @@ export default function AdminUsersPage() {
               <th>الاسم</th>
               <th>البريد</th>
               <th>الدور</th>
-              <th>تغيير كلمة المرور</th>
+              <th>يتطلب برمجة الرمز</th>
             </tr>
           </thead>
           <tbody>

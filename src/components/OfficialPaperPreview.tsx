@@ -168,6 +168,7 @@ export default function OfficialPaperPreview({
     doc.qrDataUrl,
     doc.courtName,
     doc.studySections,
+    doc.tableRows,
     doc.judgmentCard,
     doc.judgmentBriefing,
     doc.briefingTitle,

@@ -12,13 +12,13 @@ export async function POST(req: NextRequest) {
     const name = String(body.name || '').trim();
     const password = String(body.password || '');
     if (!name || !email || !password) {
-      return NextResponse.json({ error: 'الاسم والبريد وكلمة المرور مطلوبة' }, { status: 400 });
+      return NextResponse.json({ error: 'الاسم والبريد ورمز المرور مطلوبة' }, { status: 400 });
     }
     if (!isMojEmail(email)) {
       return NextResponse.json({ error: 'البريد يجب أن ينتهي بـ @moj.gov.sa' }, { status: 400 });
     }
-    if (password.length < 8) {
-      return NextResponse.json({ error: 'كلمة المرور يجب ألا تقل عن 8 أحرف' }, { status: 400 });
+    if (!/^\d{6}$/.test(password)) {
+      return NextResponse.json({ error: 'رمز المرور المقترح يجب أن يكون ٦ أرقام' }, { status: 400 });
     }
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {

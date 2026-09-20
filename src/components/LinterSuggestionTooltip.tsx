@@ -43,16 +43,20 @@ export default function LinterSuggestionTooltip({
               ? 'bg-amber-200 text-amber-950'
               : suggestion.type === 'judicial'
                 ? 'bg-moj-green/20 text-moj-green'
-                : 'bg-orange-200 text-orange-950'
+                : suggestion.type === 'protocol'
+                  ? 'bg-sky-200 text-sky-950'
+                  : 'bg-orange-200 text-orange-950'
           }`}
         >
           {suggestion.type === 'spelling'
             ? 'إملائي'
             : suggestion.type === 'judicial'
               ? 'قضائي'
-              : suggestion.type === 'grammar'
-                ? 'نحوي'
-                : 'صياغي'}
+              : suggestion.type === 'protocol'
+                ? 'بروتوكولي'
+                : suggestion.type === 'grammar'
+                  ? 'نحوي'
+                  : 'صياغي'}
         </span>
         <div className="flex-1 min-w-0">
           <div className="font-medium text-gray-800 dark:text-white/90">{suggestion.message}</div>

@@ -41,38 +41,48 @@ const PREVIEW_STACK: Record<string, string> = {
   Mada: 'var(--font-mada), "Mada", Tahoma, sans-serif',
   Tahoma: 'Tahoma, var(--font-noto-naskh), Arial, sans-serif',
   Arial: 'Arial, var(--font-noto-naskh), sans-serif',
+  // Official Arabic font library aliases (Step 4)
+  Scheherazade: 'var(--font-scheherazade), "Scheherazade New", "Sakkal Majalla", serif',
+  Kufi: 'var(--font-reem-kufi), "Reem Kufi", Tahoma, sans-serif',
+  Naskh: 'var(--font-noto-naskh), "Noto Naskh Arabic", "Amiri", serif',
+  Lotus: 'var(--font-cairo), "Cairo", Tahoma, sans-serif',
+  Sultan: 'var(--font-amiri), "Amiri", serif',
 };
 
-/** Core nine (Step 3) first, then extended. */
-export const FONT_OPTIONS: { id: string; label: string; stack: string }[] = [
-  ...ARABIC_FONT_LIBRARY.filter((f) =>
-    [
-      'Traditional Arabic',
-      'Amiri',
-      'Cairo',
-      'Tajawal',
-      'Almarai',
-      'IBM Plex Sans Arabic',
-      'Scheherazade New',
-      'Aref Ruqaa',
-      'Reem Kufi',
-    ].includes(f.id),
-  ).map((f) => ({
-    id: f.id,
-    label: f.label,
-    stack: PREVIEW_STACK[f.id] || concreteFontStack(f.id),
-  })),
-  ...EXTENDED_FONT_OPTIONS.map((f) => ({
-    id: f.id,
-    label: f.label,
-    stack: PREVIEW_STACK[f.id] || concreteFontStack(f.id),
-  })),
-  {
-    id: 'Noto Naskh Arabic',
-    label: 'Noto Naskh Arabic',
-    stack: PREVIEW_STACK['Noto Naskh Arabic'],
-  },
-];
+/** Official toolbar order (Step 4) — requested ten first, then the full library. */
+const TOOLBAR_PRIORITY = [
+  'Traditional Arabic',
+  'Amiri',
+  'Sakkal Majalla',
+  'Cairo',
+  'Tajawal',
+  'Scheherazade',
+  'Kufi',
+  'Naskh',
+  'Lotus',
+  'Sultan',
+] as const;
+
+function fontLabel(id: string): string {
+  return (
+    ARABIC_FONT_LIBRARY.find((f) => f.id === id)?.label ||
+    EXTENDED_FONT_OPTIONS.find((f) => f.id === id)?.label ||
+    id
+  );
+}
+
+export const FONT_OPTIONS: { id: string; label: string; stack: string }[] = (() => {
+  const seen = new Set<string>();
+  const out: { id: string; label: string; stack: string }[] = [];
+  const push = (id: string) => {
+    if (seen.has(id)) return;
+    seen.add(id);
+    out.push({ id, label: fontLabel(id), stack: PREVIEW_STACK[id] || concreteFontStack(id) });
+  };
+  for (const id of TOOLBAR_PRIORITY) push(id);
+  for (const f of [...ARABIC_FONT_LIBRARY, ...EXTENDED_FONT_OPTIONS]) push(f.id);
+  return out;
+})();
 
 export function fontStackFor(id?: string | null): string {
   const hit = FONT_OPTIONS.find((f) => f.id === id);
@@ -109,6 +119,11 @@ const GOOGLE_FAMILY_PARAM: Record<string, string> = {
   'Readex Pro': 'Readex+Pro:wght@400;700',
   Rubik: 'Rubik:wght@400;700',
   Mada: 'Mada:wght@400;700',
+  Scheherazade: 'Scheherazade+New:wght@400;700',
+  Kufi: 'Reem+Kufi:wght@400;700',
+  Naskh: 'Noto+Naskh+Arabic:wght@400;700',
+  Lotus: 'Cairo:wght@400;700',
+  Sultan: 'Amiri:wght@400;700',
 };
 
 /** Always-include Google families for Outlook HTML (when online). PDF uses Base64 instead. */
@@ -173,6 +188,12 @@ export function docxFontName(id?: string | null): string {
     Mada: 'Mada',
     Tahoma: 'Tahoma',
     Arial: 'Arial',
+    // Official Arabic font library aliases → Word-safe embedded names
+    Scheherazade: 'Scheherazade New',
+    Kufi: 'Reem Kufi',
+    Naskh: 'Noto Naskh Arabic',
+    Lotus: 'Cairo',
+    Sultan: 'Amiri',
   };
   return map[String(id || '')] || 'Traditional Arabic';
 }

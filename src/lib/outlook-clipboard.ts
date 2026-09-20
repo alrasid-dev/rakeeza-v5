@@ -3,6 +3,7 @@ import { officialDateDisplay } from '@/lib/hijri';
 import { BRAND } from '@/lib/brand';
 import { bodyBlocksToHtml } from '@/lib/body-align';
 import { bodyToExportHtml, isBodyHtml } from '@/lib/body-html-bridge';
+import { normalizeHtmlColors } from '@/lib/color-normalize';
 import { exportFontStack, fontStackFor } from '@/lib/font-stacks';
 import { MOJ_EMBLEM_PNG_DATA_URL } from '@/lib/brand-emblem-data';
 import { outlookEmblemImgHtml, outlookEmblemUrl } from '@/lib/outlook-public-assets';
@@ -176,6 +177,8 @@ export function outlookBodyParagraphs(
         fontFamily: font,
       });
 
+  // Ensure custom colors are explicit #RRGGBB hex before the Word engine reads them.
+  html = normalizeHtmlColors(html);
   html = stripOutlookHostileCss(html);
 
   html = html.replace(/<(p|div)(\s[^>]*)?>/gi, (_full, _tag: string, attrs = '') => {

@@ -2,7 +2,7 @@
  * Deterministic Smart Paste: local parsers + Zod. No paid LLM.
  * Values not present in the paste are cleared to "".
  */
-import { parsePaste, type ParsedPaste } from '@/lib/parse-paste';
+import { parseRichPaste, type ParsedPaste } from '@/lib/parse-paste';
 import {
   JUDGMENT_SOURCE_LABEL,
   MECHANISM_LABEL,
@@ -262,7 +262,7 @@ export function extractStrictPaste(
   opts: SmartPasteOptions = {},
 ): SmartPasteResult {
   const paste = String(rawText || '');
-  const raw = parsePaste(paste);
+  const raw = parseRichPaste(paste);
   const kind = detectKind(raw, paste, opts);
 
   let json: StrictPasteJson;

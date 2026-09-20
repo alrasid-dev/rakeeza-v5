@@ -242,10 +242,12 @@ export function courtPresidentHonorificFromTitle(title?: string | null): string 
   return null;
 }
 
-/** Strip every «المكلف / مكلف» occurrence (Arabic has no reliable \b). */
+/** Strip every «المكلف / المكلفة / مكلف / مكلفة» occurrence (Arabic has no reliable \b). */
 export function stripActingMarker(line: string): string {
   return String(line || '')
+    .replace(/المكلفة/g, '')
     .replace(/المكلف/g, '')
+    .replace(/مكلفة/g, '')
     .replace(/مكلف/g, '')
     .replace(/\s{2,}/g, ' ')
     .replace(/\s+([\/،,])/g, ' $1')
@@ -257,20 +259,21 @@ export function lineHasActingMarker(line: string): boolean {
   return /مكلف/.test(String(line || ''));
 }
 
-/** Append «المكلف» to a role line (before سلمه الله or before / name). */
-export function applyActingMarker(line: string, acting: boolean): string {
+/** Append «المكلف / المكلفة» to a role line (before سلمه الله or before / name). */
+export function applyActingMarker(line: string, acting: boolean, female = false): string {
   const base = stripActingMarker(line);
   if (!acting || !base) return base;
+  const word = female ? 'المكلفة' : 'المكلف';
   if (/\//.test(base)) {
     const i = base.indexOf('/');
     const role = base.slice(0, i).trim();
     const rest = base.slice(i + 1).trim();
-    return `${role} المكلف / ${rest}`.replace(/\s+/g, ' ').trim();
+    return `${role} ${word} / ${rest}`.replace(/\s+/g, ' ').trim();
   }
   if (/سلمه الله|سلمها الله/.test(base)) {
-    return base.replace(/\s*(سلمه الله|سلمها الله)/, ' المكلف $1').replace(/\s+/g, ' ').trim();
+    return base.replace(/\s*(سلمه الله|سلمها الله)/, ` ${word} $1`).replace(/\s+/g, ' ').trim();
   }
-  return `${base} المكلف`;
+  return `${base} ${word}`;
 }
 
 /**

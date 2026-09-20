@@ -108,7 +108,8 @@ html, body {
 .paper {
   font-family: '${preferred}', ${stack};
   font-weight: 400;
-  color: #111 !important;
+  /* default only — inline color:#HEX from TipTap spans must win (no !important) */
+  color: #111;
 }
 .bismillah, .bismillah * { color: #fff !important; }
 `;

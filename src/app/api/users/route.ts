@@ -32,7 +32,9 @@ export async function POST(req: NextRequest) {
   if (!(ALL_ROLES as readonly string[]).includes(body.role)) {
     return NextResponse.json({ error: 'دور غير صالح' }, { status: 400 });
   }
-  const passwordHash = await hashPassword(body.password || 'ChangeMe123!');
+  const pin = String(body.pin || body.password || '').trim();
+  const hasPin = /^\d{6}$/.test(pin);
+  const passwordHash = await hashPassword(hasPin ? pin : 'ChangeMe123!');
   let employeeId: string | undefined = body.employeeId || undefined;
   // If no employeeId, create a linked Employee so login policy is satisfied
   if (!employeeId) {
@@ -51,7 +53,7 @@ export async function POST(req: NextRequest) {
       name: body.name || 'مستخدم',
       role: body.role,
       passwordHash,
-      mustChangePassword: true,
+      mustChangePassword: !hasPin,
       employeeId,
     },
   });

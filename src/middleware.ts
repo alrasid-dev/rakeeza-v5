@@ -60,7 +60,7 @@ export async function middleware(req: NextRequest) {
       !pathname.startsWith('/api/auth/me')
     ) {
       if (pathname.startsWith('/api/')) {
-        return NextResponse.json({ error: 'يجب تغيير كلمة المرور' }, { status: 403 });
+        return NextResponse.json({ error: 'يجب برمجة رمز الدخول أولاً' }, { status: 403 });
       }
       return NextResponse.redirect(absoluteUrl(req, '/change-password'));
     }

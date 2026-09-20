@@ -31,6 +31,7 @@ export default function StyleToolbar({
   onFontFamilySelection,
   onFontSizeSelection,
   onInsertTable,
+  onInsertAdaptedTable,
 }: {
   value: DocStyle;
   onChange: (next: DocStyle) => void;
@@ -48,6 +49,8 @@ export default function StyleToolbar({
   onFontFamilySelection?: (fontFamily: string) => void;
   onFontSizeSelection?: (pt: number) => void;
   onInsertTable?: () => void;
+  /** Open the smart "adapt pasted table" dialog (Universal Table & Model Adaptor). */
+  onInsertAdaptedTable?: () => void;
 }) {
   return (
     <div className="flex flex-wrap items-end gap-2 rounded-xl border border-moj-green/20 bg-white dark:bg-[var(--surface)] p-2 text-sm">
@@ -206,6 +209,18 @@ export default function StyleToolbar({
                 onClick={() => onInsertTable()}
               >
                 جدول
+              </button>
+            )}
+            {onInsertAdaptedTable && (
+              <button
+                type="button"
+                title="إدراج جدول مكيّف — الصق جدولاً/نصاً فيُكيَّف ويُدمَج ذكياً"
+                className="px-2 py-1.5 rounded-lg border border-moj-gold/70 bg-moj-gold/10 text-xs text-moj-green font-bold flex items-center gap-1"
+                onClick={() => onInsertAdaptedTable()}
+                data-insert-adapted-table
+              >
+                <span aria-hidden="true" className="text-sm leading-none">▦</span>
+                <span>جدول مكيّف</span>
               </button>
             )}
             {onClearInline && (

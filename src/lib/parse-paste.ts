@@ -3,6 +3,7 @@
 import { isStudyPaste, parseStudyPaste, studyToFormFields } from '@/lib/parse-study';
 import { suggestFont } from '@/lib/font-suggest';
 import { extractJudgmentCardFromPaste } from '@/lib/judgment-card';
+import { gridToTableRows, htmlToPasteText, parseAnyTable } from '@/lib/universal-table-parser';
 
 export type TableRow = { name: string; id?: string; extra?: string };
 
@@ -379,6 +380,31 @@ export function parsePaste(raw: string): ParsedPaste {
     detectedKind: kind,
     fontHint: { family: font.suggestion.family, sizePt: font.suggestion.sizePt },
   };
+}
+
+/**
+ * Rich-paste aware parser. When the input carries HTML (Word/Excel/Outlook
+ * clipboard), the Universal Table & Model Adaptor first recovers the table
+ * structure (and smart-aggregates duplicated rows), then hands a normalised
+ * TSV to the standard plain-text parser. Plain text passes through unchanged.
+ */
+export function parseRichPaste(raw: string): ParsedPaste {
+  const input = String(raw || '');
+  if (/<table\b/i.test(input)) {
+    const table = parseAnyTable(input);
+    const rows = gridToTableRows(table.grid);
+    if (rows.length || table.grid.length) {
+      const tsv = htmlToPasteText(input) || table.grid.map((r) => r.join('\t')).join('\n');
+      const base = parsePaste(tsv);
+      const tableRows = rows.length ? rows : base.tableRows;
+      return {
+        ...base,
+        tableRows,
+        detectedKind: tableRows.length >= 2 ? 'table' : base.detectedKind,
+      };
+    }
+  }
+  return parsePaste(input);
 }
 
 export function buildTitle(honorific: string, position: string, name?: string) {

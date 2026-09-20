@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useRef, useState } from 'react';
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import AppShell from '@/components/AppShell';
 import PageHeader from '@/components/PageHeader';
@@ -18,11 +18,17 @@ import TiptapBodyEditor, {
   editorApplyFontSize,
   editorClearMarks,
   editorInsertTable,
+  editorInsertAdaptedTable,
 } from '@/components/TiptapBodyEditor';
 import { formatCourtPresidentLine } from '@/lib/honorific';
 import PaperLayoutPicker from '@/components/PaperLayoutPicker';
 import ExportToolbar from '@/components/ExportToolbar';
 import { type TableRow } from '@/lib/parse-paste';
+import { adaptPastedTable, htmlToPasteText } from '@/lib/universal-table-parser';
+import AdaptedTablePreview, {
+  type AdaptedTablePreviewData,
+} from '@/components/AdaptedTablePreview';
+import AdaptedTableInsertDialog from '@/components/AdaptedTableInsertDialog';
 import { buildPasteStatePatch } from '@/lib/paste-state';
 import type { StudySections } from '@/lib/parse-study';
 import { clearDraft, clearAllDrafts, loadDraft, saveDraft } from '@/lib/draft-store';
@@ -35,6 +41,7 @@ import {
   locateSuggestionsInEditor,
   rejectLinterSuggestion,
   scanBodySuggestions,
+  scanProtocolSuggestions,
   type LinterSuggestion,
 } from '@/lib/body-linter';
 import LetterAssistantPanel from '@/components/LetterAssistantPanel';
@@ -112,7 +119,7 @@ function NewDocumentInner() {
   const skipUndoPushRef = useRef(false);
   const [canUndo, setCanUndo] = useState(false);
 
-  function pushUndoSnapshot(nextForm: typeof form) {
+  const pushUndoSnapshot = useCallback((nextForm: typeof form) => {
     if (skipUndoPushRef.current) return;
     const json = JSON.stringify(nextForm);
     const stack = undoStackRef.current;
@@ -120,7 +127,7 @@ function NewDocumentInner() {
     stack.push(json);
     if (stack.length > 40) stack.shift();
     setCanUndo(stack.length > 1);
-  }
+  }, []);
 
   function undoLastChange() {
     const stack = undoStackRef.current;
@@ -141,7 +148,7 @@ function NewDocumentInner() {
 
   useEffect(() => {
     pushUndoSnapshot(form);
-  }, [form]);
+  }, [form, pushUndoSnapshot]);
 
 
   const [tableRows, setTableRows] = useState<TableRow[]>([]);
@@ -156,6 +163,8 @@ function NewDocumentInner() {
   const [draftRestored, setDraftRestored] = useState(false);
   const [detectedKind, setDetectedKind] = useState<string>('');
   const [pasteToast, setPasteToast] = useState('');
+  const [tablePreview, setTablePreview] = useState<AdaptedTablePreviewData | null>(null);
+  const [adaptedInsertOpen, setAdaptedInsertOpen] = useState(false);
   const [fontCorrections, setFontCorrections] = useState<
     { location: string; issue: string; suggestion: string }[]
   >([]);
@@ -393,7 +402,9 @@ function NewDocumentInner() {
       setPolishIssues(findPolishIssues(blob));
       setLegalPhrases(suggestLegalPhrases(form.body || form.reasons || blob));
       const scanned = scanBodySuggestions(form.body || '', linterDismissed);
-      const located = locateSuggestionsInEditor(bodyEditorRef.current?.getEditor() || null, scanned.suggestions);
+      const protocol = scanProtocolSuggestions(form.recipients || form.subject || '', linterDismissed);
+      const merged = [...scanned.suggestions, ...protocol];
+      const located = locateSuggestionsInEditor(bodyEditorRef.current?.getEditor() || null, merged);
       setBodyLinterSuggestions(located);
     }, LINTER_DEBOUNCE_MS);
     return () => window.clearTimeout(handle);
@@ -499,6 +510,24 @@ function NewDocumentInner() {
     setPasteToast(
       `تم تطبيق اللصق — حقول: ${filled.length ? filled.join(' / ') : '—'}`,
     );
+
+    // Live table preview — show how the adaptor reformatted/merged the grid
+    const htmlTable = /<table\b/i.test(paste);
+    if (htmlTable || strictPatch.detectedKind === 'table' || strictPatch.tableRows.length >= 2) {
+      const preview = adaptPastedTable(paste);
+      setTablePreview(
+        preview
+          ? {
+              originalHtml: preview.originalHtml,
+              adaptedHtml: preview.adaptedHtml,
+              editorHtml: preview.editorHtml,
+              mergedCount: preview.mergedCount,
+            }
+          : null,
+      );
+    } else {
+      setTablePreview(null);
+    }
 
     setSavedDocId(null);
     setStep(3);
@@ -824,6 +853,35 @@ function NewDocumentInner() {
     editorInsertTable(ed, 3, 3);
   };
 
+  /** Adopt the adapted/aggregated table into the TipTap body editor. */
+  const adoptAdaptedTable = () => {
+    if (!tablePreview) return;
+    const ed = bodyEditorRef.current?.getEditor() || null;
+    if (ed && !ed.isDestroyed) {
+      editorInsertAdaptedTable(ed, tablePreview.editorHtml);
+    } else {
+      // Editor not mounted yet — append the HTML to the body string instead.
+      const next = form.body.trim()
+        ? `${form.body.trim()}\n${tablePreview.editorHtml}`
+        : tablePreview.editorHtml;
+      setForm((f) => ({ ...f, body: next }));
+    }
+    setTablePreview(null);
+    setStep(3);
+  };
+
+  /** Insert an adapted table (from the toolbar dialog) into the body editor. */
+  const handleAdoptAdaptedTable = (editorHtml: string) => {
+    const ed = bodyEditorRef.current?.getEditor() || null;
+    if (ed && !ed.isDestroyed) {
+      editorInsertAdaptedTable(ed, editorHtml);
+    } else {
+      const next = form.body.trim() ? `${form.body.trim()}\n${editorHtml}` : editorHtml;
+      setForm((f) => ({ ...f, body: next }));
+    }
+    setAdaptedInsertOpen(false);
+  };
+
 
   const exportDoc = {
     id: savedDocId || undefined,
@@ -944,7 +1002,17 @@ function NewDocumentInner() {
             className="input min-h-[220px] font-arabic"
             value={paste}
             onChange={(e) => setPaste(e.target.value)}
-            placeholder={`مثال خطاب:\nالرقم: ...\nإلى: ...\nالموضوع: ...\n\nأو الصق صفوف نموذج تحليل حكم (شكوى) من Excel مباشرة.`}
+            onPaste={(e) => {
+              const html = e.clipboardData?.getData('text/html');
+              if (html && /<table[\s>]/i.test(html)) {
+                const tsv = htmlToPasteText(html);
+                if (tsv) {
+                  e.preventDefault();
+                  setPaste(tsv);
+                }
+              }
+            }}
+            placeholder={`مثال خطاب:\nالرقم: ...\nإلى: ...\nالموضوع: ...\n\nأو الصق صفوف نموذج تحليل حكم (شكوى) من Excel مباشرة — أو الصق جدولاً منسقاً من Word/Excel/Outlook.`}
           />
           <div className="flex flex-col sm:flex-row gap-2">
             <button className="btn-primary w-full sm:w-auto" onClick={applyPaste}>
@@ -984,6 +1052,7 @@ function NewDocumentInner() {
               onFontFamilySelection={applyBodyFontFamily}
               onFontSizeSelection={applyBodyFontSize}
               onInsertTable={insertBodyTable}
+              onInsertAdaptedTable={() => setAdaptedInsertOpen(true)}
             />
             <button
               type="button"
@@ -1505,6 +1574,17 @@ function NewDocumentInner() {
           </div>
         </div>
       )}
+
+      <AdaptedTablePreview
+        data={tablePreview}
+        onClose={() => setTablePreview(null)}
+        onAdopt={adoptAdaptedTable}
+      />
+      <AdaptedTableInsertDialog
+        open={adaptedInsertOpen}
+        onClose={() => setAdaptedInsertOpen(false)}
+        onAdopt={handleAdoptAdaptedTable}
+      />
     </AppShell>
   );
 }

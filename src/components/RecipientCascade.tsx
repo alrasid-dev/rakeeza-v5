@@ -235,7 +235,9 @@ export default function RecipientCascade({
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
-            title="اختياري: إضافة أو إزالة كلمة المكلف فقط"
+            role="checkbox"
+            aria-checked={acting}
+            title="اختياري: إلحاق المكلف/المكلفة باللقب أو المسمى سياقياً"
             onClick={toggleActing}
             className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[11px] font-semibold transition ${
               acting
@@ -243,7 +245,14 @@ export default function RecipientCascade({
                 : 'border-dashed border-gray-300 bg-transparent text-gray-500 hover:border-moj-green'
             }`}
           >
-            <span>{acting ? 'إزالة المكلف' : 'إضافة: مكلف'}</span>
+            <span
+              className={`w-3.5 h-3.5 rounded border flex items-center justify-center text-[9px] shrink-0 ${
+                acting ? 'bg-moj-green border-moj-green text-white' : 'border-gray-400'
+              }`}
+            >
+              {acting ? '✓' : ''}
+            </span>
+            <span>تكليف (المكلف / المكلفة)</span>
           </button>
           <span className="text-[10px] text-gray-500">اختياري — ليس إلزامياً</span>
         </div>

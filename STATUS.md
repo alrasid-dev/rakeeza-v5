@@ -49,8 +49,8 @@ npm run build && npm start
 
 | Area | Status |
 |------|--------|
-| Auth (@moj.gov.sa, JWT/jose, roles, first-login password change) | Live |
-| Fingerprint button | Present, disabled «قريباً» |
+| Auth (@moj.gov.sa, JWT/jose, roles, first-login PIN programming) | Live |
+| Fingerprint button | Live — WebAuthn register + login (credentialId mapping) |
 | Dashboard + Recharts placeholders | Live |
 | Documents CRUD + numbering on issue + QR | Live |
 | Wizard `/documents/new` + paste field distributor | Live |
@@ -74,9 +74,9 @@ npm run build && npm start
 
 | Area | Notes |
 |------|--------|
-| PDF Arabic typography | jsPDF export uses Latin/placeholder fonts — Arabic shaping limited; prefer DOCX/HTML |
+| PDF Arabic typography | jsPDF fallback uses logical Arabic — prefer Chromium/DOCX/HTML for best shaping |
 | Official circular body | Intentionally empty |
-| Fingerprint auth | UI only — «قريباً» |
+| Fingerprint auth | Live via credentialId mapping (no full WebAuthn signature verification yet) |
 | Entra/Azure | Not implemented (by design) |
 | Recharts data | Live counts from DB for Admin/أمين dashboard |
 | PWA icons PNG | Minimal placeholder PNGs; SVG logo is primary |

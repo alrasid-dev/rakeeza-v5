@@ -4,6 +4,7 @@
  */
 
 import { bodyBlocksToHtml, type ParaAlign } from '@/lib/body-align';
+import { normalizeHtmlColors } from '@/lib/color-normalize';
 
 function escHtml(s: string): string {
   return String(s || '')
@@ -73,7 +74,7 @@ export function bodyToExportHtml(
 ): string {
   const raw = String(body ?? '');
   if (!raw.trim()) return '';
-  if (isBodyHtml(raw)) return ensurePreWrapOnParagraphs(raw);
+  if (isBodyHtml(raw)) return ensurePreWrapOnParagraphs(normalizeHtmlColors(raw));
   return bodyBlocksToHtml(raw, {
     escape: opts?.escape || escHtml,
     fallbackAlign: opts?.fallbackAlign || 'right',

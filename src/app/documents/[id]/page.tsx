@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import AppShell from '@/components/AppShell';
 import PageHeader from '@/components/PageHeader';
@@ -35,18 +35,18 @@ export default function DocumentDetailPage() {
   const [doc, setDoc] = useState<Doc | null>(null);
   const [msg, setMsg] = useState('');
 
-  async function load() {
+  const load = useCallback(async () => {
     const [u, d] = await Promise.all([
       fetch('/api/auth/me').then((r) => r.json()),
       fetch(`/api/documents/${id}`).then((r) => r.json()),
     ]);
     setUser(u.user);
     setDoc(d.document);
-  }
+  }, [id]);
 
   useEffect(() => {
     load();
-  }, [id]);
+  }, [load]);
 
   async function issue() {
     const res = await fetch(`/api/documents/${id}`, {

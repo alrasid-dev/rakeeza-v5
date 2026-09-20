@@ -13,11 +13,12 @@ import {
   type PolishKind,
 } from '@/lib/arabic-polish';
 import { findTextRanges } from '@/lib/tiptap-ai-commands';
+import { suggestProtocolAddresses } from '@/lib/protocol-address';
 
 /** Exact debounce after last body change (ms). */
 export const LINTER_DEBOUNCE_MS = 1500;
 
-export type LinterSuggestionType = 'spelling' | 'grammar' | 'style' | 'judicial';
+export type LinterSuggestionType = 'spelling' | 'grammar' | 'style' | 'judicial' | 'protocol';
 
 export type LinterSuggestion = {
   id: string;
@@ -95,6 +96,36 @@ export function scanBodySuggestions(
     scannedAt: Date.now(),
     textLength: raw.length,
   };
+}
+
+/**
+ * Scan recipients/correspondence text for judicial/administrative protocol
+ * (الألقاب القضائية) and surface one-click adopt suggestions.
+ */
+export function scanProtocolSuggestions(
+  text: string,
+  dismissedIds: Iterable<string> = [],
+): LinterSuggestion[] {
+  const raw = String(text || '');
+  const dismissed = new Set(dismissedIds);
+  const seen = new Set<string>();
+  const out: LinterSuggestion[] = [];
+
+  for (const ph of suggestProtocolAddresses(raw)) {
+    const id = `protocol|${ph.role}|${ph.found}→${ph.suggestion}`;
+    if (dismissed.has(id) || seen.has(id)) continue;
+    seen.add(id);
+    out.push({
+      id,
+      type: 'protocol',
+      found: ph.found,
+      suggestion: ph.suggestion,
+      message: ph.message,
+      kind: ph.kind,
+    });
+  }
+
+  return out;
 }
 
 /** Attach first matching doc ranges for inline highlights. */

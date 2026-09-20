@@ -20,8 +20,8 @@ export function buildPdfPrintCss(opts?: {
   const color = opts?.bodyColor || '#111';
   return `${PDF_A4_PAGE_RULES}
 body { margin: 0; color: ${color}; }
-/* Default stack only — TipTap inline font-family must override (no * !important) */
-.paper { font-family: ${font}; font-weight: 400; color: ${color} !important; }
+/* Default stack only — TipTap inline font-family + color must override (no * !important) */
+.paper { font-family: ${font}; font-weight: 400; color: ${color}; }
 .bismillah, .bismillah * { color: #fff !important; font-weight: 400 !important; }
 /* Official letterhead: LEFT=QR, CENTER=emblem, RIGHT=kingdom/ministry/court */
 .brand-row { width: 100%; page-break-inside: avoid; }
