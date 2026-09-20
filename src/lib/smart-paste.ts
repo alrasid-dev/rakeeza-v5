@@ -155,7 +155,7 @@ function fromStudy(raw: ParsedPaste, paste: string) {
     parties: onlyIfPresent(paste, raw.parties),
     reasons: onlyIfPresent(paste, raw.reasons),
     studyFields: onlyIfPresent(paste, raw.studyFields),
-    body: onlyIfPresent(paste, raw.body),
+    body: raw.body || '',
   });
 }
 
@@ -183,7 +183,7 @@ function fromDisplayOrReminder(
     mechanism: onlyIfPresent(paste, card[MECHANISM_LABEL]),
     observationProse: onlyIfPresent(paste, prose.observation),
     mechanismProse: onlyIfPresent(paste, prose.mechanismText),
-    body: onlyIfPresent(paste, raw.body),
+    body: raw.body || '',
   };
   return kind === 'reminderCard'
     ? ReminderCardSchema.parse(filled)
@@ -208,7 +208,7 @@ function fromNotice(raw: ParsedPaste, paste: string) {
         sessionTime: paste.match(/(?:الساعة)\s*[:：]?\s*([^\n]+)/)?.[1]?.trim() || '',
         venue: paste.match(/(?:القاعة|المكان)\s*[:：]?\s*([^\n]+)/)?.[1]?.trim() || '',
       },
-      new Set(['templateKind']),
+      new Set(['templateKind', 'body']),
     ),
   );
 }
@@ -233,7 +233,7 @@ function fromLetter(raw: ParsedPaste, paste: string) {
           extra: r.extra,
         })),
       },
-      new Set(['templateKind']),
+      new Set(['templateKind', 'body']),
     ),
   );
 }
@@ -259,7 +259,7 @@ function fromMemorandum(raw: ParsedPaste, paste: string) {
         plaintiff: s?.plaintiff || '',
         defendant: s?.defendant || '',
       },
-      new Set(['templateKind']),
+      new Set(['templateKind', 'body']),
     ),
   );
 }
