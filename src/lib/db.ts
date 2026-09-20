@@ -26,7 +26,12 @@ function createPrismaClient() {
     });
   }
   ensureDb();
+  // Keep Prisma's datasource URL in sync with ensureDb: when no DATABASE_URL is
+  // set (e.g. first deploy without Turso), fall back to the seeded /tmp SQLite
+  // file instead of failing with "Invalid connection string".
+  const sqliteUrl = env('DATABASE_URL') || 'file:/tmp/rakeeza.db';
   return new PrismaClient({
+    datasources: { db: { url: sqliteUrl } },
     log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
   });
 }
