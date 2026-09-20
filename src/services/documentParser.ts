@@ -113,6 +113,8 @@ const TABLE_COLUMN_RULES: Array<{ key: string; re: RegExp }> = [
   { key: 'verdict_source', re: /مصدر\s*(الحكم|القرار)/ },
   { key: 'verdict_date', re: /تاريخ\s*(الحكم|القرار|النطق)/ },
   { key: 'claim_amount', re: /مبلغ\s*المطالبة|المطالبة|مقدارها/ },
+  { key: 'observation', re: /الرصد/ },
+  { key: 'mechanism', re: /المعالجة\s*المقترحة|آلية\s*المعالجة|الإجراء\s*المقترح/ },
   { key: 'verdict_inputs', re: /نص\s*الحكم|منطوق|أوجه\s*الحكم/ },
   { key: 'notes', re: /ملاحظات|ملاحظه/ },
 ];
@@ -133,22 +135,30 @@ const RECORD_KEYS = [
   'verdict_date',
   'case_number',
   'claim_amount',
+  'observation',
+  'mechanism',
   'verdict_inputs',
   'notes',
 ] as const;
 
-function mapRowToRecord(header: string[], row: string[]): Record<string, unknown> {
-  const record: Record<string, unknown> = {
+function emptyRecord(): Record<string, unknown> {
+  return {
     circuit: '',
     verdict_source: '',
     deed_number: '',
     verdict_date: '',
     case_number: '',
     claim_amount: '',
+    observation: '',
+    mechanism: '',
     verdict_inputs: '',
     notes: '',
     extra_fields: {},
   };
+}
+
+function mapRowToRecord(header: string[], row: string[]): Record<string, unknown> {
+  const record = emptyRecord();
   const extras: Record<string, unknown> = {};
   header.forEach((h, i) => {
     const value = String(row[i] ?? '').trim();
@@ -162,6 +172,43 @@ function mapRowToRecord(header: string[], row: string[]): Record<string, unknown
   });
   record.extra_fields = extras;
   return record;
+}
+
+/**
+ * Merge rows that share the same entity (circuit / person) so the grouping
+ * column appears once while distinct values (case numbers, judgments, notes…)
+ * are joined — matching «قد تتعدد القضايا تحت دائرة/شخص واحد ولا يتكرر».
+ */
+function aggregateRecords(records: Array<Record<string, unknown>>): Array<Record<string, unknown>> {
+  const groups = new Map<string, Array<Record<string, unknown>>>();
+  const order: string[] = [];
+  for (const rec of records) {
+    const circuit = String(rec.circuit || '').trim();
+    const key = circuit || `__row_${order.length}`;
+    if (!groups.has(key)) {
+      groups.set(key, []);
+      order.push(key);
+    }
+    groups.get(key)!.push(rec);
+  }
+  return order.map((key) => {
+    const rows = groups.get(key)!;
+    if (rows.length === 1) return rows[0];
+    const merged = emptyRecord();
+    for (const k of RECORD_KEYS) {
+      const vals = Array.from(new Set(rows.map((r) => String(r[k] || '').trim()).filter(Boolean)));
+      merged[k] = vals.join('، ');
+    }
+    const extras: Record<string, unknown> = {};
+    for (const r of rows) {
+      const ex = (r.extra_fields && typeof r.extra_fields === 'object' ? r.extra_fields : {}) as Record<string, unknown>;
+      for (const [ek, ev] of Object.entries(ex)) {
+        if (ev && !extras[ek]) extras[ek] = ev;
+      }
+    }
+    merged.extra_fields = extras;
+    return merged;
+  });
 }
 
 function mapStudyToCaseData(s: StudySections): Record<string, unknown> {
@@ -300,9 +347,10 @@ export function localUniversalParse(rawContent: string | object): UniversalParse
     const headerRowIndex = table.headerRowIndex;
     const header = headerRowIndex >= 0 ? grid[headerRowIndex] : grid[0].map((_, i) => `column_${i + 1}`);
     const body = headerRowIndex >= 0 ? grid.filter((_, i) => i !== headerRowIndex) : grid;
-    const records = body
+    const mapped = body
       .filter((r) => r.some((c) => c.trim()))
       .map((row) => mapRowToRecord(header, row));
+    const records = aggregateRecords(mapped);
     return {
       detected_type: 'TABLE',
       summary: {

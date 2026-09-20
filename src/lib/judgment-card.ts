@@ -204,7 +204,7 @@ export function normalizeJudgmentCard(raw: unknown): JudgmentCardRow[] | null {
 
 /** Labels we try to fill from smart-paste into the seeded card. */
 const PASTE_FIELD_ALIASES: { key: string; aliases: RegExp }[] = [
-  { key: 'التشكيل', aliases: /^(?:التشكيل|رقم التشكيل|التشكيل القضائي)\s*$/ },
+  { key: 'التشكيل', aliases: /^(?:التشكيل|رقم التشكيل|التشكيل القضائي|الدائرة القضائية|الدائرة|رقم الدائرة)\s*$/ },
   { key: 'رقم القضية', aliases: /^(?:رقم القضية|القضية)\s*$/ },
   {
     key: JUDGMENT_SOURCE_LABEL,

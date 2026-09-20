@@ -22,12 +22,14 @@ const CASE_FIELD_LABELS: Record<string, string> = {
 };
 
 const RECORD_FIELD_LABELS: Record<string, string> = {
-  circuit: 'التشكيل / الدائرة',
+  circuit: 'الدائرة القضائية / التشكيل',
   verdict_source: 'مصدر الحكم',
-  deed_number: 'رقم الصك / الحكم',
+  deed_number: 'رقم الحكم / الصك',
   verdict_date: 'تاريخ الحكم',
   case_number: 'رقم القضية',
   claim_amount: 'مبلغ المطالبة',
+  observation: 'الرصد',
+  mechanism: 'المعالجة المقترحة',
   verdict_inputs: 'مدخلات الحكم',
   notes: 'ملاحظات',
 };
