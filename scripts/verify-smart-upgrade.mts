@@ -18,6 +18,8 @@ import {
   personKey,
   adaptPastedTable,
   gridToEditorTableHtml,
+  sanitizeClipboardHtml,
+  looksLikeExcelTsv,
 } from '../src/lib/universal-table-parser.ts';
 import {
   detectProtocolAddresses,
@@ -100,6 +102,55 @@ const HTML = `<table>
   const edHtml = gridToEditorTableHtml([['الاسم', 'رقم'], ['فهد', '1111']]);
   assert(/<table>/.test(edHtml) && /<th><p>الاسم<\/p><\/th>/.test(edHtml), 'gridToEditorTableHtml emits TipTap table with header');
   assert(adaptPastedTable('مجرد نص بدون جدول') === null, 'adaptPastedTable returns null for non-table text');
+}
+
+/* ---- 1b) Excel clipboard (CF_HTML + MSO comments + xl classes) ------- */
+const EXCEL_CF_HTML = `Version:1.0\r
+StartHTML:0000000105\r
+EndHTML:0000001023\r
+StartFragment:0000000281\r
+EndFragment:0000000987\r
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+<meta http-equiv=Content-Type content="text/html; charset=utf-8">
+<meta name=ProgId content=Excel.Sheet>
+<meta name=Generator content="Microsoft Excel 15">
+<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Sheet1</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->
+</head>
+<body>
+<!--StartFragment-->
+<table border=0 cellpadding=0 cellspacing=0 width=300 class="xl65">
+ <tr><td class="xl66" style="border:1px solid #ccc">الاسم</td><td class="xl66" style="border:1px solid #ccc">رقم القضية</td><td class="xl66" style="border:1px solid #ccc">ملاحظات</td></tr>
+ <tr><td class="xl66" style="border:1px solid #ccc">فهد العتيبي</td><td class="xl66" style="border:1px solid #ccc">4670855622</td><td class="xl66" style="border:1px solid #ccc">أجور متأخرة</td></tr>
+ <tr><td class="xl66" style="border:1px solid #ccc">فهد العتيبي</td><td class="xl66" style="border:1px solid #ccc">4670855623</td><td class="xl66" style="border:1px solid #ccc">فصل تعسفي</td></tr>
+ <tr><td class="xl66" style="border:1px solid #ccc">نورة الدوسري</td><td class="xl66" style="border:1px solid #ccc">4670855624</td><td class="xl66" style="border:1px solid #ccc">إثبات علاقة</td></tr>
+</table>
+<!--EndFragment-->
+</body>
+</html>`;
+
+{
+  const cleaned = sanitizeClipboardHtml(EXCEL_CF_HTML);
+  assert(!/<!--/.test(cleaned), 'Excel sanitizer removes MSO/fragment comments');
+  assert(!/Version\s*:/i.test(cleaned), 'Excel sanitizer removes CF_HTML header');
+  const t = parseAnyTable(EXCEL_CF_HTML);
+  assert(t.source === 'html', `Excel CF_HTML table detected (${t.source})`);
+  assert(t.grid.length === 4, `Excel grid rows (${t.grid.length})`);
+  assert(t.grid[0][0] === 'الاسم' && t.grid[1][1] === '4670855622', 'Excel cells parsed despite xl classes/xmlns');
+}
+
+{
+  const preview = adaptPastedTable(EXCEL_CF_HTML);
+  assert(!!preview && preview.mergedCount === 1, `Excel CF_HTML adaptPastedTable dedups (${preview?.mergedCount})`);
+  assert(preview.adaptedHtml.includes('4670855622') && preview.adaptedHtml.includes('4670855623'), 'Excel adapted HTML keeps merged ids');
+}
+
+{
+  const tsv = 'الاسم\tرقم القضية\nسعد الحربي\t1111222233\nسعد الحربي\t1111222234';
+  assert(looksLikeExcelTsv(tsv) === true, 'looksLikeExcelTsv detects Excel TSV');
+  assert(looksLikeExcelTsv('مجرد نص بدون جدول') === false, 'looksLikeExcelTsv rejects non-TSV text');
+  const preview = adaptPastedTable(tsv);
+  assert(!!preview, 'Excel TSV fallback adapts to preview');
 }
 
 /* ---- 2) Judicial Protocol Engine ------------------------------------ */

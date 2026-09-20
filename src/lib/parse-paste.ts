@@ -3,7 +3,7 @@
 import { isStudyPaste, parseStudyPaste, studyToFormFields } from '@/lib/parse-study';
 import { suggestFont } from '@/lib/font-suggest';
 import { extractJudgmentCardFromPaste } from '@/lib/judgment-card';
-import { gridToTableRows, htmlToPasteText, parseAnyTable } from '@/lib/universal-table-parser';
+import { gridToTableRows, htmlToPasteText, parseAnyTable, sanitizeClipboardHtml } from '@/lib/universal-table-parser';
 
 export type TableRow = { name: string; id?: string; extra?: string };
 
@@ -390,7 +390,8 @@ export function parsePaste(raw: string): ParsedPaste {
  */
 export function parseRichPaste(raw: string): ParsedPaste {
   const input = String(raw || '');
-  if (/<table\b/i.test(input)) {
+  const html = sanitizeClipboardHtml(input);
+  if (/<table\b/i.test(html)) {
     const table = parseAnyTable(input);
     const rows = gridToTableRows(table.grid);
     if (rows.length || table.grid.length) {

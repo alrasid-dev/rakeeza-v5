@@ -24,6 +24,8 @@ import type { LinterSuggestion } from '@/lib/body-linter';
 import type { DocStyle } from '@/components/StyleToolbar';
 import { fontStackFor, tiptapFontFamilyCss } from '@/lib/font-stacks';
 import LinterSuggestionTooltip from '@/components/LinterSuggestionTooltip';
+import { adaptPastedTable, looksLikeExcelTsv, sanitizeClipboardHtml } from '@/lib/universal-table-parser';
+import type { AdaptedTablePreviewData } from '@/components/AdaptedTablePreview';
 
 export type TiptapBodyEditorHandle = {
   getEditor: () => Editor | null;
@@ -47,6 +49,8 @@ type Props = {
   linterSuggestions?: LinterSuggestion[];
   onAcceptLinter?: (s: LinterSuggestion) => void;
   onRejectLinter?: (s: LinterSuggestion) => void;
+  /** Intercept Excel/HTML/TSV table paste and hand the adapted preview up. */
+  onTablePaste?: (preview: AdaptedTablePreviewData) => void;
 };
 
 function normalizeHtml(html: string): string {
@@ -69,6 +73,7 @@ const TiptapBodyEditor = forwardRef<TiptapBodyEditorHandle, Props>(function Tipt
     linterSuggestions = [],
     onAcceptLinter,
     onRejectLinter,
+    onTablePaste,
   },
   ref,
 ) {
@@ -78,6 +83,8 @@ const TiptapBodyEditor = forwardRef<TiptapBodyEditorHandle, Props>(function Tipt
   const [cmdMsg, setCmdMsg] = useState('');
   const [activeLinterId, setActiveLinterId] = useState<string | null>(null);
   const onActivateRef = useRef<(id: string) => void>(() => {});
+  const onTablePasteRef = useRef(onTablePaste);
+  onTablePasteRef.current = onTablePaste;
 
   onActivateRef.current = (id: string) => {
     setActiveLinterId(id);
@@ -96,6 +103,31 @@ const TiptapBodyEditor = forwardRef<TiptapBodyEditorHandle, Props>(function Tipt
         dir: 'rtl',
         lang: 'ar',
         style: 'white-space: pre-wrap;',
+      },
+      handlePaste: (_view, event) => {
+        const cb = onTablePasteRef.current;
+        if (!cb) return false;
+        const cd = event.clipboardData;
+        if (!cd) return false;
+        const rawHtml = cd.getData('text/html');
+        const html = rawHtml ? sanitizeClipboardHtml(rawHtml) : '';
+        let source: string | null = null;
+        if (html && /<table\b/i.test(html)) {
+          source = rawHtml;
+        } else {
+          const plain = cd.getData('text/plain');
+          if (plain && looksLikeExcelTsv(plain)) source = plain;
+        }
+        if (!source) return false;
+        const preview = adaptPastedTable(source);
+        if (!preview) return false;
+        cb({
+          originalHtml: preview.originalHtml,
+          adaptedHtml: preview.adaptedHtml,
+          editorHtml: preview.editorHtml,
+          mergedCount: preview.mergedCount,
+        });
+        return true;
       },
     },
     onUpdate: ({ editor: ed }) => {

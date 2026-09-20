@@ -7,7 +7,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { adaptPastedTable, htmlToPasteText } from '@/lib/universal-table-parser';
+import { adaptPastedTable, htmlToPasteText, looksLikeExcelTsv, sanitizeClipboardHtml } from '@/lib/universal-table-parser';
 import type { AdaptedTablePreviewData } from '@/components/AdaptedTablePreview';
 
 type Props = {
@@ -92,13 +92,22 @@ export default function AdaptedTableInsertDialog({ open, onClose, onAdopt }: Pro
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 onPaste={(e) => {
-                  const html = e.clipboardData?.getData('text/html');
-                  if (html && /<table[\s>]/i.test(html)) {
-                    const tsv = htmlToPasteText(html);
-                    if (tsv) {
-                      e.preventDefault();
-                      setText(tsv);
-                    }
+                  const cd = e.clipboardData;
+                  if (!cd) return;
+                  const rawHtml = cd.getData('text/html');
+                  const html = rawHtml ? sanitizeClipboardHtml(rawHtml) : '';
+                  let source: string | null = null;
+                  if (html && /<table\b/i.test(html)) {
+                    source = rawHtml;
+                  } else {
+                    const plain = cd.getData('text/plain');
+                    if (plain && looksLikeExcelTsv(plain)) source = plain;
+                  }
+                  if (!source) return;
+                  const tsv = /<table\b/i.test(html) ? htmlToPasteText(source) : source;
+                  if (tsv) {
+                    e.preventDefault();
+                    setText(tsv);
                   }
                 }}
                 placeholder={'مثال:\nالاسم\tرقم القضية\tملاحظات\nفهد العتيبي\t4670855622\tأجور متأخرة\nفهد العتيبي\t4670855623\tفصل تعسفي'}

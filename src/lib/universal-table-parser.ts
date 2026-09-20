@@ -45,6 +45,44 @@ function stripHtmlComments(html: string): string {
     .replace(/<!--[\s\S]*?-->/g, '');
 }
 
+/** Strip the CF_HTML clipboard envelope header (Version/StartHTML byte offsets…). */
+function stripCfHtmlHeader(html: string): string {
+  return String(html || '')
+    .replace(/^\uFEFF/, '')
+    .replace(
+      /^(?:(?:Version|StartHTML|EndHTML|StartFragment|EndFragment|StartSelection|EndSelection|SourceURL)\s*:[^\r\n]*(?:\r?\n|$))+/i,
+      '',
+    );
+}
+
+/**
+ * Excel HTML Sanitizer — normalise raw clipboard `text/html` (Excel / Word /
+ * Outlook / CF_HTML) before parsing. Removes the CF_HTML header, MS Office
+ * conditional comments (`<!--[if gte mso …]>…<![endif]-->`), fragment markers
+ * (`<!--StartFragment-->` / `<!--EndFragment-->`) and every other comment so
+ * the embedded `<table>` — even when wrapped in `<html><body><meta>` and
+ * decorated with `xmlns:o` / `class="xl…"` — becomes visible to the parser.
+ */
+export function sanitizeClipboardHtml(html: string): string {
+  return stripHtmlComments(stripCfHtmlHeader(html));
+}
+
+/**
+ * Excel TSV Plain Text Fallback — detect Excel's plain-text clipboard format:
+ * copied cells are emitted as lines whose values are separated by Tab (\t).
+ * Requires at least two non-empty lines and a tab on the tabulated lines.
+ */
+export function looksLikeExcelTsv(text: string): boolean {
+  const lines = String(text || '')
+    .replace(/\r\n/g, '\n')
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(Boolean);
+  if (lines.length < 2) return false;
+  const tabbed = lines.filter((l) => l.includes('\t')).length;
+  return tabbed >= 2;
+}
+
 function cellText(raw: string): string {
   return decodeEntities(
     String(raw || '')
@@ -106,7 +144,7 @@ function parseTableBlock(block: string): Grid {
 
 /** Parse every HTML table found in the clipboard string. */
 export function parseHtmlTables(html: string): Grid[] {
-  const cleaned = stripHtmlComments(String(html || ''));
+  const cleaned = sanitizeClipboardHtml(String(html || ''));
   const blocks = cleaned.match(/<table\b[\s\S]*?<\/table>/gi) || [];
   return blocks
     .map((b) => parseTableBlock(b.replace(/^<table\b[^>]*>/i, '').replace(/<\/table>$/i, '')))
@@ -364,8 +402,9 @@ export function aggregateGrid(grid: Grid): AggregationResult {
 
 export function parseAnyTable(input: string): ParsedTable {
   const raw = String(input || '');
-  if (/<table\b/i.test(raw)) {
-    const tables = parseHtmlTables(raw);
+  const html = sanitizeClipboardHtml(raw);
+  if (/<table\b/i.test(html)) {
+    const tables = parseHtmlTables(html);
     if (tables.length) {
       const best = tables.reduce(
         (a, b) => (b.flat().filter(Boolean).length > a.flat().filter(Boolean).length ? b : a),
@@ -466,13 +505,10 @@ export type AdaptedTablePreview = {
  */
 export function adaptPastedTable(raw: string): AdaptedTablePreview | null {
   const input = String(raw || '');
-  const isHtml = /<table\b/i.test(input);
   const parsed = parseAnyTable(input);
   const agg = aggregateGrid(parsed.grid);
   const width = agg.grid[0]?.length || 0;
-  const bodyRows = parsed.hasHeader ? Math.max(0, agg.grid.length - 1) : agg.grid.length;
-  if (agg.grid.length < 2) return null;
-  if (!isHtml && (width < 2 || bodyRows < 2)) return null;
+  if (agg.grid.length < 2 || width < 2) return null;
 
   return {
     hasTable: true,

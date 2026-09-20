@@ -24,7 +24,7 @@ import { formatCourtPresidentLine } from '@/lib/honorific';
 import PaperLayoutPicker from '@/components/PaperLayoutPicker';
 import ExportToolbar from '@/components/ExportToolbar';
 import { type TableRow } from '@/lib/parse-paste';
-import { adaptPastedTable, htmlToPasteText } from '@/lib/universal-table-parser';
+import { adaptPastedTable, htmlToPasteText, looksLikeExcelTsv, sanitizeClipboardHtml } from '@/lib/universal-table-parser';
 import AdaptedTablePreview, {
   type AdaptedTablePreviewData,
 } from '@/components/AdaptedTablePreview';
@@ -512,7 +512,7 @@ function NewDocumentInner() {
     );
 
     // Live table preview — show how the adaptor reformatted/merged the grid
-    const htmlTable = /<table\b/i.test(paste);
+    const htmlTable = /<table\b/i.test(sanitizeClipboardHtml(paste));
     if (htmlTable || strictPatch.detectedKind === 'table' || strictPatch.tableRows.length >= 2) {
       const preview = adaptPastedTable(paste);
       setTablePreview(
@@ -882,6 +882,11 @@ function NewDocumentInner() {
     setAdaptedInsertOpen(false);
   };
 
+  /** Intercept a table pasted straight into the TipTap body editor. */
+  const handleBodyTablePaste = (preview: AdaptedTablePreviewData) => {
+    setTablePreview(preview);
+  };
+
 
   const exportDoc = {
     id: savedDocId || undefined,
@@ -1003,13 +1008,29 @@ function NewDocumentInner() {
             value={paste}
             onChange={(e) => setPaste(e.target.value)}
             onPaste={(e) => {
-              const html = e.clipboardData?.getData('text/html');
-              if (html && /<table[\s>]/i.test(html)) {
-                const tsv = htmlToPasteText(html);
-                if (tsv) {
-                  e.preventDefault();
-                  setPaste(tsv);
-                }
+              const cd = e.clipboardData;
+              if (!cd) return;
+              const rawHtml = cd.getData('text/html');
+              const html = rawHtml ? sanitizeClipboardHtml(rawHtml) : '';
+              let source: string | null = null;
+              if (html && /<table\b/i.test(html)) {
+                source = rawHtml;
+              } else {
+                const plain = cd.getData('text/plain');
+                if (plain && looksLikeExcelTsv(plain)) source = plain;
+              }
+              if (!source) return;
+              const preview = adaptPastedTable(source);
+              const tsv = /<table\b/i.test(html) ? htmlToPasteText(source) : source;
+              e.preventDefault();
+              if (tsv) setPaste(tsv);
+              if (preview) {
+                setTablePreview({
+                  originalHtml: preview.originalHtml,
+                  adaptedHtml: preview.adaptedHtml,
+                  editorHtml: preview.editorHtml,
+                  mergedCount: preview.mergedCount,
+                });
               }
             }}
             placeholder={`مثال خطاب:\nالرقم: ...\nإلى: ...\nالموضوع: ...\n\nأو الصق صفوف نموذج تحليل حكم (شكوى) من Excel مباشرة — أو الصق جدولاً منسقاً من Word/Excel/Outlook.`}
@@ -1432,6 +1453,7 @@ function NewDocumentInner() {
                       linterSuggestions={bodyLinterSuggestions}
                       onAcceptLinter={acceptBodyLinter}
                       onRejectLinter={rejectBodyLinter}
+                      onTablePaste={handleBodyTablePaste}
                     />
                   </div>
                 </div>
@@ -1506,6 +1528,7 @@ function NewDocumentInner() {
                       linterSuggestions={bodyLinterSuggestions}
                       onAcceptLinter={acceptBodyLinter}
                       onRejectLinter={rejectBodyLinter}
+                      onTablePaste={handleBodyTablePaste}
                     />
                   </div>
                 </>
