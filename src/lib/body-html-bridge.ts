@@ -5,6 +5,7 @@
 
 import { bodyBlocksToHtml, type ParaAlign } from '@/lib/body-align';
 import { normalizeHtmlColors } from '@/lib/color-normalize';
+import { gridToEditorTableHtml, parseAnyTable } from '@/lib/universal-table-parser';
 
 function escHtml(s: string): string {
   return String(s || '')
@@ -68,6 +69,16 @@ export function ensurePreWrapOnParagraphs(html: string): string {
   });
 }
 
+/** Convert plain tabular text (TSV/CSV/pipe) into a styled bordered table, else ''. */
+function tabularTextToTableHtml(text: string): string {
+  const table = parseAnyTable(text);
+  const hasTableShape = table.grid.length >= 2 && table.grid[0].length >= 2;
+  if (!hasTableShape) return '';
+  if (table.source !== 'plain' && table.source !== 'html') return '';
+  if (table.source === 'plain' && !/[\t,،|]/.test(text)) return '';
+  return gridToEditorTableHtml(table.grid, { bordered: true, headers: table.hasHeader });
+}
+
 export function bodyToExportHtml(
   body: string | null | undefined,
   opts?: { fallbackAlign?: ParaAlign; escape?: (s: string) => string; fontFamily?: string | null },
@@ -75,6 +86,9 @@ export function bodyToExportHtml(
   const raw = String(body ?? '');
   if (!raw.trim()) return '';
   if (isBodyHtml(raw)) return ensurePreWrapOnParagraphs(normalizeHtmlColors(raw));
+  // Auto-convert received tabular text into a bordered table when not HTML yet.
+  const tableHtml = tabularTextToTableHtml(raw);
+  if (tableHtml) return tableHtml;
   return bodyBlocksToHtml(raw, {
     escape: opts?.escape || escHtml,
     fallbackAlign: opts?.fallbackAlign || 'right',

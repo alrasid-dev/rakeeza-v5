@@ -530,7 +530,11 @@ ${embeddedBlock}`;
 
   const metaBox = opts?.forOutlook ? metaBoxOutlook : metaBoxGrid;
 
-  const sectionPad = layout === 'modern-hex' ? 'padding:4px 28px 10px' : 'padding:4px 18px 10px';
+  const sectionPad = opts?.forOutlook
+    ? 'padding:4px 18px 10px'
+    : layout === 'modern-hex'
+      ? `margin:14px 28px;padding:10px 14px;border:1px solid ${GREEN};border-radius:8px`
+      : `margin:14px 18px;padding:10px 14px;border:1px solid ${GREEN};border-radius:8px`;
   // Do not .trim() body — leading spaces are Word-like horizontal positioning
   const bodyHtml = doc.body
     ? bodyToExportHtml(String(doc.body), {
@@ -693,22 +697,28 @@ ${opts?.forOutlook
 .body table, .section table, .paper table {
   width: 100%;
   border-collapse: collapse;
-  border: 1px solid #ccc;
-  margin: 8px 0;
+  border: 1px solid #94a3b8;
+  margin: 12px 0;
+  direction: rtl;
 }
 .body th, .section th, .paper th {
-  background: #e6f2eb;
-  border: 1px solid #ccc;
-  padding: 6px 8px;
+  background-color: #f1f5f9;
+  border: 1px solid #94a3b8;
+  font-weight: bold;
+  padding: 8px;
   text-align: right;
-  font-weight: 700;
-  color: ${GREEN};
+  font-size: 11px;
 }
 .body td, .section td, .paper td {
-  border: 1px solid #ccc;
+  border: 1px solid #94a3b8;
   padding: 6px 8px;
   text-align: right;
+  font-size: 10.5px;
+  word-break: break-word;
   vertical-align: top;
+}
+.body tr:nth-child(even) td, .section tr:nth-child(even) td, .paper tr:nth-child(even) td {
+  background-color: #f8fafc;
 }
 .foot {
   margin-top: 18px;
