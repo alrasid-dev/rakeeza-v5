@@ -68,7 +68,7 @@ assert(/المملكة العربية السعودية/.test(html), 'kingdom tex
 assert(/alt="QR"|\/api\/public\/qr/i.test(html), 'QR present');
 assert(/الرقم/.test(html), 'الرقم present');
 assert(/التاريخ/.test(html), 'التاريخ present');
-assert(/https:\/\/[^"']+\/moj-logo\.png/.test(html), 'emblem https moj-logo.png');
+assert(/https:\/\/[^"']+\/brand\/moj-logo-gold\.png/.test(html), 'emblem https brand/moj-logo-gold.png');
 assert(/width="35%"/.test(html) && /width="30%"/.test(html), 'cols 35/30/35');
 assert(/font-size:\s*[0-9.]+pt/.test(html), 'pt font sizes');
 assert(/<!--\[if mso\]/i.test(html), 'mso conditional');

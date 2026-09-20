@@ -1,11 +1,11 @@
 /** Public HTTPS assets for Outlook paste (desktop blocks data-URI). */
 export const OUTLOOK_PUBLIC_ORIGIN = 'https://rakeza-moj-assistant.vercel.app';
 
-export const OUTLOOK_EMBLEM_HTTPS = `${OUTLOOK_PUBLIC_ORIGIN}/moj-logo.png`;
+export const OUTLOOK_EMBLEM_HTTPS = `${OUTLOOK_PUBLIC_ORIGIN}/brand/moj-logo-gold.png`;
 
 export function outlookEmblemUrl(origin?: string | null): string {
   const o = String(origin || '').replace(/\/$/, '');
-  if (/^https?:\/\//i.test(o)) return `${o}/moj-logo.png`;
+  if (/^https?:\/\//i.test(o)) return `${o}/brand/moj-logo-gold.png`;
   return OUTLOOK_EMBLEM_HTTPS;
 }
 
