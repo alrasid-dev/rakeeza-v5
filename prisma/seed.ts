@@ -1,9 +1,19 @@
 import { PrismaClient } from '@prisma/client';
+import { PrismaLibSQL } from '@prisma/adapter-libsql';
+import { createClient } from '@libsql/client';
 import bcrypt from 'bcryptjs';
 import fs from 'fs';
 import path from 'path';
 
-const prisma = new PrismaClient();
+// Turso-aware seed: use the libSQL adapter when Turso env is present; else local SQLite.
+const tursoUrl = process.env.TURSO_DATABASE_URL || process.env.LIBSQL_URL;
+const tursoToken = process.env.TURSO_AUTH_TOKEN;
+const prisma =
+  tursoUrl && tursoToken
+    ? new PrismaClient({
+        adapter: new PrismaLibSQL(createClient({ url: tursoUrl, authToken: tursoToken })),
+      })
+    : new PrismaClient();
 
 /** الهيكل التنظيمي والتشغيلي: المحاكم العمالية (من مخطط المستخدم) */
 type OrgNode = { name: string; children?: OrgNode[] };
