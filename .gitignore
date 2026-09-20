@@ -3,6 +3,7 @@ node_modules/
 data/*.db
 !data/seed-rakeeza.db
 data/*.db-journal
+data/*.seed-version
 uploads/
 .env
 .env.local
