@@ -691,7 +691,7 @@ function NewDocumentInner() {
         fields: {
           tableRows,
           judgmentCard: isBriefing ? judgmentCard : null,
-          observationText: isBriefing ? (observationText || form.body) : undefined,
+          observationText: isBriefing ? observationText : undefined,
           mechanismText: isBriefing ? mechanismText : undefined,
 
           briefingTitle: isBriefing ? briefingTitle : undefined,
@@ -843,7 +843,7 @@ function NewDocumentInner() {
     judgmentCard: isBriefing ? judgmentCard : null,
     tableRows: isBriefing ? [] : tableRows,
     judgmentBriefing: isBriefing,
-    observationText: isBriefing ? (observationText || form.body) : undefined,
+    observationText: isBriefing ? observationText : undefined,
 
     mechanismText: isBriefing ? mechanismText : undefined,
 
@@ -1495,7 +1495,7 @@ function NewDocumentInner() {
                   judgmentBriefing: isBriefing,
                   briefingTitle: isBriefing ? briefingTitle : undefined,
                   judgmentPriority: isBriefing ? judgmentPriority : undefined,
-                  observationText: isBriefing ? (observationText || previewBody) : undefined,
+                  observationText: isBriefing ? observationText : undefined,
                   mechanismText: isBriefing ? mechanismText : undefined,
                   studySections: isBriefing ? null : studySections,
                   paperLayout,

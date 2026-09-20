@@ -1,5 +1,6 @@
 import { polishSpelling } from '@/lib/arabic-polish';
 import { bodyBlocksToHtml } from '@/lib/body-align';
+import { bodyToExportHtml, isBodyHtml } from '@/lib/body-html-bridge';
 /** Key/value judgment-monitoring card — عرض شف (oral briefing) for court workflow */
 
 export type JudgmentCardRow = { label: string; value: string };
@@ -573,17 +574,26 @@ export function resolveBriefingLetterBody(opts: {
   mechanismText?: string | null;
   card: JudgmentCardRow[];
 }): string {
-  const raw = String(opts.letterBody || opts.observationText || '').replace(/\r\n/g, '\n');
+  const letterRaw = String(opts.letterBody || '').replace(/\r\n/g, '\n');
+  // TipTap HTML — never recompose/append (would duplicate + break HTML)
+  if (letterRaw.trim() && isBodyHtml(letterRaw)) {
+    return letterRaw.replace(/\n+$/, '');
+  }
+  // Prefer plain letterBody over observationText (observation may wrongly hold HTML/body)
+  const raw = (letterRaw.trim() ? letterRaw : String(opts.observationText || '')).replace(/\r\n/g, '\n');
   if (raw.trim()) {
-    // If observation-only (no greeting) but mechanism separate — compose without locking align
     const hasGreeting = /السلام\s*عليكم/.test(raw);
     const hasClosing = /لإطلاع\s*فضيلتكم|والله\s*يحفظكم/.test(raw);
-    if (hasGreeting || hasClosing) return raw.replace(/\n+$/, '');
+    const hasMech = /وفي\s*حال\s*اقتضى\s*الأمر/.test(raw);
+    if (hasGreeting || hasClosing) {
+      // Already a full letter — do not append mechanism again
+      return raw.replace(/\n+$/, '');
+    }
     const mech =
-      (opts.mechanismText && opts.mechanismText.trim()) ||
-      (/وفي\s*حال\s*اقتضى\s*الأمر/.test(raw)
+      hasMech
         ? ''
-        : buildMechanismParagraph(getJudgmentCardValue(opts.card, MECHANISM_LABEL)));
+        : ((opts.mechanismText && opts.mechanismText.trim()) ||
+          buildMechanismParagraph(getJudgmentCardValue(opts.card, MECHANISM_LABEL)));
     const parts = [JUDGMENT_SALUTATION, '', raw.trim()];
     if (mech) parts.push('', mech);
     parts.push('', JUDGMENT_CLOSING);
@@ -619,6 +629,7 @@ export function buildJudgmentBriefingBlockHtml(opts: {
   /** Full editable letter body (preferred). When set, no locked auto center blocks. */
   letterBody?: string | null;
   fallbackAlign?: 'right' | 'center' | 'left' | null;
+  fontFamily?: string | null;
 }): string {
   if (!opts.card?.length) return '';
   const GREEN = opts.green || '#006C35';
@@ -630,15 +641,29 @@ export function buildJudgmentBriefingBlockHtml(opts: {
     mechanismText: opts.mechanismText,
     card: opts.card,
   });
-  let proseHtml = bodyBlocksToHtml(letter, {
-    escape: escHtml,
-    fallbackAlign: opts.fallbackAlign || 'right',
-  });
-  // Auto-red for تم رصد inside generated paragraphs (Word color tools still override)
-  proseHtml = proseHtml.replace(
-    /(<p\b[^>]*>)([\s\S]*?)(<\/p>)/gi,
-    (_m, open, inner, close) => `${open}${applyObservationRedHtml(inner)}${close}`,
-  );
+  // TipTap HTML must NOT go through escHtml — that paints tags as طلاسم in the preview
+  let proseHtml = isBodyHtml(letter)
+    ? bodyToExportHtml(letter, {
+        fallbackAlign: opts.fallbackAlign || 'right',
+        fontFamily: (opts as { fontFamily?: string }).fontFamily,
+      })
+    : bodyBlocksToHtml(letter, {
+        escape: escHtml,
+        fallbackAlign: opts.fallbackAlign || 'right',
+        fontFamily: (opts as { fontFamily?: string }).fontFamily,
+      });
+  // Auto-red for تم رصد (plain text paragraphs only; skip if already styled)
+  if (!isBodyHtml(letter)) {
+    proseHtml = proseHtml.replace(
+      /(<p\b[^>]*>)([\s\S]*?)(<\/p>)/gi,
+      (_m, open, inner, close) => `${open}${applyObservationRedHtml(inner)}${close}`,
+    );
+  } else {
+    proseHtml = proseHtml.replace(
+      /(<p\b[^>]*>)([\s\S]*?)(<\/p>)/gi,
+      (_m, open, inner, close) => `${open}${applyObservationRedHtml(inner)}${close}`,
+    );
+  }
   const cells = opts.card
     .map(
       (r, i) =>

@@ -294,17 +294,26 @@ function layoutTheme(layout: PaperLayoutId) {
 function judgmentBriefingHtml(
   doc: OfficialLetterDoc,
   rows: { label: string; value: string }[],
+  fontFamily?: string,
 ) {
+  const body = String(doc.body || '');
+  // When editable body is present, do not also feed it as observation (duplicate/escape)
+  const obs =
+    body.trim()
+      ? ''
+      : String(doc.observationText || '').trim() && !/<[a-z]/i.test(String(doc.observationText))
+        ? String(doc.observationText)
+        : '';
   return buildJudgmentBriefingBlockHtml({
     recipients: doc.recipients,
     card: rows,
     title: doc.briefingTitle || 'بطاقة عرض',
     green: GREEN,
-    observationText: doc.observationText,
-    mechanismText: doc.mechanismText,
-    // Prefer editable body (Word-like) — includes salutation/closing when user typed them
+    observationText: obs || null,
+    mechanismText: body.trim() ? null : doc.mechanismText,
     letterBody: doc.body,
     fallbackAlign: (doc.align as 'right' | 'center' | 'left') || 'right',
+    fontFamily: fontFamily || undefined,
   });
 }
 
@@ -531,8 +540,8 @@ ${embeddedBlock}`;
       })
     : '';
   const bodyInner = `
-    ${hasStudy && study ? `<div data-field="studyFields" style="cursor:pointer">${studyHtml(study)}</div>` : ''}
-    ${isBriefing && doc.judgmentCard?.length ? `<div data-field="body" style="cursor:pointer;font-family:${paraFont};font-size:${size}px">${judgmentBriefingHtml(doc, doc.judgmentCard)}</div>` : ''}
+    ${hasStudy && study ? `<div data-field="studyFields" style="cursor:pointer;font-family:${paraFont};font-size:${size}px">${studyHtml(study)}</div>` : ''}
+    ${isBriefing && doc.judgmentCard?.length ? `<div data-field="body" style="cursor:pointer;font-family:${paraFont};font-size:${size}px">${judgmentBriefingHtml(doc, doc.judgmentCard, paraFont)}</div>` : ''}
     ${
       !hasStudy && !isBriefing && doc.parties
         ? `<div data-field="parties" style="cursor:pointer"><h3 style="margin:12px 0 6px;color:${GREEN};font-size:13px;border-bottom:1px solid ${GOLD};padding-bottom:2px">الأطراف</h3><div class="body">${pre(doc.parties)}</div></div>`

@@ -21,7 +21,8 @@
     "verify:clipboard-a4": "tsx scripts/verify-clipboard-a4.mts",
     "verify:assistant-linter": "tsx scripts/verify-assistant-linter.mts",
     "verify:export-fixes": "tsx scripts/verify-export-fixes.mts",
-    "verify:letter-space-paste": "tsx scripts/verify-letter-space-paste.mts"
+    "verify:letter-space-paste": "tsx scripts/verify-letter-space-paste.mts",
+    "verify:briefing-no-talismans": "tsx scripts/verify-briefing-no-talismans.mts"
   },
   "dependencies": {
     "@libsql/client": "^0.8.1",
