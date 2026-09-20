@@ -7,12 +7,16 @@ import OfficialPaperPreview from '@/components/OfficialPaperPreview';
 import { parsePaste } from '@/lib/parse-paste';
 import { saveDraft } from '@/lib/draft-store';
 import { formatHijri, looksLikeHijri, normalizeHijriDisplay, todayGregorianISO, todayHijri } from '@/lib/hijri';
+import UniversalParseView from '@/components/UniversalParseView';
+import type { UniversalParseResult } from '@/services/documentParser';
 
 export default function ImportPage() {
   const [user, setUser] = useState<{ name: string; role: string } | null>(null);
   const [result, setResult] = useState<{
     text?: string;
     classification?: Record<string, unknown>;
+    universal?: UniversalParseResult;
+    engine?: string;
     fileName?: string;
     error?: string;
   } | null>(null);
@@ -50,6 +54,14 @@ export default function ImportPage() {
         {result && (
           <div className="space-y-3">
             <div className="text-sm">الملف: {result.fileName}</div>
+            {result.universal && (
+              <>
+                <div className="text-[11px] text-gray-500 dark:text-white/40">
+                  المحرك: {result.engine === 'deepseek' ? 'DeepSeek (دلالي)' : 'محلي (بدون API)'}
+                </div>
+                <UniversalParseView result={result.universal} />
+              </>
+            )}
             {result.classification && (
               <pre className="bg-moj-light rounded p-3 text-xs overflow-auto" dir="ltr">
                 {JSON.stringify(result.classification, null, 2)}

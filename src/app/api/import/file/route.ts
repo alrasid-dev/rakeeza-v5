@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession, audit } from '@/lib/auth';
 import { classifyText } from '@/lib/classify';
+import { localUniversalParse, processUniversalDocument } from '@/services/documentParser';
 import mammoth from 'mammoth';
 import * as XLSX from 'xlsx';
 
@@ -36,6 +37,14 @@ export async function POST(req: NextRequest) {
   }
 
   const classification = classifyText(text);
+  let universal;
+  let engine: 'deepseek' | 'local' = 'local';
+  try {
+    universal = await processUniversalDocument(text);
+    engine = 'deepseek';
+  } catch {
+    universal = localUniversalParse(text);
+  }
   await audit('smart_import', 'Import', undefined, file.name, s.id);
-  return NextResponse.json({ text, classification, fileName: file.name });
+  return NextResponse.json({ text, classification, universal, engine, fileName: file.name });
 }
