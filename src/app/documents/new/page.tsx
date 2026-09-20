@@ -882,11 +882,6 @@ function NewDocumentInner() {
     setAdaptedInsertOpen(false);
   };
 
-  /** Intercept a table pasted straight into the TipTap body editor. */
-  const handleBodyTablePaste = (preview: AdaptedTablePreviewData) => {
-    setTablePreview(preview);
-  };
-
 
   const exportDoc = {
     id: savedDocId || undefined,
@@ -1453,7 +1448,6 @@ function NewDocumentInner() {
                       linterSuggestions={bodyLinterSuggestions}
                       onAcceptLinter={acceptBodyLinter}
                       onRejectLinter={rejectBodyLinter}
-                      onTablePaste={handleBodyTablePaste}
                     />
                   </div>
                 </div>
@@ -1528,7 +1522,6 @@ function NewDocumentInner() {
                       linterSuggestions={bodyLinterSuggestions}
                       onAcceptLinter={acceptBodyLinter}
                       onRejectLinter={rejectBodyLinter}
-                      onTablePaste={handleBodyTablePaste}
                     />
                   </div>
                 </>

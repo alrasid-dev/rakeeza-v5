@@ -83,6 +83,40 @@ export function looksLikeExcelTsv(text: string): boolean {
   return tabbed >= 2;
 }
 
+/**
+ * True when the HTML carries any table-like structure — a full `<table>`,
+ * or floating `<tr>`/`<td>`/`<th>` fragments (Excel sometimes emits rows/cells
+ * wrapped in `<div>`/`<span>` without an outer `<table>`).
+ */
+export function looksLikeTableHtml(html: string): boolean {
+  return /<(?:table|tr|td|th)\b/i.test(String(html || ''));
+}
+
+/**
+ * Floating TR/TD Auto-Wrapping — Excel clipboard occasionally contains
+ * `<tr>`/`<td>`/`<th>` fragments with no outer `<table>` (or wrapped in
+ * `<div>`/`<span>`). Wrap them into a single `<table>…</table>` so the
+ * Universal Table Adaptor and TipTap's table schema can see a real table.
+ */
+export function wrapFloatingTableRows(html: string): string {
+  let h = String(html || '');
+  if (/<table\b/i.test(h)) return h;
+  if (!/<(?:tr|td|th)\b/i.test(h)) return h;
+
+  if (/<tr\b/i.test(h)) {
+    const rows = h.match(/<tr\b[\s\S]*?<\/tr>/gi) || [];
+    if (rows.length) {
+      const first = h.search(/<tr\b/i);
+      const last = h.lastIndexOf('</tr>') + '</tr>'.length;
+      return h.slice(0, first) + `<table>${rows.join('')}</table>` + h.slice(last);
+    }
+  }
+
+  const cells = h.match(/<(?:td|th)\b[\s\S]*?<\/(?:td|th)>/gi) || [];
+  if (cells.length) return `<table><tr>${cells.join('')}</tr></table>`;
+  return h;
+}
+
 function cellText(raw: string): string {
   return decodeEntities(
     String(raw || '')
@@ -144,7 +178,7 @@ function parseTableBlock(block: string): Grid {
 
 /** Parse every HTML table found in the clipboard string. */
 export function parseHtmlTables(html: string): Grid[] {
-  const cleaned = sanitizeClipboardHtml(String(html || ''));
+  const cleaned = wrapFloatingTableRows(sanitizeClipboardHtml(String(html || '')));
   const blocks = cleaned.match(/<table\b[\s\S]*?<\/table>/gi) || [];
   return blocks
     .map((b) => parseTableBlock(b.replace(/^<table\b[^>]*>/i, '').replace(/<\/table>$/i, '')))
@@ -402,7 +436,7 @@ export function aggregateGrid(grid: Grid): AggregationResult {
 
 export function parseAnyTable(input: string): ParsedTable {
   const raw = String(input || '');
-  const html = sanitizeClipboardHtml(raw);
+  const html = wrapFloatingTableRows(sanitizeClipboardHtml(raw));
   if (/<table\b/i.test(html)) {
     const tables = parseHtmlTables(html);
     if (tables.length) {

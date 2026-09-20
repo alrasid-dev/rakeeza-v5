@@ -20,6 +20,8 @@ import {
   gridToEditorTableHtml,
   sanitizeClipboardHtml,
   looksLikeExcelTsv,
+  looksLikeTableHtml,
+  wrapFloatingTableRows,
 } from '../src/lib/universal-table-parser.ts';
 import {
   detectProtocolAddresses,
@@ -151,6 +153,17 @@ EndFragment:0000000987\r
   assert(looksLikeExcelTsv('مجرد نص بدون جدول') === false, 'looksLikeExcelTsv rejects non-TSV text');
   const preview = adaptPastedTable(tsv);
   assert(!!preview, 'Excel TSV fallback adapts to preview');
+}
+
+{
+  // Floating <tr>/<td> without an outer <table> (Excel/Word wrapped in div/span).
+  const floating = '<html><body><div><tr><td>الاسم</td><td>القيمة</td></tr><tr><td>فهد</td><td>111</td></tr></div></body></html>';
+  assert(looksLikeTableHtml(floating) === true, 'looksLikeTableHtml detects floating tr/td');
+  const wrapped = wrapFloatingTableRows(sanitizeClipboardHtml(floating));
+  assert(/<table\b/i.test(wrapped), 'wrapFloatingTableRows wraps floating rows in <table>');
+  const parsed = parseAnyTable(floating);
+  assert(parsed.source === 'html' && parsed.grid.length >= 2, `floating rows parsed as html table (${parsed.source}/${parsed.grid.length})`);
+  assert(adaptPastedTable(floating) !== null, 'floating rows adapt to preview');
 }
 
 /* ---- 2) Judicial Protocol Engine ------------------------------------ */

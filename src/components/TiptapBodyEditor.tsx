@@ -24,8 +24,15 @@ import type { LinterSuggestion } from '@/lib/body-linter';
 import type { DocStyle } from '@/components/StyleToolbar';
 import { fontStackFor, tiptapFontFamilyCss } from '@/lib/font-stacks';
 import LinterSuggestionTooltip from '@/components/LinterSuggestionTooltip';
-import { adaptPastedTable, looksLikeExcelTsv, sanitizeClipboardHtml } from '@/lib/universal-table-parser';
-import type { AdaptedTablePreviewData } from '@/components/AdaptedTablePreview';
+import {
+  adaptPastedTable,
+  gridToEditorTableHtml,
+  looksLikeExcelTsv,
+  looksLikeTableHtml,
+  parseAnyTable,
+  sanitizeClipboardHtml,
+  wrapFloatingTableRows,
+} from '@/lib/universal-table-parser';
 
 export type TiptapBodyEditorHandle = {
   getEditor: () => Editor | null;
@@ -49,8 +56,6 @@ type Props = {
   linterSuggestions?: LinterSuggestion[];
   onAcceptLinter?: (s: LinterSuggestion) => void;
   onRejectLinter?: (s: LinterSuggestion) => void;
-  /** Intercept Excel/HTML/TSV table paste and hand the adapted preview up. */
-  onTablePaste?: (preview: AdaptedTablePreviewData) => void;
 };
 
 function normalizeHtml(html: string): string {
@@ -58,6 +63,14 @@ function normalizeHtml(html: string): string {
     .replace(/\s+/g, ' ')
     .replace(/>\s+</g, '><')
     .trim();
+}
+
+/** Adapt a pasted table source into TipTap-safe editor HTML (fallback for degenerate grids). */
+function adaptTableToEditorHtml(source: string): string {
+  const preview = adaptPastedTable(source);
+  if (preview) return preview.editorHtml;
+  const parsed = parseAnyTable(source);
+  return parsed.grid.length ? gridToEditorTableHtml(parsed.grid) : '';
 }
 
 const TiptapBodyEditor = forwardRef<TiptapBodyEditorHandle, Props>(function TiptapBodyEditor(
@@ -73,18 +86,16 @@ const TiptapBodyEditor = forwardRef<TiptapBodyEditorHandle, Props>(function Tipt
     linterSuggestions = [],
     onAcceptLinter,
     onRejectLinter,
-    onTablePaste,
   },
   ref,
 ) {
   const emittingRef = useRef(false);
   const lastEmittedRef = useRef('');
+  const editorRef = useRef<Editor | null>(null);
   const [cmdText, setCmdText] = useState('');
   const [cmdMsg, setCmdMsg] = useState('');
   const [activeLinterId, setActiveLinterId] = useState<string | null>(null);
   const onActivateRef = useRef<(id: string) => void>(() => {});
-  const onTablePasteRef = useRef(onTablePaste);
-  onTablePasteRef.current = onTablePaste;
 
   onActivateRef.current = (id: string) => {
     setActiveLinterId(id);
@@ -105,29 +116,32 @@ const TiptapBodyEditor = forwardRef<TiptapBodyEditorHandle, Props>(function Tipt
         style: 'white-space: pre-wrap;',
       },
       handlePaste: (_view, event) => {
-        const cb = onTablePasteRef.current;
-        if (!cb) return false;
+        const ed = editorRef.current;
+        if (!ed || ed.isDestroyed) return false;
         const cd = event.clipboardData;
         if (!cd) return false;
+
         const rawHtml = cd.getData('text/html');
-        const html = rawHtml ? sanitizeClipboardHtml(rawHtml) : '';
-        let source: string | null = null;
-        if (html && /<table\b/i.test(html)) {
-          source = rawHtml;
-        } else {
-          const plain = cd.getData('text/plain');
-          if (plain && looksLikeExcelTsv(plain)) source = plain;
+        const plain = cd.getData('text/plain');
+
+        // 1) HTML table (Excel/Word/Outlook) — incl. floating <tr>/<td>/<th>.
+        if (rawHtml) {
+          const cleaned = wrapFloatingTableRows(sanitizeClipboardHtml(rawHtml));
+          if (looksLikeTableHtml(cleaned)) {
+            const html = adaptTableToEditorHtml(rawHtml);
+            if (html) editorInsertAdaptedTableAtSelection(ed, html);
+            return true;
+          }
         }
-        if (!source) return false;
-        const preview = adaptPastedTable(source);
-        if (!preview) return false;
-        cb({
-          originalHtml: preview.originalHtml,
-          adaptedHtml: preview.adaptedHtml,
-          editorHtml: preview.editorHtml,
-          mergedCount: preview.mergedCount,
-        });
-        return true;
+
+        // 2) Plain-text Excel TSV fallback.
+        if (plain && looksLikeExcelTsv(plain)) {
+          const html = adaptTableToEditorHtml(plain);
+          if (html) editorInsertAdaptedTableAtSelection(ed, html);
+          return true;
+        }
+
+        return false;
       },
     },
     onUpdate: ({ editor: ed }) => {
@@ -142,6 +156,11 @@ const TiptapBodyEditor = forwardRef<TiptapBodyEditorHandle, Props>(function Tipt
       });
     },
   });
+
+  // Keep a ref to the editor for the paste handler (defined before editor exists).
+  useEffect(() => {
+    editorRef.current = editor;
+  }, [editor]);
 
   // Wire linter activate callback once editor exists
   useEffect(() => {
@@ -358,4 +377,19 @@ export function editorInsertAdaptedTable(editor: Editor | null, html: string): b
   if (!editor || editor.isDestroyed) return false;
   const content = `<p></p>${html}`;
   return editor.chain().focus().insertContentAt(editor.state.doc.content.size, content).run();
+}
+
+/**
+ * Insert an adapted/aggregated HTML table at the current cursor/selection —
+ * used by the strict TipTap paste handler so an Excel/Word/Outlook table lands
+ * where the user pasted it instead of being flattened into plain paragraphs.
+ */
+export function editorInsertAdaptedTableAtSelection(editor: Editor | null, html: string): boolean {
+  if (!editor || editor.isDestroyed) return false;
+  const pos = editor.state.selection.from;
+  try {
+    return editor.chain().focus().insertContentAt(pos, html).run();
+  } catch {
+    return false;
+  }
 }
