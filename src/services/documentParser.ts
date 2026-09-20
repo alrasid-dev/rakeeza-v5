@@ -26,9 +26,12 @@ export type UniversalParseResult = {
 
 // OpenRouter as the gateway — the provided DEEPSEEK_API_KEY is an OpenRouter key.
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const OPENROUTER_MODEL = 'deepseek/deepseek-r1:free';
+// Fast free model to stay well under Vercel's function timeout.
+const OPENROUTER_MODEL = 'google/gemini-2.0-flash-exp:free';
 const OPENROUTER_REFERER = 'https://rakiza.platform';
 const OPENROUTER_TITLE = 'Rakiza Platform';
+// Abort the API call before Vercel kills the whole function (500).
+const OPENROUTER_TIMEOUT_MS = 8000;
 
 export const DEEPSEEK_MASTER_SYSTEM_PROMPT = `أنت محرك تحليل وتصنيف البيانات القضائية والإدارية لمنصة "ركيزة".
 وظيفتك هي استقبال أي نصوص أو جداول مفرغة من ملفات (Word أو Excel)، واكتشاف هيكليتها تلقائياً، وتوحيد مخرجاتها بدون فقدان أي معلومة.
@@ -228,44 +231,52 @@ export async function processUniversalDocument(rawContent: string | object): Pro
 
   const contentString = typeof rawContent === 'string' ? rawContent : JSON.stringify(rawContent);
 
-  const response = await fetch(OPENROUTER_API_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
-      'HTTP-Referer': OPENROUTER_REFERER,
-      'X-Title': OPENROUTER_TITLE,
-    },
-    body: JSON.stringify({
-      model: OPENROUTER_MODEL,
-      response_format: { type: 'json_object' },
-      messages: [
-        { role: 'system', content: DEEPSEEK_MASTER_SYSTEM_PROMPT },
-        {
-          role: 'user',
-          content: `قم بتحليل واستخراج البيانات التالية وتكييفها مع بنية JSON المحددة:\n\n${contentString}`,
-        },
-      ],
-      temperature: 0.1,
-    }),
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), OPENROUTER_TIMEOUT_MS);
 
-  if (!response.ok) {
-    throw new Error(`DeepSeek API error: ${response.statusText}`);
-  }
-
-  const data = await response.json();
-  const message = data.choices?.[0]?.message?.content;
-  if (!message) throw new Error('DeepSeek API returned an empty response.');
-
-  let parsed: unknown;
   try {
-    parsed = JSON.parse(String(message));
-  } catch {
-    // Some providers return the object directly.
-    parsed = message;
+    const response = await fetch(OPENROUTER_API_URL, {
+      method: 'POST',
+      signal: controller.signal,
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+        'HTTP-Referer': OPENROUTER_REFERER,
+        'X-Title': OPENROUTER_TITLE,
+      },
+      body: JSON.stringify({
+        model: OPENROUTER_MODEL,
+        response_format: { type: 'json_object' },
+        messages: [
+          { role: 'system', content: DEEPSEEK_MASTER_SYSTEM_PROMPT },
+          {
+            role: 'user',
+            content: `قم بتحليل واستخراج البيانات التالية وتكييفها مع بنية JSON المحددة:\n\n${contentString}`,
+          },
+        ],
+        temperature: 0.1,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`OpenRouter API error: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    const message = data.choices?.[0]?.message?.content;
+    if (!message) throw new Error('OpenRouter API returned an empty response.');
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(String(message));
+    } catch {
+      // Some providers return the object directly.
+      parsed = message;
+    }
+    return normalizeUniversalResult(parsed);
+  } finally {
+    clearTimeout(timeoutId);
   }
-  return normalizeUniversalResult(parsed);
 }
 
 /** Deterministic local fallback reusing the platform's existing parsers. */
