@@ -9,6 +9,7 @@ import { saveDraft } from '@/lib/draft-store';
 import { formatHijri, looksLikeHijri, normalizeHijriDisplay, todayGregorianISO, todayHijri } from '@/lib/hijri';
 import UniversalParseView from '@/components/UniversalParseView';
 import type { UniversalParseResult } from '@/services/documentParser';
+import { recordsToHtmlTable } from '@/services/documentParser';
 
 export default function ImportPage() {
   const [user, setUser] = useState<{ name: string; role: string } | null>(null);
@@ -86,6 +87,9 @@ export default function ImportPage() {
                 href={`/documents/new?form=import-paste&name=${encodeURIComponent('مستورد')}`}
                 onClick={() => {
                   try {
+                    const universal = result.universal;
+                    const isTable = universal?.detected_type === 'TABLE' && (universal.records?.length || 0) > 0;
+                    const bodyHtml = isTable ? recordsToHtmlTable(universal!.records) : parsed.body;
                     saveDraft('import-paste', {
                       step: 3,
                       paste: result.text,
@@ -96,7 +100,7 @@ export default function ImportPage() {
                         facts: parsed.facts || '',
                         reasons: parsed.reasons,
                         studyFields: parsed.studyFields,
-                        body: parsed.body,
+                        body: bodyHtml,
                         dateGregorian: parsed.date && !looksLikeHijri(parsed.date) && /^\d{4}-\d{2}-\d{2}/.test(parsed.date) ? parsed.date : todayGregorianISO(),
                         dateHijri: parsed.date && looksLikeHijri(parsed.date) ? normalizeHijriDisplay(parsed.date) : (parsed.date && /^\d{4}-\d{2}-\d{2}/.test(parsed.date) ? formatHijri(parsed.date) : todayHijri()),
                         docType: 'مستورد',

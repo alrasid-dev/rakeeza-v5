@@ -10,10 +10,9 @@
  * keeps the pipeline working even when DEEPSEEK_API_KEY is absent.
  */
 
-import { parseAnyTable, sanitizeClipboardHtml } from '@/lib/universal-table-parser';
+import { gridToEditorTableHtml, parseAnyTable, sanitizeClipboardHtml } from '@/lib/universal-table-parser';
 import { parseRichPaste } from '@/lib/parse-paste';
 import { isStudyPaste, parseStudyPaste, type StudySections } from '@/lib/parse-study';
-
 export type UniversalParseResult = {
   detected_type: 'FORM' | 'TABLE';
   summary: {
@@ -408,4 +407,42 @@ export function localUniversalParse(rawContent: string | object): UniversalParse
     },
     records: [],
   };
+}
+
+/** Display labels for TABLE records — shared by previews and export. */
+export const RECORD_DISPLAY_LABELS: Record<string, string> = {
+  circuit: 'الدائرة القضائية / التشكيل',
+  verdict_source: 'مصدر الحكم',
+  deed_number: 'رقم الحكم / الصك',
+  verdict_date: 'تاريخ الحكم',
+  case_number: 'رقم القضية',
+  claim_amount: 'مبلغ المطالبة',
+  verdict_inputs: 'مدخلات الحكم',
+  observation: 'الرصد / الملحوظة الرئيسية',
+  notes: 'نص الملحوظة',
+  mechanism: 'المعالجة',
+};
+
+/**
+ * Convert aggregated TABLE records into a styled bordered HTML table
+ * (TipTap/preview-safe) so the smart result can be saved into the document
+ * body and shown in the official paper preview without losing columns.
+ */
+export function recordsToHtmlTable(records: Array<Record<string, unknown>> | null | undefined): string {
+  if (!records?.length) return '';
+  const keys = Object.keys(RECORD_DISPLAY_LABELS);
+  const extraCols: string[] = [];
+  for (const r of records) {
+    const ex = (r.extra_fields && typeof r.extra_fields === 'object' ? r.extra_fields : {}) as Record<string, unknown>;
+    for (const k of Object.keys(ex)) if (!extraCols.includes(k)) extraCols.push(k);
+  }
+  const header = [...keys, ...extraCols];
+  const grid: string[][] = [
+    header.map((k) => RECORD_DISPLAY_LABELS[k] || k),
+    ...records.map((r) => {
+      const ex = (r.extra_fields && typeof r.extra_fields === 'object' ? r.extra_fields : {}) as Record<string, unknown>;
+      return header.map((k) => (k in RECORD_DISPLAY_LABELS ? String(r[k] ?? '') : String(ex[k] ?? '')));
+    }),
+  ];
+  return gridToEditorTableHtml(grid, { bordered: true, headers: true });
 }
