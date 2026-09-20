@@ -113,10 +113,10 @@ const TABLE_COLUMN_RULES: Array<{ key: string; re: RegExp }> = [
   { key: 'verdict_source', re: /مصدر\s*(الحكم|القرار)/ },
   { key: 'verdict_date', re: /تاريخ\s*(الحكم|القرار|النطق)/ },
   { key: 'claim_amount', re: /مبلغ\s*المطالبة|المطالبة|مقدارها/ },
-  { key: 'observation', re: /الرصد/ },
-  { key: 'mechanism', re: /المعالجة\s*المقترحة|آلية\s*المعالجة|الإجراء\s*المقترح/ },
-  { key: 'verdict_inputs', re: /نص\s*الحكم|منطوق|أوجه\s*الحكم/ },
-  { key: 'notes', re: /ملاحظات|ملاحظه/ },
+  { key: 'observation', re: /الرصد|الملحوظ[هة]\s*الرئيسي[هة]|الملاحظ[هة]\s*الرئيسي[هة]/ },
+  { key: 'mechanism', re: /المعالجة|الإجراء\s*المقترح/ },
+  { key: 'verdict_inputs', re: /مدخلات\s*الحكم|نص\s*الحكم|منطوق|أوجه\s*الحكم/ },
+  { key: 'notes', re: /نص\s*الملحوظ[هة]|نص\s*الملاحظ[هة]|ملاحظات|ملاحظ[هة]|ملحوظ[هة]/ },
 ];
 
 function headerToKey(header: string): string | null {

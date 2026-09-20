@@ -28,10 +28,10 @@ const RECORD_FIELD_LABELS: Record<string, string> = {
   verdict_date: 'تاريخ الحكم',
   case_number: 'رقم القضية',
   claim_amount: 'مبلغ المطالبة',
-  observation: 'الرصد',
-  mechanism: 'المعالجة المقترحة',
   verdict_inputs: 'مدخلات الحكم',
-  notes: 'ملاحظات',
+  observation: 'الرصد / الملحوظة الرئيسية',
+  notes: 'نص الملحوظة',
+  mechanism: 'المعالجة',
 };
 
 function isRecord(v: unknown): v is Record<string, unknown> {
