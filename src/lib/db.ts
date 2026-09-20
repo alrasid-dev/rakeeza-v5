@@ -14,11 +14,28 @@ export function isTursoMode(): boolean {
   return Boolean((env('TURSO_DATABASE_URL') || env('LIBSQL_URL')) && env('TURSO_AUTH_TOKEN'));
 }
 
+/**
+ * Enforce a hard timeout on every libSQL HTTP call so a stalled Turso
+ * connection fails fast (AbortError) instead of hanging the request — which
+ * is what makes the login screen "freeze" without any error.
+ */
+function fetchWithTimeout(timeoutMs: number): typeof fetch {
+  return (input, init) => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    return fetch(input, { ...init, signal: controller.signal }).finally(() => clearTimeout(timer));
+  };
+}
+
 function createPrismaClient() {
   const url = env('TURSO_DATABASE_URL') || env('LIBSQL_URL');
   const authToken = env('TURSO_AUTH_TOKEN');
   if (url && authToken) {
-    const libsql = createClient({ url, authToken });
+    const libsql = createClient({
+      url,
+      authToken,
+      fetch: fetchWithTimeout(15_000),
+    });
     const adapter = new PrismaLibSQL(libsql);
     return new PrismaClient({
       adapter,
