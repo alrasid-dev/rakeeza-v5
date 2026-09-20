@@ -24,7 +24,11 @@ export type UniversalParseResult = {
   records?: Array<Record<string, unknown>>;
 };
 
-const DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions';
+// OpenRouter as the gateway — the provided DEEPSEEK_API_KEY is an OpenRouter key.
+const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
+const OPENROUTER_MODEL = 'deepseek/deepseek-r1:free';
+const OPENROUTER_REFERER = 'https://rakiza.platform';
+const OPENROUTER_TITLE = 'Rakiza Platform';
 
 export const DEEPSEEK_MASTER_SYSTEM_PROMPT = `أنت محرك تحليل وتصنيف البيانات القضائية والإدارية لمنصة "ركيزة".
 وظيفتك هي استقبال أي نصوص أو جداول مفرغة من ملفات (Word أو Excel)، واكتشاف هيكليتها تلقائياً، وتوحيد مخرجاتها بدون فقدان أي معلومة.
@@ -224,14 +228,16 @@ export async function processUniversalDocument(rawContent: string | object): Pro
 
   const contentString = typeof rawContent === 'string' ? rawContent : JSON.stringify(rawContent);
 
-  const response = await fetch(DEEPSEEK_API_URL, {
+  const response = await fetch(OPENROUTER_API_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${apiKey}`,
+      'HTTP-Referer': OPENROUTER_REFERER,
+      'X-Title': OPENROUTER_TITLE,
     },
     body: JSON.stringify({
-      model: 'deepseek-chat',
+      model: OPENROUTER_MODEL,
       response_format: { type: 'json_object' },
       messages: [
         { role: 'system', content: DEEPSEEK_MASTER_SYSTEM_PROMPT },
