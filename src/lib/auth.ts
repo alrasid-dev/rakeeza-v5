@@ -39,7 +39,8 @@ export async function createSession(user: SessionUser) {
     .setExpirationTime('8h')
     .sign(secret());
 
-  cookies().set(COOKIE, token, {
+  const cookieStore = await cookies();
+  cookieStore.set(COOKIE, token, {
     httpOnly: true,
     sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production',
@@ -49,11 +50,13 @@ export async function createSession(user: SessionUser) {
 }
 
 export async function destroySession() {
-  cookies().set(COOKIE, '', { httpOnly: true, path: '/', maxAge: 0 });
+  const cookieStore = await cookies();
+  cookieStore.set(COOKIE, '', { httpOnly: true, path: '/', maxAge: 0 });
 }
 
 export async function getSession(): Promise<SessionUser | null> {
-  const token = cookies().get(COOKIE)?.value;
+  const cookieStore = await cookies();
+  const token = cookieStore.get(COOKIE)?.value;
   if (!token) return null;
   try {
     const { payload } = await jwtVerify(token, secret());

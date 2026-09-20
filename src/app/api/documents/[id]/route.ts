@@ -5,21 +5,23 @@ import { nextDocumentNumber } from '@/lib/numbering';
 import QRCode from 'qrcode';
 import { formatHijri, looksLikeHijri, normalizeHijriDisplay } from '@/lib/hijri';
 
-type Ctx = { params: { id: string } };
+type Ctx = { params: Promise<{ id: string }> };
 
 export async function GET(_req: NextRequest, { params }: Ctx) {
+  const { id } = await params;
   const s = await getSession();
   if (!s) return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
-  const document = await prisma.document.findUnique({ where: { id: params.id } });
+  const document = await prisma.document.findUnique({ where: { id } });
   if (!document) return NextResponse.json({ error: 'غير موجود' }, { status: 404 });
   return NextResponse.json({ document });
 }
 
 export async function PUT(req: NextRequest, { params }: Ctx) {
+  const { id } = await params;
   const s = await getSession();
   if (!s) return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
   const body = await req.json();
-  const existing = await prisma.document.findUnique({ where: { id: params.id } });
+  const existing = await prisma.document.findUnique({ where: { id } });
   if (!existing) return NextResponse.json({ error: 'غير موجود' }, { status: 404 });
 
   let number = existing.number;
@@ -37,7 +39,7 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
   }
 
   const document = await prisma.document.update({
-    where: { id: params.id },
+    where: { id },
     data: {
       number,
       qrPayload,
@@ -69,10 +71,11 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
 }
 
 export async function DELETE(_req: NextRequest, { params }: Ctx) {
+  const { id } = await params;
   const s = await getSession();
   if (!s) return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
   if (s.role !== 'Admin') return NextResponse.json({ error: 'ممنوع' }, { status: 403 });
-  await prisma.document.delete({ where: { id: params.id } });
-  await audit('delete_document', 'Document', params.id, undefined, s.id);
+  await prisma.document.delete({ where: { id } });
+  await audit('delete_document', 'Document', id, undefined, s.id);
   return NextResponse.json({ ok: true });
 }

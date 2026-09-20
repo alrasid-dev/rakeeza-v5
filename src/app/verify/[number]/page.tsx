@@ -3,8 +3,9 @@ import { officialDateDisplay } from '@/lib/hijri';
 
 export const dynamic = 'force-dynamic';
 
-export default async function VerifyPage({ params }: { params: { number: string } }) {
-  const number = decodeURIComponent(params.number);
+export default async function VerifyPage({ params }: { params: Promise<{ number: string }> }) {
+  const { number: rawNumber } = await params;
+  const number = decodeURIComponent(rawNumber);
   const doc = await prisma.document.findFirst({
     where: { number },
     select: {
