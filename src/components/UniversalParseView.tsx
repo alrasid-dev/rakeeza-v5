@@ -87,14 +87,14 @@ export default function UniversalParseView({ result }: { result: UniversalParseR
               {records.map((r, i) => (
                 <tr key={i} className="odd:bg-white even:bg-gray-50 dark:odd:bg-transparent dark:even:bg-white/5">
                   {Object.keys(RECORD_FIELD_LABELS).map((k) => (
-                    <td key={k} className="border-b border-gray-100 dark:border-white/5 px-2 py-1.5 align-top">
+                    <td key={k} className="border-b border-gray-100 dark:border-white/5 px-2 py-1.5 align-top whitespace-pre-wrap break-words">
                       {String(r[k] ?? '') || '—'}
                     </td>
                   ))}
                   {extraCols.map((k) => {
                     const ex = extraOf(r);
                     return (
-                      <td key={k} className="border-b border-gray-100 dark:border-white/5 px-2 py-1.5 align-top">
+                      <td key={k} className="border-b border-gray-100 dark:border-white/5 px-2 py-1.5 align-top whitespace-pre-wrap break-words">
                         {String(ex[k] ?? '') || '—'}
                       </td>
                     );

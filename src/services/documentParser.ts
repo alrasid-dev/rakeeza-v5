@@ -197,7 +197,12 @@ function aggregateRecords(records: Array<Record<string, unknown>>): Array<Record
     const merged = emptyRecord();
     for (const k of RECORD_KEYS) {
       const vals = Array.from(new Set(rows.map((r) => String(r[k] || '').trim()).filter(Boolean)));
-      merged[k] = vals.join('، ');
+      // الرصد / نص الملحوظة → قائمة مرقّمة واضحة (1- … / 2- …)
+      if (k === 'observation' || k === 'notes') {
+        merged[k] = vals.map((v, i) => `${i + 1}- ${v}`).join('\n');
+      } else {
+        merged[k] = vals.join('، ');
+      }
     }
     const extras: Record<string, unknown> = {};
     for (const r of rows) {
