@@ -346,7 +346,7 @@ export function localUniversalParse(rawContent: string | object): UniversalParse
   // 1) Flat multi-row / multi-column table.
   const table = parseAnyTable(raw);
   const looksTabular = table.grid.length >= 2 && table.grid[0].length >= 2;
-  if (looksTabular && (table.source === 'html' || /[\t]/.test(raw))) {
+  if (looksTabular && (table.source === 'html' || /[\t]/.test(raw) || table.grid[0].length >= 3)) {
     const grid = table.grid.map((r) => r.map((c) => String(c ?? '').trim()));
     const headerRowIndex = table.headerRowIndex;
     const header = headerRowIndex >= 0 ? grid[headerRowIndex] : grid[0].map((_, i) => `column_${i + 1}`);

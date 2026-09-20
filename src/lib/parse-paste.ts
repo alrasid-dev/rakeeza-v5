@@ -392,7 +392,10 @@ export function parseRichPaste(raw: string): ParsedPaste {
   const input = String(raw || '');
   const table = parseAnyTable(input);
   const hasTableShape = table.grid.length >= 2 && table.grid[0].length >= 2;
-  const isTable = hasTableShape && (table.source === 'html' || /[\t,،|]/.test(input));
+  // Table = explicit delimiter (tab/comma/pipe), HTML, or a wide grid (3+ columns)
+  // even when columns are separated by spaces after passing through Notepad.
+  const isTable =
+    hasTableShape && (table.source === 'html' || /[\t,،|]/.test(input) || table.grid[0].length >= 3);
 
   if (isTable) {
     const rows = gridToTableRows(table.grid);
