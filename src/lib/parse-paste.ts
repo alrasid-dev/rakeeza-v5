@@ -3,7 +3,7 @@
 import { isStudyPaste, parseStudyPaste, studyToFormFields } from '@/lib/parse-study';
 import { suggestFont } from '@/lib/font-suggest';
 import { extractJudgmentCardFromPaste } from '@/lib/judgment-card';
-import { gridToTableRows, htmlToPasteText, parseAnyTable, sanitizeClipboardHtml } from '@/lib/universal-table-parser';
+import { gridToEditorTableHtml, gridToTableRows, htmlToPasteText, parseAnyTable } from '@/lib/universal-table-parser';
 
 export type TableRow = { name: string; id?: string; extra?: string };
 
@@ -390,16 +390,25 @@ export function parsePaste(raw: string): ParsedPaste {
  */
 export function parseRichPaste(raw: string): ParsedPaste {
   const input = String(raw || '');
-  const html = sanitizeClipboardHtml(input);
-  if (/<table\b/i.test(html)) {
-    const table = parseAnyTable(input);
+  const table = parseAnyTable(input);
+  const hasTableShape = table.grid.length >= 2 && table.grid[0].length >= 2;
+  const isTable = hasTableShape && (table.source === 'html' || /[\t,،|]/.test(input));
+
+  if (isTable) {
     const rows = gridToTableRows(table.grid);
     if (rows.length || table.grid.length) {
       const tsv = htmlToPasteText(input) || table.grid.map((r) => r.join('\t')).join('\n');
       const base = parsePaste(tsv);
       const tableRows = rows.length ? rows : base.tableRows;
+      // Render the recovered grid as a styled, bordered HTML table so the
+      // preview/export shows real columns instead of continuous text.
+      const bodyHtml = gridToEditorTableHtml(table.grid, {
+        bordered: true,
+        headers: table.hasHeader,
+      });
       return {
         ...base,
+        body: bodyHtml,
         tableRows,
         detectedKind: tableRows.length >= 2 ? 'table' : base.detectedKind,
       };

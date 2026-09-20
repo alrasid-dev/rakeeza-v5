@@ -690,6 +690,26 @@ ${opts?.forOutlook
 }
 .body { font-family: ${paraFont}; white-space: pre-wrap; }
 .body p { white-space: pre-wrap; }
+.body table, .section table, .paper table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid #ccc;
+  margin: 8px 0;
+}
+.body th, .section th, .paper th {
+  background: #e6f2eb;
+  border: 1px solid #ccc;
+  padding: 6px 8px;
+  text-align: right;
+  font-weight: 700;
+  color: ${GREEN};
+}
+.body td, .section td, .paper td {
+  border: 1px solid #ccc;
+  padding: 6px 8px;
+  text-align: right;
+  vertical-align: top;
+}
 .foot {
   margin-top: 18px;
   padding: 10px 18px;

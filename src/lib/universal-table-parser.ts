@@ -483,9 +483,9 @@ export function gridToHtmlTable(
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;');
   const cell = (tag: 'th' | 'td', text: string) =>
-    `<${tag} style="border:1px solid #c9c9c9;padding:4px 8px;vertical-align:top;text-align:right" dir="auto">${esc(text)}</${tag}>`;
+    `<${tag} style="border:1px solid #ccc;padding:4px 8px;vertical-align:top;text-align:right" dir="auto">${esc(text)}</${tag}>`;
 
-  const headerIdx = opts?.headers === false ? -1 : detectHeaderRow(g);
+  const headerIdx = opts?.headers === false ? -1 : opts?.headers === true ? 0 : detectHeaderRow(g);
   const rows = g.map((row, i) => {
     const tag: 'th' | 'td' = i === headerIdx ? 'th' : 'td';
     return `<tr>${row.map((c) => cell(tag, c)).join('')}</tr>`;
@@ -493,7 +493,7 @@ export function gridToHtmlTable(
   const caption = opts?.caption
     ? `<caption style="text-align:right;font-weight:700;padding:4px">${esc(opts.caption)}</caption>`
     : '';
-  return `<table dir="${dir}" cellpadding="0" cellspacing="0" border="1" style="border-collapse:collapse;border:1px solid #c9c9c9">
+  return `<table dir="${dir}" cellpadding="0" cellspacing="0" border="1" style="width:100%;border-collapse:collapse;border:1px solid #ccc">
   ${caption}${rows.join('\n  ')}
 </table>`;
 }
@@ -503,23 +503,40 @@ export function gridToHtmlTable(
 /* TipTap editor + live-preview adapters                               */
 /* ------------------------------------------------------------------ */
 
-/** Minimal, TipTap/ProseMirror-compatible HTML table (cells wrap in <p>). */
-export function gridToEditorTableHtml(grid: Grid): string {
+/**
+ * Minimal, TipTap/ProseMirror-compatible HTML table (cells wrap in <p>).
+ * Pass `bordered: true` to emit inline borders + header background so the same
+ * HTML renders as a styled table in previews/exports.
+ */
+export function gridToEditorTableHtml(
+  grid: Grid,
+  opts?: { bordered?: boolean; headers?: boolean },
+): string {
   const g = cleanGrid(grid);
   if (!g.length) return '<p></p>';
-  const headerIdx = detectHeaderRow(g);
+  const bordered = !!opts?.bordered;
+  const headerIdx = opts?.headers === false ? -1 : opts?.headers === true ? 0 : detectHeaderRow(g);
   const esc = (s: string) =>
     String(s || '')
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;');
+  const thStyle = bordered
+    ? ' style="border:1px solid #ccc;padding:4px 8px;text-align:right;background:#e6f2eb;font-weight:700"'
+    : '';
+  const tdStyle = bordered
+    ? ' style="border:1px solid #ccc;padding:4px 8px;text-align:right;vertical-align:top"'
+    : '';
+  const pStyle = bordered ? ' style="margin:0"' : '';
   const rows = g
     .map((row, i) => {
       const tag: 'th' | 'td' = i === headerIdx ? 'th' : 'td';
-      return `<tr>${row.map((c) => `<${tag}><p>${esc(c)}</p></${tag}>`).join('')}</tr>`;
+      const style = tag === 'th' ? thStyle : tdStyle;
+      return `<tr>${row.map((c) => `<${tag}${style}><p${pStyle}>${esc(c)}</p></${tag}>`).join('')}</tr>`;
     })
     .join('');
-  return `<table>${rows}</table>`;
+  const tableStyle = bordered ? ' style="width:100%;border-collapse:collapse;border:1px solid #ccc"' : '';
+  return `<table${tableStyle}>${rows}</table>`;
 }
 
 export type AdaptedTablePreview = {
