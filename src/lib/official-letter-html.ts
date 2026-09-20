@@ -21,6 +21,7 @@ import {
 import { buildPdfPrintCss } from '@/lib/pdf-print-css';
 import { pdfInlineFontName } from '@/lib/arabic-font-library';
 import { stampInlineFontFamily } from '@/lib/stamp-inline-font';
+import { outlookEmblemImgHtml } from '@/lib/outlook-public-assets';
 
 export type OfficialLetterDoc = {
   number?: string | null;
@@ -363,9 +364,9 @@ ${embeddedBlock}`;
 
   // PDF + Outlook: embed emblem as data-URI so paste/print never depends on blocked remote images.
   // Preview may use file path (browser same-origin).
-  const emblemInner = opts?.forPdf || opts?.forOutlook ? EMBLEM_IMG : EMBLEM_IMG_FILE;
+  const emblemInner = opts?.forPdf ? EMBLEM_IMG : EMBLEM_IMG_FILE;
   const emblem = opts?.forOutlook
-    ? `<table cellpadding="0" cellspacing="0" border="0" role="presentation" style="border-collapse:collapse;margin:0 auto"><tr><td align="center" style="border:1.5px solid ${GOLD};background:#fff;padding:4px">${emblemInner}</td></tr></table>`
+    ? `<table cellpadding="0" cellspacing="0" border="0" role="presentation" style="border-collapse:collapse;margin:0 auto"><tr><td align="center" style="border:1.5px solid ${GOLD};background:#fff;padding:4px">${outlookEmblemImgHtml()}</td></tr></table>`
     : `<div style="width:72px;height:72px;border:1.5px solid ${GOLD};border-radius:12px;background:#fff;overflow:hidden;text-align:center;margin:0 auto">${emblemInner}</div>`;
 
   const study = doc.studySections

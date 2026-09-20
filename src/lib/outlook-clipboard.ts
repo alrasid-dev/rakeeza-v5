@@ -5,6 +5,7 @@ import { bodyBlocksToHtml } from '@/lib/body-align';
 import { bodyToExportHtml, isBodyHtml } from '@/lib/body-html-bridge';
 import { exportFontStack, fontStackFor } from '@/lib/font-stacks';
 import { MOJ_EMBLEM_PNG_DATA_URL } from '@/lib/brand-emblem-data';
+import { outlookEmblemImgHtml, outlookEmblemUrl } from '@/lib/outlook-public-assets';
 import { isJudgmentBriefingDoc } from '@/lib/judgment-card';
 import {
   enrichStudySections,
@@ -197,7 +198,7 @@ export function outlookBodyParagraphs(
     const baseStyle = styleMatch ? styleMatch[1] : '';
     const merged = [
       `font-family:${font}`,
-      `font-size:${size}px`,
+      `font-size:${Math.max(9, Math.round((opts.fontSizePx || 14) * 0.75))}pt`,
       `text-align:${align}`,
       'margin:0 0 8px 0',
       baseStyle,
@@ -211,7 +212,7 @@ export function outlookBodyParagraphs(
 
   html = html.replace(
     /<p\b[^>]*>\s*(?:&nbsp;|\u00a0|\s)*<\/p>/gi,
-    `<p align="${fallback}" dir="rtl" style="font-family:${font};font-size:${size}px;margin:0 0 8px 0">&nbsp;</p>`,
+    `<p align="${fallback}" dir="rtl" style="font-family:${font};font-size:${Math.max(9, Math.round((opts.fontSizePx || 14) * 0.75))}pt;margin:0 0 8px 0">&nbsp;</p>`,
   );
 
   return html;
@@ -219,7 +220,7 @@ export function outlookBodyParagraphs(
 
 function metaRow(label: string, value: string, font: string, size: number): string {
   return `<tr>
-  <td align="right" dir="rtl" style="padding:6px 12px;font-family:${font};font-size:${size}px;color:#111;background:${LIGHT};border-bottom:1px solid ${GREEN}">
+  <td align="right" dir="rtl" style="padding:6px 12px;font-family:${font};font-size:${Math.max(9, Math.round(size * 0.75))}pt;color:#111;background:${LIGHT};border-bottom:1px solid ${GREEN}">
     <b style="color:${GREEN}">${esc(label)}</b> ${esc(value)}
   </td>
 </tr>`;
@@ -235,8 +236,8 @@ function judgmentTableHtml(
     .map((r, i) => {
       const bg = i % 2 ? '#f3f8f5' : '#ffffff';
       return `<tr>
-  <td width="38%" valign="middle" align="right" dir="rtl" style="padding:8px 10px;border:1px solid ${GREEN};background:${LIGHT};color:${GREEN};font-family:${font};font-size:${size}px;font-weight:700">${esc(r.label)}</td>
-  <td valign="middle" align="right" dir="rtl" style="padding:8px 10px;border:1px solid ${GREEN};background:${bg};font-family:${font};font-size:${size}px;font-weight:600">${esc(r.value || '—')}</td>
+  <td width="38%" valign="middle" align="right" dir="rtl" style="padding:8px 10px;border:1px solid ${GREEN};background:${LIGHT};color:${GREEN};font-family:${font};font-size:${Math.max(9, Math.round(size * 0.75))}pt;font-weight:700">${esc(r.label)}</td>
+  <td valign="middle" align="right" dir="rtl" style="padding:8px 10px;border:1px solid ${GREEN};background:${bg};font-family:${font};font-size:${Math.max(9, Math.round(size * 0.75))}pt;font-weight:600">${esc(r.value || '—')}</td>
 </tr>`;
     })
     .join('');
@@ -251,21 +252,21 @@ function studyTablesHtml(study: StudySections, font: string, size: number): stri
   const kv = (label: string, value?: string) =>
     value
       ? `<tr>
-  <td width="28%" valign="top" align="right" dir="rtl" style="padding:4px 8px;border-bottom:1px solid #cfe3d7;color:${GREEN};font-family:${font};font-size:${size}px;font-weight:700">${esc(label)}</td>
-  <td valign="top" align="right" dir="rtl" style="padding:4px 8px;border-bottom:1px solid #cfe3d7;font-family:${font};font-size:${size}px">${esc(value)}</td>
+  <td width="28%" valign="top" align="right" dir="rtl" style="padding:4px 8px;border-bottom:1px solid #cfe3d7;color:${GREEN};font-family:${font};font-size:${Math.max(9, Math.round(size * 0.75))}pt;font-weight:700">${esc(label)}</td>
+  <td valign="top" align="right" dir="rtl" style="padding:4px 8px;border-bottom:1px solid #cfe3d7;font-family:${font};font-size:${Math.max(9, Math.round(size * 0.75))}pt">${esc(value)}</td>
 </tr>`
       : '';
   const party = (label: string, value: string | undefined, bg: string, bd: string) =>
     value
       ? `<tr>
-  <td width="28%" valign="top" align="right" dir="rtl" style="padding:8px 10px;background:${bg};border:2px solid ${bd};color:${GREEN};font-family:${font};font-size:12px;font-weight:700">${esc(label)}</td>
-  <td valign="top" align="right" dir="rtl" style="padding:8px 10px;background:${bg};border:2px solid ${bd};font-family:${font};font-size:${size}px;font-weight:600">${esc(value)}</td>
+  <td width="28%" valign="top" align="right" dir="rtl" style="padding:8px 10px;background:${bg};border:2px solid ${bd};color:${GREEN};font-family:${font};font-size:9pt;font-weight:700">${esc(label)}</td>
+  <td valign="top" align="right" dir="rtl" style="padding:8px 10px;background:${bg};border:2px solid ${bd};font-family:${font};font-size:${Math.max(9, Math.round(size * 0.75))}pt;font-weight:600">${esc(value)}</td>
 </tr>`
       : '';
 
   return `
 <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="border-collapse:collapse;border:1px solid ${GREEN};margin:0 0 10px 0">
-  <tr><td align="center" style="padding:6px;background:${GREEN};color:#ffffff;font-family:${font};font-size:12px;font-weight:700">بيانات القضية</td></tr>
+  <tr><td align="center" style="padding:6px;background:${GREEN};color:#ffffff;font-family:${font};font-size:9pt;font-weight:700">بيانات القضية</td></tr>
   <tr><td style="padding:4px">
     <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="border-collapse:collapse">
       ${kv('رقم القضية', study.caseNumber)}
@@ -280,7 +281,7 @@ function studyTablesHtml(study: StudySections, font: string, size: number): stri
   </td></tr>
 </table>
 <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="border-collapse:collapse;border:1px solid ${GOLD};margin:0 0 10px 0">
-  <tr><td align="center" style="padding:6px;background:${GOLD};color:#ffffff;font-family:${font};font-size:12px;font-weight:700">الخلاصة</td></tr>
+  <tr><td align="center" style="padding:6px;background:${GOLD};color:#ffffff;font-family:${font};font-size:9pt;font-weight:700">الخلاصة</td></tr>
   <tr><td style="padding:4px">
     <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="border-collapse:collapse">
       ${kv('المشكلة', study.problem)}
@@ -348,25 +349,25 @@ export function buildLetterHtml(doc: OutlookLetterDoc) {
       ? doc.subject
       : meta.subject || (study?.caseNumber ? `دراسة شكوى — ${study.caseNumber}` : '') || '—';
 
-  const emblemImg = `<img src="${esc(MOJ_EMBLEM_PNG_DATA_URL)}" width="72" height="72" alt="شعار وزارة العدل" border="0" style="border:0;display:block;margin:0 auto" />`;
+  const emblemImg = outlookEmblemImgHtml(origin);
 
   const qrImg = qrSrc
     ? `<img src="${esc(qrSrc)}" width="72" height="72" alt="QR" border="0" style="border:1px solid ${GOLD};display:block;background:#ffffff" />`
-    : `<table width="72" cellpadding="0" cellspacing="0" border="0" style="border:1px dashed ${GOLD}"><tr><td width="72" height="72" align="center" valign="middle" style="font-family:${font};font-size:10px;color:${GREEN}">QR</td></tr></table>`;
+    : `<table width="72" cellpadding="0" cellspacing="0" border="0" style="border:1px dashed ${GOLD}"><tr><td width="72" height="72" align="center" valign="middle" style="font-family:${font};font-size:9pt;color:${GREEN}">QR</td></tr></table>`;
 
   // Physical LTR header: LEFT=QR+number+date · CENTER=logo · RIGHT=kingdom
   // (Outlook Word reverses RTL layout tables.)
   const leftCol = `
 <table class="official-left" dir="ltr" width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="border-collapse:collapse">
   <tr><td align="left" valign="top" style="padding:0 0 6px 0">${qrImg}</td></tr>
-  <tr><td align="left" valign="top" style="padding:2px 0;font-family:${font};font-size:12px;color:${GREEN};font-weight:700">الرقم: <span dir="ltr">${esc(doc.number || '—')}</span></td></tr>
-  <tr><td align="left" valign="top" style="padding:2px 0;font-family:${font};font-size:12px;color:${GREEN};font-weight:700">التاريخ: ${esc(dateShown)}</td></tr>
+  <tr><td align="left" valign="top" style="padding:2px 0;font-family:${font};font-size:11pt;color:${GREEN};font-weight:700">الرقم: <span dir="ltr">${esc(doc.number || '—')}</span></td></tr>
+  <tr><td align="left" valign="top" style="padding:2px 0;font-family:${font};font-size:11pt;color:${GREEN};font-weight:700">التاريخ: ${esc(dateShown)}</td></tr>
 </table>`;
 
   const centerBadge = underLogo
     ? `<tr><td align="center" style="padding:6px 0 0 0">
         <table cellpadding="0" cellspacing="0" border="0" role="presentation" style="border-collapse:collapse;border:1px solid ${GOLD};background:#ffffff">
-          <tr><td align="center" style="padding:2px 10px;font-family:${font};font-size:10px;font-weight:800;color:${GREEN}">${esc(underLogo)}</td></tr>
+          <tr><td align="center" style="padding:2px 10px;font-family:${font};font-size:9pt;font-weight:800;color:${GREEN}">${esc(underLogo)}</td></tr>
         </table>
       </td></tr>`
     : '';
@@ -381,20 +382,21 @@ export function buildLetterHtml(doc: OutlookLetterDoc) {
     .map((h, i, arr) => {
       const isPlatform = h === BRAND.platform || i === arr.length - 1;
       const isCourt = !isPlatform && (h === court || i === headerLines.length - 1);
-      const px = isCourt ? 16 : isPlatform ? 12 : 13;
+      const pt = isCourt ? 12 : isPlatform ? 9 : 10;
       const color = isPlatform ? GOLD : GREEN;
-      return `<tr><td class="${isPlatform ? 'sub' : 'court'}" align="right" dir="rtl" style="padding:1px 0;font-family:${font};font-size:${px}px;color:${color};font-weight:800;text-align:right">${esc(h)}</td></tr>`;
+      return `<tr><td class="${isPlatform ? 'sub' : 'court'}" align="right" dir="rtl" style="padding:1px 0;font-family:${font};font-size:${pt}pt;color:${color};font-weight:800;text-align:right">${esc(h)}</td></tr>`;
     })
     .join('');
 
   const rightCol = `<table class="official-right" dir="rtl" width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="border-collapse:collapse">${rightLines}</table>`;
 
+  // RTL: first cell = visual RIGHT (letterhead), center = logo, last = visual LEFT (QR)
   const headerRow = `
-<table class="brand-row official-header" dir="ltr" width="700" cellpadding="0" cellspacing="0" border="0" role="presentation" style="border-collapse:collapse;border-bottom:2px solid ${GOLD};table-layout:fixed;width:700px">
+<table class="brand-row official-header" dir="rtl" align="center" width="100%" border="0" cellpadding="0" cellspacing="0" role="presentation" style="width:100%;border-collapse:collapse;table-layout:fixed;border-bottom:2px solid ${GOLD}">
   <tr>
-    <td class="official-left" width="200" valign="top" align="left" style="width:200px;padding:12px 10px">${leftCol}</td>
-    <td class="official-center" width="300" valign="top" align="center" style="width:300px;padding:12px 8px">${centerCol}</td>
-    <td class="official-right" width="200" valign="top" align="right" style="width:200px;padding:12px 10px">${rightCol}</td>
+    <td class="official-right" width="35%" valign="top" align="right" style="width:35%;padding:12px 10px">${rightCol}</td>
+    <td class="official-center" width="30%" valign="top" align="center" style="width:30%;padding:12px 8px">${centerCol}</td>
+    <td class="official-left" width="35%" valign="top" align="left" style="width:35%;padding:12px 10px">${leftCol}</td>
   </tr>
 </table>`;
 
@@ -430,7 +432,7 @@ ${metaRows}
     bodyInner += judgmentTableHtml(doc.judgmentCard, font, size);
   } else if (!hasStudy) {
     if (doc.parties) {
-      bodyInner += `<p align="right" dir="rtl" style="font-family:${font};font-size:13px;color:${GREEN};font-weight:700;margin:12px 0 6px 0;border-bottom:1px solid ${GOLD}">الأطراف</p>`;
+      bodyInner += `<p align="right" dir="rtl" style="font-family:${font};font-size:10pt;color:${GREEN};font-weight:700;margin:12px 0 6px 0;border-bottom:1px solid ${GOLD}">الأطراف</p>`;
       bodyInner += outlookBodyParagraphs(doc.parties, {
         fontFamily: font,
         fontSizePx: size,
@@ -438,7 +440,7 @@ ${metaRows}
       });
     }
     if (doc.reasons) {
-      bodyInner += `<p align="right" dir="rtl" style="font-family:${font};font-size:13px;color:${GREEN};font-weight:700;margin:12px 0 6px 0;border-bottom:1px solid ${GOLD}">الأسباب</p>`;
+      bodyInner += `<p align="right" dir="rtl" style="font-family:${font};font-size:10pt;color:${GREEN};font-weight:700;margin:12px 0 6px 0;border-bottom:1px solid ${GOLD}">الأسباب</p>`;
       bodyInner += outlookBodyParagraphs(doc.reasons, {
         fontFamily: font,
         fontSizePx: size,
@@ -453,7 +455,7 @@ ${metaRows}
       });
     }
     if (doc.studyFields) {
-      bodyInner += `<p align="right" dir="rtl" style="font-family:${font};font-size:13px;color:${GREEN};font-weight:700;margin:12px 0 6px 0;border-bottom:1px solid ${GOLD}">الدراسة</p>`;
+      bodyInner += `<p align="right" dir="rtl" style="font-family:${font};font-size:10pt;color:${GREEN};font-weight:700;margin:12px 0 6px 0;border-bottom:1px solid ${GOLD}">الدراسة</p>`;
       bodyInner += outlookBodyParagraphs(doc.studyFields, {
         fontFamily: font,
         fontSizePx: size,
@@ -465,8 +467,8 @@ ${metaRows}
   const bodyTable = `
 <table dir="rtl" width="700" cellpadding="0" cellspacing="0" border="0" role="presentation" style="border-collapse:collapse;width:700px">
   <tr>
-    <td align="right" dir="rtl" style="padding:10px 18px;font-family:${font};font-size:${size}px;color:#111">
-      ${bodyInner || `<p align="right" dir="rtl" style="font-family:${font};font-size:${size}px;margin:0">&nbsp;</p>`}
+    <td align="right" dir="rtl" style="padding:10px 18px;font-family:${font};font-size:${Math.max(9, Math.round(size * 0.75))}pt;color:#111">
+      ${bodyInner || `<p align="right" dir="rtl" style="font-family:${font};font-size:${Math.max(9, Math.round(size * 0.75))}pt;margin:0">&nbsp;</p>`}
     </td>
   </tr>
 </table>`;
@@ -474,7 +476,7 @@ ${metaRows}
   const footTable = `
 <table dir="rtl" width="700" cellpadding="0" cellspacing="0" border="0" role="presentation" style="border-collapse:collapse;width:700px;border-top:2px solid ${GOLD};background:#fafcfb">
   <tr>
-    <td align="center" style="padding:10px 18px;font-family:${font};font-size:11px;color:#555">${esc(footerText)}</td>
+    <td align="center" style="padding:10px 18px;font-family:${font};font-size:8.5pt;color:#555">${esc(footerText)}</td>
   </tr>
 </table>`;
 
@@ -517,7 +519,7 @@ ${metaRows}
 <![endif]-->
 ${baseTag}
 </head>
-<body dir="rtl" style="margin:0;padding:0;background:#ffffff;font-family:${font};font-size:${size}px;color:#111">
+<body dir="rtl" style="margin:0;padding:0;background:#ffffff;font-family:${font};font-size:${Math.max(9, Math.round(size * 0.75))}pt;color:#111">
 ${paper}
 </body>
 </html>`;
