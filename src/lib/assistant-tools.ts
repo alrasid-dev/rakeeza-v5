@@ -119,7 +119,7 @@ function resolveColorToken(raw: string | undefined | null, fallback = '#C5A059')
   const c = String(raw || '').trim().toLowerCase();
   if (!c) return fallback;
   if (c === 'gold' || c === 'ذهبي' || c === 'ذهب') return '#C5A059';
-  if (c === 'green' || c === 'أخضر' || c === 'اخضر') return '#006C35';
+  if (c === 'green' || c === 'أخضر' || c === 'اخضر') return '#2e9e5c';
   if (c === 'red' || c === 'أحمر' || c === 'احمر') return '#B91C1C';
   if (c === 'black' || c === 'أسود' || c === 'اسود') return '#111111';
   if (c.startsWith('#')) return c.length >= 4 ? c : fallback;
@@ -189,7 +189,7 @@ function commandFromToolCall(call: AssistantToolCall): AiBodyCommand | null {
         color: resolveColorToken(String(a.color || '')),
       };
     case 'colorTitle':
-      return { op: 'colorTitle', color: resolveColorToken(String(a.color || ''), '#006C35') };
+      return { op: 'colorTitle', color: resolveColorToken(String(a.color || ''), '#2e9e5c') };
     case 'setBackground':
       return {
         op: 'setBackground',

@@ -16,6 +16,7 @@ import {
 import { researcherRoleLabel, preparerRoleLabel } from '@/lib/honorific';
 import { formatClaimAmount, normalizeFormationOrdinal } from '@/lib/arabic-normalize';
 import type { StudySections } from '@/lib/parse-study';
+import { inlineCaseCardStyles } from '@/lib/case-card';
 
 /**
  * Outlook / Word HTML clipboard — ruthless MSO-compatible letter markup.
@@ -29,7 +30,7 @@ import type { StudySections } from '@/lib/parse-study';
  * This builder NEVER wraps official-letter-html. Pure nested tables only.
  */
 
-const GREEN = '#006C35';
+const GREEN = '#2e9e5c';
 const GOLD = '#C5A059';
 const LIGHT = '#E6F2EB';
 
@@ -218,6 +219,8 @@ export function outlookBodyParagraphs(
     `<p align="${fallback}" dir="rtl" style="font-family:${font};font-size:${Math.max(9, Math.round((opts.fontSizePx || 14) * 0.75))}pt;margin:0 0 8px 0">&nbsp;</p>`,
   );
 
+  html = inlineCaseCardStyles(html);
+
   return html;
 }
 
@@ -363,7 +366,7 @@ export function buildLetterHtml(doc: OutlookLetterDoc) {
   const leftCol = `
 <table class="official-left" dir="ltr" width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="border-collapse:collapse">
   <tr><td align="left" valign="top" style="padding:0 0 6px 0">${qrImg}</td></tr>
-  <tr><td align="left" valign="top" style="padding:2px 0;font-family:${font};font-size:11pt;color:${GREEN};font-weight:700">الرقم: <span dir="ltr">${esc(doc.number || '—')}</span></td></tr>
+  <tr><td align="left" valign="top" style="padding:6px 0;font-family:${font};font-size:11pt;color:${GREEN};font-weight:700">الرقم: <span dir="ltr">${esc(doc.number || '—')}</span></td></tr>
   <tr><td align="left" valign="top" style="padding:2px 0;font-family:${font};font-size:11pt;color:${GREEN};font-weight:700">التاريخ: ${esc(dateShown)}</td></tr>
 </table>`;
 
@@ -395,7 +398,7 @@ export function buildLetterHtml(doc: OutlookLetterDoc) {
 
   // RTL: first cell = visual RIGHT (letterhead), center = logo, last = visual LEFT (QR)
   const headerRow = `
-<table class="brand-row official-header" dir="rtl" align="center" width="100%" border="0" cellpadding="0" cellspacing="0" role="presentation" style="width:100%;border-collapse:collapse;table-layout:fixed;border-bottom:2px solid ${GOLD}">
+<table class="brand-row official-header" dir="rtl" align="center" width="100%" border="0" cellpadding="0" cellspacing="0" role="presentation" style="width:100%;border-collapse:collapse;table-layout:fixed">
   <tr>
     <td class="official-right" width="35%" valign="top" align="right" style="width:35%;padding:12px 10px">${rightCol}</td>
     <td class="official-center" width="30%" valign="top" align="center" style="width:30%;padding:12px 8px">${centerCol}</td>

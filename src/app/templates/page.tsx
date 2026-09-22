@@ -3,6 +3,7 @@ import PageHeader from '@/components/PageHeader';
 import { currentUser } from '@/lib/server-user';
 import { prisma } from '@/lib/db';
 import { ensureTemplates } from '@/lib/ensure-templates';
+import { isAdmin } from '@/lib/roles';
 import TemplatesClient from './TemplatesClient';
 
 export const dynamic = 'force-dynamic';
@@ -85,6 +86,7 @@ function templateHref(t: { id: string; name: string }) {
 
 export default async function TemplatesPage() {
   const user = await currentUser();
+  const isAdminUser = isAdmin(user.role);
   await ensureTemplates();
   const templates = await prisma.template.findMany({ orderBy: { sortOrder: 'asc' } });
 
@@ -107,6 +109,15 @@ export default async function TemplatesPage() {
       name: t.name,
       description: t.description,
       category: t.category,
+      // المرحلة الثانية: تمرير حالة التفعيل حتى تعرض صفحة القوالب مفتاح التفعيل/التعطيل
+      isActive: t.isActive,
+      defaultPaperLayout: (() => {
+        try {
+          return JSON.parse(t.fieldsJson || '{}').defaultPaperLayout || null;
+        } catch {
+          return null;
+        }
+      })(),
       href: templateHref(t),
       group: g.key,
     })),
@@ -118,7 +129,7 @@ export default async function TemplatesPage() {
         title="القوالب"
         subtitle="اختر قالباً لمعاينة الورق الرسمي بجانب القائمة قبل فتح المحرر"
       />
-      <TemplatesClient groups={groups} />
+      <TemplatesClient groups={groups} isAdmin={isAdminUser} />
     </AppShell>
   );
 }

@@ -135,6 +135,7 @@ export async function ensureTemplates() {
     for (const ex of extras) {
       const existing = await prisma.template.findFirst({ where: { name: ex.name } });
       if (!existing) {
+        // المرحلة الثانية: القوالب الجديدة تُنشأ معطّلة افتراضياً حتى يفعلها المشرف يدوياً
         await prisma.template.create({
           data: {
             name: ex.name,
@@ -144,6 +145,7 @@ export async function ensureTemplates() {
             bodyHtml: ex.bodyHtml,
             isEmpty: ex.isEmpty,
             sortOrder: order++,
+            isActive: false,
           },
         });
       } else {

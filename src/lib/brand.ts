@@ -1,7 +1,7 @@
 /** Client-safe brand constants (no Node fs). */
 
 export const BRAND = {
-  green: '#006C35',
+  green: '#2e9e5c',
   gold: '#C5A059',
   light: '#E6F2EB',
   kingdom: 'المملكة العربية السعودية',

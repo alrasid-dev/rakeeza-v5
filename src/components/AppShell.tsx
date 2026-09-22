@@ -14,10 +14,29 @@ export default function AppShell({
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = usePathname();
+  // المرحلة الثانية: أسماء القوالب المفعلة لفلترة الشريط الجانبي (تُجلب من API المفلتر)
+  const [activeNames, setActiveNames] = useState<string[]>([]);
 
   useEffect(() => {
     setMobileOpen(false);
   }, [pathname]);
+
+  // المرحلة الثانية: جلب القوالب المفعلة من /api/templates (المفلتر بـ isActive=true)
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/templates')
+      .then((r) => (r.ok ? r.json() : { templates: [] }))
+      .then((d) => {
+        if (cancelled) return;
+        setActiveNames((d.templates || []).map((t: { name?: string }) => t.name || ''));
+      })
+      .catch(() => {
+        /* تجاهل — يبقى الشريط فارغاً في حالة الخطأ */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (!mobileOpen) return;
@@ -70,7 +89,7 @@ export default function AppShell({
         />
       )}
 
-      <Sidebar user={user} mobileOpen={mobileOpen} onClose={closeMobile} />
+      <Sidebar user={user} activeNames={activeNames} mobileOpen={mobileOpen} onClose={closeMobile} />
 
       <main className="flex-1 w-full min-w-0 overflow-auto md:rounded-s-3xl bg-white/60 dark:bg-[#1a2b25]/75 md:m-2 mt-14 md:mt-2 shadow-sm border-0 md:border border-white/40 dark:border-white/10 min-h-[calc(100vh-3.5rem)] md:min-h-[calc(100vh-1rem)] p-3 sm:p-6 pb-24 sm:pb-6 text-[var(--ink)]">
         {children}

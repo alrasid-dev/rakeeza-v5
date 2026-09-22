@@ -12,7 +12,7 @@ import { researcherRoleLabel, preparerRoleLabel } from '@/lib/honorific';
 import { formatClaimAmount, normalizeFormationOrdinal } from '@/lib/arabic-normalize';
 import { enrichStudySections, hasStudyContent, studyDisplayMeta } from '@/lib/study-display';
 import { BRAND } from '@/lib/brand';
-import { exportFontStack, fontStackFor, googleFontsImportCss } from '@/lib/font-stacks';
+import { exportFontStack, googleFontsImportCss } from '@/lib/font-stacks';
 import { bodyToExportHtml } from '@/lib/body-html-bridge';
 import {
   buildJudgmentBriefingBlockHtml,
@@ -22,6 +22,7 @@ import { buildPdfPrintCss } from '@/lib/pdf-print-css';
 import { pdfInlineFontName } from '@/lib/arabic-font-library';
 import { stampInlineFontFamily } from '@/lib/stamp-inline-font';
 import { outlookEmblemImgHtml } from '@/lib/outlook-public-assets';
+import { inlineCaseCardStyles } from '@/lib/case-card';
 
 export type OfficialLetterDoc = {
   number?: string | null;
@@ -57,7 +58,7 @@ export type OfficialLetterDoc = {
   tableRows?: { name: string; id?: string; extra?: string }[] | null;
 };
 
-const GREEN = '#006C35';
+const GREEN = '#2e9e5c';
 const GOLD = '#C5A059';
 
 function esc(s: string) {
@@ -211,38 +212,41 @@ function layoutTheme(layout: PaperLayoutId) {
   switch (layout) {
     case 'formal-gold':
       return {
-        paperBg: '#fff',
-        paperBorder: `2px solid ${GOLD}`,
-        bismillah: `background:linear-gradient(90deg,#8a6b2e,${GOLD},#8a6b2e);border-bottom:3px solid ${GREEN};`,
-        meta: `background:#fffaf0;border:2px solid ${GOLD};border-radius:8px;`,
-        foot: `border-top:2px solid ${GOLD};background:#fff8e8;`,
+        paperBg: '#fffef9',
+        paperBorder: `3px double ${GOLD}`,
+        bismillah: `background: linear-gradient(90deg, #8a6b2e, ${GOLD}, #8a6b2e); color: #fff; padding: 14px; letter-spacing: 2px; text-align: center; font-weight: 700;`,
+        meta: `background: #fffaf0; border: 2px solid ${GOLD}; border-radius: 0; padding: 14px;`,
+        foot: `border-top: 3px double ${GOLD}; padding-top: 12px; text-align: center; font-style: italic; color: #6b5420;`,
+        sectionStyle: `color: ${GOLD}; border-bottom: 2px solid ${GOLD}; padding-bottom: 4px; margin: 16px 0 8px; font-weight: 700; letter-spacing: 1px;`,
         extraChrome: '',
       };
     case 'compact-memo':
       return {
-        paperBg: '#fff',
-        paperBorder: `1px solid ${GREEN}`,
-        bismillah: `background:${GREEN};border-bottom:2px solid ${GOLD};`,
-        meta: `background:#f3f7f4;border:1px solid ${GREEN}66;border-radius:4px;`,
-        foot: `border-top:1px solid ${GOLD};background:#fff;`,
+        paperBg: '#ffffff',
+        paperBorder: `1px solid #cccccc`,
+        bismillah: `background: transparent; color: ${GREEN}; padding: 6px; font-size: 12px; text-align: right;`,
+        meta: `background: #fafafa; border: none; border-right: 4px solid ${GREEN}; border-radius: 0; padding: 10px 14px;`,
+        foot: `border-top: 1px dashed #999; padding-top: 8px; font-size: 11px;`,
+        sectionStyle: `background: transparent; border-right: 3px solid ${GREEN}; padding: 4px 12px; margin: 12px 0 6px; font-weight: 700; color: ${GREEN};`,
         extraChrome: '',
       };
     case 'taameem-circular':
       return {
         paperBg: '#fff',
         paperBorder: `2px solid ${GREEN}`,
-        bismillah: `background:#004d26;border-bottom:3px solid ${GOLD};`,
+        bismillah: `background:${GREEN};border-bottom:3px solid ${GOLD};`,
         meta: `background:#E6F2EB;border:1px solid ${GREEN};border-radius:999px;`,
         foot: `border-top:2px solid ${GOLD};background:#f0f7f3;`,
         extraChrome: '',
       };
     case 'study-report':
       return {
-        paperBg: '#fff',
-        paperBorder: `2px solid ${GREEN}`,
-        bismillah: `background:${GREEN};border-bottom:3px solid ${GOLD};`,
-        meta: `background:#fff;border-top:2px solid ${GREEN};border-bottom:2px solid ${GREEN};border-radius:0;`,
-        foot: `border-top:4px double ${GOLD};background:#fafcfb;`,
+        paperBg: '#ffffff',
+        paperBorder: `3px solid ${GREEN}`,
+        bismillah: `background: linear-gradient(135deg, ${GREEN}, #1f7a3f); color: #fff; padding: 12px 16px; font-size: 16px; font-weight: 700; border-radius: 8px 8px 0 0; box-shadow: 0 4px 8px rgba(0,0,0,0.1);`,
+        meta: `background: #f0f9f3; border: 1px solid ${GREEN}33; border-radius: 8px; padding: 12px; box-shadow: inset 0 2px 4px rgba(46,158,92,0.05);`,
+        foot: `border-top: 4px double ${GOLD}; padding-top: 10px;`,
+        sectionStyle: `background: ${GREEN}; color: #fff; padding: 8px 14px; margin: 16px 0 8px; border-radius: 6px; font-weight: 700; box-shadow: 0 2px 6px rgba(0,0,0,0.15);`,
         extraChrome: '',
       };
     case 'identity-service-a':
@@ -269,9 +273,9 @@ function layoutTheme(layout: PaperLayoutId) {
         paperBorder: `2px solid ${IDENTITY_COLORS.gold}`,
         bismillah: `background:${IDENTITY_COLORS.greenDeep};border-bottom:3px solid ${IDENTITY_COLORS.gold};text-align:right;padding-inline:20px;`,
         meta: `background:#fff;border:1px solid ${IDENTITY_COLORS.gold}55;border-radius:8px;`,
-        foot: `border-top:3px solid ${IDENTITY_COLORS.gold};background:#1B4332;color:#f5f5f5;`,
+        foot: `border-top:3px solid ${IDENTITY_COLORS.gold};background:#0f5c2f;color:#f5f5f5;`,
         modernHex: true,
-        extraChrome: `<div style="position:relative;line-height:0;height:36px;background:#1B4332">
+        extraChrome: `<div style="position:relative;line-height:0;height:36px;background:#0f5c2f">
           <svg xmlns="http://www.w3.org/2000/svg" width="80" height="36" viewBox="0 0 80 36" style="position:absolute;left:4px;bottom:0;opacity:0.55" aria-hidden="true">
             <polygon points="20,2 36,11 36,29 20,38 4,29 4,11" fill="${IDENTITY_COLORS.gold}" opacity="0.45"/>
             <polygon points="44,6 56,13 56,27 44,34 32,27 32,13" fill="none" stroke="${IDENTITY_COLORS.gold}" stroke-width="1.2"/>
@@ -326,21 +330,19 @@ export type OfficialLetterHtmlOpts = {
 export function buildOfficialLetterHtml(doc: OfficialLetterDoc, opts?: OfficialLetterHtmlOpts) {
   const layout = normalizePaperLayout(doc.paperLayout);
   const theme = layoutTheme(layout);
+  const secStyle = (theme as { sectionStyle?: string }).sectionStyle || `margin:12px 0 6px;color:${GREEN};font-size:13px;border-bottom:1px solid ${GOLD};padding-bottom:2px`;
   const court = doc.courtName || 'المحكمة العمالية بالرياض';
   const header =
     doc.headerLines?.filter(Boolean) ||
     ['المملكة العربية السعودية', 'وزارة العدل', court];
   const footer = doc.footer || 'للاستخدام الداخلي فقط';
-  const useExportFonts = Boolean(opts?.forPdf || opts?.forOutlook);
-  const font = useExportFonts ? exportFontStack(doc.fontFamily) : fontStackFor(doc.fontFamily);
+  const font = exportFontStack(doc.fontFamily);
   const size = doc.fontSizePt || 14;
   /** PDF: single embedded family name. Outlook/preview: full concrete stack. */
   const paraFont = opts?.forPdf
     ? `'${pdfInlineFontName(doc.fontFamily)}'`
     : font;
-  const gfImport = useExportFonts
-    ? googleFontsImportCss([String(doc.fontFamily || 'Traditional Arabic')])
-    : '';
+  const gfImport = googleFontsImportCss([String(doc.fontFamily || 'Traditional Arabic')]);
 
   const pageCss = opts?.forPdf
     ? buildPdfPrintCss({ fontStack: font, bodyColor: '#111' })
@@ -358,13 +360,10 @@ export function buildOfficialLetterHtml(doc: OfficialLetterDoc, opts?: OfficialL
 }`
       : '';
 
-  // Preview: next/font. Outlook: concrete stacks + GF @import. PDF: Base64 embeds only (no network).
+  // Preview/Outlook: concrete stacks + Google Fonts @import. PDF: Base64 embeds only (no network).
   const fontFace = opts?.forPdf
     ? embeddedBlock
-    : useExportFonts
-      ? `${gfImport}
-${embeddedBlock}`
-      : `@import url('https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;700&display=swap');
+    : `${gfImport}
 ${embeddedBlock}`;
 
   const qr = doc.qrDataUrl
@@ -441,11 +440,11 @@ ${embeddedBlock}`;
       : '';
   const headerCellBg = layout === 'modern-hex' ? 'background:#F9F7F1;' : '';
   const dateShown = officialDateDisplay(doc.dateHijri, doc.dateGregorian);
-  const leftCol = `<table class="official-left" dir="ltr" align="left" width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse:collapse">
-      <tr><td align="left" valign="top" style="padding:0 0 6px">${qrImg}</td></tr>
-      <tr><td align="left" valign="top" data-field="number" style="padding:2px 0;font-family:${paraFont};font-size:12px;color:${GREEN};font-weight:700;mso-line-height-rule:exactly">الرقم: <span dir="ltr">${esc(doc.number || '—')}</span></td></tr>
-      <tr><td align="left" valign="top" data-field="dateGregorian" style="padding:2px 0;font-family:${paraFont};font-size:12px;color:${GREEN};font-weight:700;mso-line-height-rule:exactly">التاريخ: ${esc(dateShown)}</td></tr>
-    </table>`;
+  const leftCol = `<div class="official-left" dir="ltr" align="left" style="line-height:1.6">
+      <div style="margin-bottom:6px">${qrImg}</div>
+      <div data-field="number" style="font-family:${paraFont};font-size:12px;color:${GREEN};font-weight:700">الرقم: <span dir="ltr">${esc(doc.number || '—')}</span></div>
+      <div data-field="dateGregorian" style="font-family:${paraFont};font-size:12px;color:${GREEN};font-weight:700">التاريخ: ${esc(dateShown)}</div>
+    </div>`;
   const centerCol = `<table class="official-center" align="center" width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse:collapse">
       <tr><td align="center" valign="top" style="padding:0">${emblem}</td></tr>
       ${
@@ -464,16 +463,16 @@ ${embeddedBlock}`;
       const sizePx = isCourt ? 16 : isPlatform ? 12 : 13;
       const color = isPlatform ? GOLD : GREEN;
       const weight = isPlatform ? 700 : 800;
-      return `<tr><td class="${isPlatform ? 'sub' : 'court'}" align="right" dir="rtl" style="padding:1px 0;font-family:${paraFont};font-size:${sizePx}px;color:${color};font-weight:${weight};text-align:right;mso-line-height-rule:exactly">${esc(h)}</td></tr>`;
+      return `<p class="${isPlatform ? 'sub' : 'court'}" dir="rtl" style="margin:0;padding:0;font-family:${paraFont};font-size:${sizePx}px;color:${color};font-weight:${weight};text-align:right">${esc(h)}</p>`;
     })
     .join('');
-  const rightCol = `<table class="official-right" dir="rtl" align="right" width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse:collapse">${rightLines}</table>`;
+  const rightCol = `<div class="official-right" dir="rtl" align="right" style="line-height:1.6">${rightLines}</div>`;
 
-  const headerTable = `<table class="brand-row official-header" dir="ltr" width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse:collapse;border-bottom:2px solid ${GOLD};table-layout:fixed;${layout === 'modern-hex' ? 'background:#F9F7F1;' : ''}">
+  const headerTable = `<table class="brand-row official-header" dir="rtl" width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse:collapse;table-layout:fixed;${layout === 'modern-hex' ? 'background:#F9F7F1;' : ''}">
     <tr>
-      <td class="official-left" width="33%" valign="top" align="left" style="padding:14px 12px;width:33%;${headerCellBg}">${leftCol}</td>
-      <td class="official-center" width="34%" valign="top" align="center" style="padding:14px 8px;width:34%;${headerCellBg}">${centerCol}</td>
       <td class="official-right" width="33%" valign="top" align="right" style="padding:14px 10px 14px 6px;width:33%;${headerCellBg}">${rightCol}</td>
+      <td class="official-center" width="34%" valign="top" align="center" style="padding:14px 8px;width:34%;${headerCellBg}">${centerCol}</td>
+      <td class="official-left" width="33%" valign="top" align="left" style="padding:14px 12px;width:33%;${headerCellBg}">${leftCol}</td>
     </tr>
   </table>`;
 
@@ -525,7 +524,7 @@ ${embeddedBlock}`;
         ? `<div style="grid-column:1/-1"><span class="label">مرفقات:</span> ${esc(doc.attachments)}</div>`
         : ''
     }
-    <div data-field="subject" style="grid-column:1/-1;cursor:pointer"><span class="label">الموضوع:</span> ${esc(previewSubject)}</div>
+    <div data-field="subject" style="grid-column:1/-1;cursor:pointer;font-family:${paraFont} !important"><span class="label">الموضوع:</span> ${esc(previewSubject)}</div>
   </div>`;
 
   const metaBox = opts?.forOutlook ? metaBoxOutlook : metaBoxGrid;
@@ -548,12 +547,12 @@ ${embeddedBlock}`;
     ${isBriefing && doc.judgmentCard?.length ? `<div data-field="body" style="cursor:pointer;font-family:${paraFont};font-size:${size}px">${judgmentBriefingHtml(doc, doc.judgmentCard, paraFont)}</div>` : ''}
     ${
       !hasStudy && !isBriefing && doc.parties
-        ? `<div data-field="parties" style="cursor:pointer"><h3 style="margin:12px 0 6px;color:${GREEN};font-size:13px;border-bottom:1px solid ${GOLD};padding-bottom:2px">الأطراف</h3><div class="body">${pre(doc.parties)}</div></div>`
+        ? `<div data-field="parties" style="cursor:pointer"><h3 style="${secStyle}">الأطراف</h3><div class="body">${pre(doc.parties)}</div></div>`
         : ''
     }
     ${
       !hasStudy && !isBriefing && doc.reasons
-        ? `<div data-field="reasons" style="cursor:pointer"><h3 style="margin:12px 0 6px;color:${GREEN};font-size:13px;border-bottom:1px solid ${GOLD};padding-bottom:2px">الأسباب</h3><div class="body">${pre(doc.reasons)}</div></div>`
+        ? `<div data-field="reasons" style="cursor:pointer"><h3 style="${secStyle}">الأسباب</h3><div class="body">${pre(doc.reasons)}</div></div>`
         : ''
     }
     ${
@@ -563,7 +562,7 @@ ${embeddedBlock}`;
     }
     ${
       !hasStudy && !isBriefing && doc.studyFields
-        ? `<div data-field="studyFields" style="cursor:pointer"><h3 style="margin:12px 0 6px;color:${GREEN};font-size:13px;border-bottom:1px solid ${GOLD};padding-bottom:2px">الدراسة</h3><div class="body">${pre(doc.studyFields)}</div></div>`
+        ? `<div data-field="studyFields" style="cursor:pointer"><h3 style="${secStyle}">الدراسة</h3><div class="body">${pre(doc.studyFields)}</div></div>`
         : ''
     }
     ${
@@ -577,24 +576,31 @@ ${embeddedBlock}`;
 
   // Outlook Word engine mangles position:absolute SVG footers — solid bar + text only
   const footInner = opts?.forOutlook
-    ? `<div style="padding:10px 18px;text-align:center;color:${layout === 'modern-hex' ? '#f5f5f5' : '#555'};font-size:11px;font-family:${paraFont};background:${layout === 'modern-hex' ? '#1B4332' : 'transparent'}">${esc(footer)}</div>`
+    ? `<div style="padding:10px 18px;text-align:center;color:${layout === 'modern-hex' ? '#f5f5f5' : '#555'};font-size:11px;font-family:${paraFont};background:${layout === 'modern-hex' ? '#0f5c2f' : 'transparent'}">${esc(footer)}</div>`
     : theme.extraChrome
       ? theme.extraChrome + `<div style="padding:8px 18px;text-align:center;color:#555;font-size:11px">${esc(footer)}</div>`
       : esc(footer);
 
   const topRule = isUrgent
     ? `<div class="bismillah" style="position:relative;min-height:28px"><span style="display:inline-block;margin:4px 12px;background:#c00000;color:#fff;font-size:11px;font-weight:700;padding:2px 10px;border-radius:999px">⚠ عاجل</span></div>`
-    : `<div style="border-bottom:3px solid ${GOLD};height:0;line-height:0;font-size:0">&nbsp;</div>`;
+    : '';
 
   // Outlook: single outer table width ~700 for MSO Word HTML engine
+  const goldHexagons = `<div style="position:absolute;bottom:60px;left:20px;display:flex;gap:6px;z-index:1;pointer-events:none" aria-hidden="true">
+    <svg width="40" height="40" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><polygon points="50,3 93,27 93,73 50,97 7,73 7,27" fill="${GREEN}"/></svg>
+    <svg width="40" height="40" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><polygon points="50,3 93,27 93,73 50,97 7,73 7,27" fill="${GOLD}"/></svg>
+    <svg width="40" height="40" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><polygon points="50,3 93,27 93,73 50,97 7,73 7,27" fill="${GREEN}" opacity="0.55"/></svg>
+  </div>`;
+
   const paperInner = `
   ${topRule}
   ${brandRow}
   ${metaBox}
   ${bodySection}
   ${opts?.forOutlook
-    ? `<table dir="rtl" width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse:collapse;margin:0"><tr><td class="foot" style="padding:0;border-top:2px solid ${GOLD};${layout === 'modern-hex' ? 'background:#1B4332;color:#f5f5f5;' : 'background:#fafcfb;color:#555;'}">${footInner}</td></tr></table>`
-    : `<div class="foot" style="margin-top:18px;padding:10px 18px;text-align:center;color:#555;font-size:11px;${theme.foot}">${footInner}</div>`
+    ? `<table dir="rtl" width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse:collapse;margin:0"><tr><td class="foot" style="padding:0;border-top:2px solid ${GOLD};${layout === 'modern-hex' ? 'background:#0f5c2f;color:#f5f5f5;' : 'background:#fafcfb;color:#555;'}">${footInner}</td></tr></table>`
+    : `${goldHexagons}
+  <div class="foot" style="margin-top:18px;padding:10px 18px;text-align:center;color:#555;font-size:11px;${theme.foot}">${footInner}</div>`
   }`;
 
   const paperHtml = opts?.forOutlook
@@ -617,6 +623,7 @@ ${embeddedBlock}`;
   grid-template-columns: 1fr 1fr;
   gap: 6px 16px;
   font-size: ${size}px;
+  font-family: ${paraFont};
   ${theme.meta}
 }
 .meta .label { color: ${GREEN}; font-weight: 700; }`;
@@ -628,8 +635,9 @@ ${embeddedBlock}`;
   font-family: inherit;
 }`;
 
-  const stampedPaper =
+  const stampedPaperBase =
     opts?.forPdf || opts?.forOutlook ? stampInlineFontFamily(paperHtml, paraFont) : paperHtml;
+  const stampedPaper = opts?.forOutlook ? inlineCaseCardStyles(stampedPaperBase) : stampedPaperBase;
 
   return `<!DOCTYPE html>
 <html lang="ar" dir="rtl">
@@ -678,6 +686,7 @@ ${inheritRule}
   ${theme.bismillah}
 }
 .brand-row { width: 100%; }
+.brand-row, .brand-row td, .brand-row th, .official-left, .official-center, .official-right, .official-header { border: none !important; }
 .brand-row .court { color: ${GREEN}; font-weight: 800; }
 .brand-row .sub { color: ${GOLD}; font-size: 12px; margin-top: 2px; }
 ${metaCss}
@@ -686,11 +695,7 @@ ${opts?.forOutlook
   : `.section { padding: 4px 18px 10px; overflow: hidden; max-width: 100%; overflow-wrap: anywhere; }`
 }
 .section h3 {
-  margin: 12px 0 6px;
-  color: ${GREEN};
-  font-size: 13px;
-  border-bottom: 1px solid ${GOLD};
-  padding-bottom: 2px;
+  ${secStyle}
 }
 .body { font-family: ${paraFont}; white-space: pre-wrap; }
 .body p { white-space: pre-wrap; }
@@ -717,9 +722,68 @@ ${opts?.forOutlook
   word-break: break-word;
   vertical-align: top;
 }
-.body tr:nth-child(even) td, .section tr:nth-child(even) td, .paper tr:nth-child(even) td {
-  background-color: #f8fafc;
+/* ======================== */
+/* بطاقة القضية — CSS نظيف */
+/* ======================== */
+
+table.case-card {
+  width: 100% !important;
+  border-collapse: collapse !important;
+  border-spacing: 0 !important;
+  table-layout: auto !important;
+  direction: rtl !important;
+  margin: 12px 0 !important;
+  border: 1px solid ${GREEN} !important;
 }
+
+table.case-card td {
+  padding: 10px 14px !important;
+  vertical-align: middle !important;
+  border: none !important;
+}
+
+table.case-card td.label,
+table.case-card td[data-col-type="label"] {
+  width: 0 !important;
+  min-width: max-content !important;
+  white-space: nowrap !important;
+  word-break: keep-all !important;
+  overflow-wrap: normal !important;
+  background: ${GREEN} !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  text-align: right !important;
+  direction: rtl !important;
+  border: none !important;
+  border-left: 1px solid ${GREEN} !important;
+  padding: 10px 14px !important;
+}
+
+table.case-card td.label p,
+table.case-card td[data-col-type="label"] p {
+  white-space: nowrap !important;
+}
+
+table.case-card td.value,
+table.case-card td[data-col-type="value"] {
+  background: #ffffff !important;
+  color: #111111 !important;
+  text-align: right !important;
+  direction: rtl !important;
+  border: none !important;
+  padding: 10px 14px !important;
+}
+
+table.case-card td.value p {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+table.case-card td.value p:not(:last-child) {
+  margin-bottom: 4px !important;
+}
+
+/* تمت إزالة التظليل الرمادي للصفوف الزوجية */
 .foot {
   margin-top: 18px;
   padding: 10px 18px;

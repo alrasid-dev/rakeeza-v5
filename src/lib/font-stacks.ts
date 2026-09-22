@@ -47,6 +47,11 @@ const PREVIEW_STACK: Record<string, string> = {
   Naskh: 'var(--font-noto-naskh), "Noto Naskh Arabic", "Amiri", serif',
   Lotus: 'var(--font-cairo), "Cairo", Tahoma, sans-serif',
   Sultan: 'var(--font-amiri), "Amiri", serif',
+  Diwani: 'var(--font-aref-ruqaa), "Aref Ruqaa", serif',
+  Thuluth: 'var(--font-amiri), "Amiri", serif',
+  Ruqaa: 'var(--font-aref-ruqaa), "Aref Ruqaa", serif',
+  Farisi: 'var(--font-scheherazade), "Scheherazade New", serif',
+  Koufi: 'var(--font-reem-kufi), "Reem Kufi", sans-serif',
 };
 
 /** Official toolbar order (Step 4) — requested ten first, then the full library. */
@@ -124,6 +129,11 @@ const GOOGLE_FAMILY_PARAM: Record<string, string> = {
   Naskh: 'Noto+Naskh+Arabic:wght@400;700',
   Lotus: 'Cairo:wght@400;700',
   Sultan: 'Amiri:wght@400;700',
+  Diwani: 'Aref+Ruqaa:wght@400;700',
+  Thuluth: 'Amiri:wght@400;700',
+  Ruqaa: 'Aref+Ruqaa:wght@400;700',
+  Farisi: 'Scheherazade+New:wght@400;700',
+  Koufi: 'Reem+Kufi:wght@400;700',
 };
 
 /** Always-include Google families for Outlook HTML (when online). PDF uses Base64 instead. */
@@ -194,6 +204,11 @@ export function docxFontName(id?: string | null): string {
     Naskh: 'Noto Naskh Arabic',
     Lotus: 'Cairo',
     Sultan: 'Amiri',
+    Diwani: 'Aref Ruqaa',
+    Thuluth: 'Amiri',
+    Ruqaa: 'Aref Ruqaa',
+    Farisi: 'Scheherazade New',
+    Koufi: 'Reem Kufi',
   };
   return map[String(id || '')] || 'Traditional Arabic';
 }

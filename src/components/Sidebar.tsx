@@ -43,6 +43,12 @@ const FORM_ITEMS: { slug: string; name: string; layout?: string }[] = [
     layout: 'taameem-circular',
   },
   {
+    // المرحلة الثانية: قالب تصحيح الحكم — نفس بنية بطاقة مدخلات الأحكام بآليات تصحيح
+    slug: 'madkhalat-ahkam-tashih',
+    name: 'بطاقة عرض تصحيح حكم',
+    layout: 'taameem-circular',
+  },
+  {
     slug: 'madkhalat-ahkam-hex',
     name: 'مدخلات الأحكام بطاقة عرض — عصري هندسي',
     layout: 'modern-hex',
@@ -54,15 +60,30 @@ function formHref(slug: string, name: string, layout?: string) {
   return layout ? `${base}&layout=${encodeURIComponent(layout)}` : base;
 }
 
-const formsGroup: NavGroup = {
-  id: 'forms',
-  label: 'النماذج',
-  children: FORM_ITEMS.map((f) => ({
-    href: formHref(f.slug, f.name, f.layout),
-    label: f.name,
-    formSlug: f.slug,
-  })),
-};
+// المرحلة الثانية: بناء مجموعة "النماذج" من القوالب المفعلة فقط (isActive = true)
+// فلترة باتجاهين: النماذج المفعّلة من القائمة الثابتة + أي قالب مفعّل غير موجود في القائمة.
+function makeFormsGroup(activeNames: string[]): NavGroup {
+  const activeSet = new Set(activeNames);
+  const knownNames = new Set(FORM_ITEMS.map((i) => i.name));
+  const filtered = FORM_ITEMS.filter((i) => activeSet.has(i.name));
+  const missing = activeNames
+    .filter((n) => !knownNames.has(n))
+    .map((name) => ({
+      // مؤقتاً: لا يوجد slug في قاعدة البيانات — نستخدم ?name= وستُضاف هذه النماذج يدوياً في الخطوة 5
+      href: `/documents/new?name=${encodeURIComponent(name)}`,
+      label: name,
+      formSlug: undefined,
+    }));
+  const children: NavLeaf[] = [
+    ...filtered.map((f) => ({
+      href: formHref(f.slug, f.name, f.layout),
+      label: f.name,
+      formSlug: f.slug,
+    })),
+    ...missing,
+  ];
+  return { id: 'forms', label: 'النماذج', children };
+}
 
 function libraryChildren(role?: string): NavLeaf[] {
   const items: NavLeaf[] = [
@@ -268,10 +289,12 @@ function TreeGroup({
 
 function SidebarInner({
   user,
+  activeNames = [],
   mobileOpen = false,
   onClose,
 }: {
   user?: { name: string; role: string; email?: string } | null;
+  activeNames?: string[];
   mobileOpen?: boolean;
   onClose?: () => void;
 }) {
@@ -285,6 +308,8 @@ function SidebarInner({
     () => ({ id: 'library', label: 'المكتبة', children: libraryChildren(role) }),
     [role],
   );
+  // المرحلة الثانية: مجموعة "النماذج" المفعّلة فقط
+  const formsGroup = useMemo(() => makeFormsGroup(activeNames), [activeNames]);
 
   const isAdmin = role ? canSeeFullAdmin(role) : false;
   const isAminRole = role ? isAmin(role) : false;
@@ -326,7 +351,7 @@ function SidebarInner({
       }
       return changed ? next : prev;
     });
-  }, [path, search, libGroup.children, isAdmin]);
+  }, [path, search, formsGroup.children, libGroup.children, isAdmin]);
 
   const persist = useCallback((next: Record<string, boolean>) => {
     setOpenMap(next);
@@ -501,10 +526,12 @@ function SidebarInner({
 
 export default function Sidebar({
   user,
+  activeNames = [],
   mobileOpen = false,
   onClose,
 }: {
   user?: { name: string; role: string; email?: string } | null;
+  activeNames?: string[];
   mobileOpen?: boolean;
   onClose?: () => void;
 }) {
@@ -521,7 +548,7 @@ export default function Sidebar({
         </aside>
       }
     >
-      <SidebarInner user={user} mobileOpen={mobileOpen} onClose={onClose} />
+      <SidebarInner user={user} activeNames={activeNames} mobileOpen={mobileOpen} onClose={onClose} />
     </Suspense>
   );
 }

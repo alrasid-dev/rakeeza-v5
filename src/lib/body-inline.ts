@@ -27,8 +27,8 @@ const COLOR_OPEN_RE = /【ك:(#[0-9A-Fa-f]{3,8})】/g;
 const ANY_MARK_RE = /【\/?(?:ك:#[0-9A-Fa-f]{3,8}|ك|ح٢|ح|ع)】/g;
 
 export const TEXT_COLORS: { id: string; label: string; hex: string }[] = [
-  { id: 'default', label: 'أسود', hex: '#111111' },
-  { id: 'green', label: 'أخضر وزاري', hex: '#006C35' },
+  { id: 'default', label: 'أسود', hex: '#000000' },
+  { id: 'green', label: 'أخضر وزاري', hex: '#2e9e5c' },
   { id: 'gold', label: 'ذهبي', hex: '#C5A059' },
   { id: 'red', label: 'أحمر', hex: '#B00020' },
   { id: 'navy', label: 'كحلي', hex: '#0B3D5C' },
@@ -37,7 +37,7 @@ export const TEXT_COLORS: { id: string; label: string; hex: string }[] = [
 
 function openTag(kind: InlineKind, colorHex?: string): string {
   if (kind === 'color') {
-    const hex = normalizeHex(colorHex || '#006C35');
+    const hex = normalizeHex(colorHex || '#2e9e5c');
     return `【ك:${hex}】`;
   }
   return OPEN[kind];
@@ -99,7 +99,7 @@ export function parseInlineNodes(raw: string): InlineNode[] {
     pushText(s.slice(last, m.index));
     const tok = m[0];
     if (tok.startsWith('【ك:')) {
-      color = normalizeHex(m[1] || '#006C35');
+      color = normalizeHex(m[1] || '#2e9e5c');
     } else if (tok === '【/ك】') {
       color = undefined;
     } else if (tok === '【ح】') {

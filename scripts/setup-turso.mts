@@ -64,7 +64,16 @@ async function main(): Promise<void> {
   console.log(`Source SQLite: ${LOCAL_FILE}`);
   console.log(`Tables found: ${tableNames.length}\n`);
 
-  for (const table of tableNames) {
+  // FK-safe order: parents before children (Court → Position → OrgUnit → Employee → User → … → Document → AuditLog)
+  const FK_ORDER = [
+    'Court', 'Position', 'OrgUnit', 'Employee', 'User',
+    'NumberingRule', 'Letterhead', 'Template', 'Setting', 'RegistrationRequest',
+    'Document', 'AuditLog',
+  ];
+  const ordered = FK_ORDER.filter((t) => tableNames.includes(t));
+  for (const t of tableNames) if (!ordered.includes(t)) ordered.push(t);
+
+  for (const table of ordered) {
     const createRes = await local.execute(
       'SELECT sql FROM sqlite_master WHERE type = \'table\' AND name = ?',
       [table],
@@ -87,16 +96,40 @@ async function main(): Promise<void> {
     const placeholders = cols.map(() => '?').join(', ');
     const insertSql = `INSERT INTO "${table}" (${colList}) VALUES (${placeholders})`;
 
-    // Copy in chunks to keep batches small.
     const CHUNK = 100;
-    for (let i = 0; i < rows.length; i += CHUNK) {
-      const batch = rows.slice(i, i + CHUNK).map((row) => ({
-        sql: insertSql,
-        args: cols.map((c) => row[c]),
-      }));
-      await turso.batch(batch);
+    const insertChunk = async (chunk: typeof rows) => {
+      for (let i = 0; i < chunk.length; i += CHUNK) {
+        const batch = chunk.slice(i, i + CHUNK).map((row) => ({
+          sql: insertSql,
+          args: cols.map((c) => row[c]),
+        }));
+        await turso.batch(batch);
+      }
+    };
+
+    if (table === 'OrgUnit') {
+      // Self-reference: insert roots first, then children in dependency passes.
+      const roots = rows.filter((r) => r.parentId == null);
+      const children = rows.filter((r) => r.parentId != null);
+      const inserted = new Set<string>();
+      for (const r of roots) inserted.add(String(r.id));
+      await insertChunk(roots);
+      let remaining = children;
+      let pass = 0;
+      while (remaining.length && pass < 20) {
+        pass++;
+        const next = remaining.filter((r) => r.parentId == null || inserted.has(String(r.parentId)));
+        const rest = remaining.filter((r) => !(r.parentId == null || inserted.has(String(r.parentId))));
+        if (!next.length) break;
+        for (const r of next) inserted.add(String(r.id));
+        await insertChunk(next);
+        remaining = rest;
+      }
+      console.log(`✔ ${table}: ${rows.length} rows copied (${pass} passes)`);
+    } else {
+      await insertChunk(rows);
+      console.log(`✔ ${table}: ${rows.length} rows copied`);
     }
-    console.log(`✔ ${table}: ${rows.length} rows copied`);
   }
 
   console.log('\nDone. Turso is ready — add TURSO_DATABASE_URL + TURSO_AUTH_TOKEN to Vercel and redeploy.');

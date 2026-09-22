@@ -73,8 +73,8 @@ export function normalizePaperLayout(v: unknown): PaperLayoutId {
 export const IDENTITY_COLORS = {
   cream: '#F7F1E3',
   creamDeep: '#EFE6D4',
-  green: '#006C35',
-  greenDeep: '#004d26',
+  green: '#2e9e5c',
+  greenDeep: '#0f5c2f',
   teal: '#0B6E4F',
   tealBand: '#147A5F',
   gold: '#C5A059',

@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useRef, useState } from 'react';
 import { FONT_OPTIONS } from '@/lib/font-stacks';
 import { TEXT_COLORS } from '@/lib/body-inline';
 
@@ -19,6 +20,72 @@ const BG_COLORS: { id: string; label: string; hex: string }[] = [
   { id: 'yellow', label: 'أصفر', hex: '#FFF59D' },
 ];
 
+function TableGridPicker({ onPick }: { onPick: (rows: number, cols: number) => void }) {
+  const [hover, setHover] = useState<{ r: number; c: number } | null>(null);
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const MAX = 8;
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
+        setOpen(false);
+        setHover(null);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setOpen(false);
+        setHover(null);
+      }
+    };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  return (
+    <div ref={rootRef} style={{ position: 'relative', display: 'inline-block' }}>
+      <button
+        type="button"
+        title="إدراج جدول"
+        className="px-2 py-1.5 rounded-lg border border-moj-green/40 text-xs text-moj-green font-bold"
+        onClick={() => setOpen((v) => !v)}
+      >
+        جدول ▼
+      </button>
+      {open && (
+        <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, padding: 8, background: '#fff', border: '1px solid #ddd', borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.15)', zIndex: 50 }}>
+          <div onMouseLeave={() => setHover(null)}>
+            {Array.from({ length: MAX }, (_, r) => (
+              <div key={r} style={{ display: 'flex', gap: 2 }}>
+                {Array.from({ length: MAX }, (_, c) => {
+                  const active = hover && r <= hover.r && c <= hover.c;
+                  return (
+                    <div
+                      key={c}
+                      onMouseEnter={() => setHover({ r, c })}
+                      onClick={() => { onPick(r + 1, c + 1); setOpen(false); setHover(null); }}
+                      style={{ width: 16, height: 16, background: active ? '#2e9e5c' : '#fff', border: active ? '1px solid #2e9e5c' : '1px solid #ccc', cursor: 'pointer' }}
+                    />
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+          <div style={{ textAlign: 'center', fontSize: 11, marginTop: 8, color: '#666' }}>
+            {hover ? `جدول ${hover.c + 1} × ${hover.r + 1}` : 'اختر الحجم'}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function StyleToolbar({
   value,
   onChange,
@@ -32,6 +99,10 @@ export default function StyleToolbar({
   onFontSizeSelection,
   onInsertTable,
   onInsertAdaptedTable,
+  onUndo,
+  onRedo,
+  canUndo,
+  canRedo,
 }: {
   value: DocStyle;
   onChange: (next: DocStyle) => void;
@@ -48,12 +119,38 @@ export default function StyleToolbar({
   /** Apply font to current TipTap selection (doc-level still via onChange). */
   onFontFamilySelection?: (fontFamily: string) => void;
   onFontSizeSelection?: (pt: number) => void;
-  onInsertTable?: () => void;
+  onInsertTable?: (rows: number, cols: number) => void;
   /** Open the smart "adapt pasted table" dialog (Universal Table & Model Adaptor). */
   onInsertAdaptedTable?: () => void;
+  onUndo?: () => void;
+  onRedo?: () => void;
+  canUndo?: boolean;
+  canRedo?: boolean;
 }) {
   return (
     <div className="flex flex-wrap items-end gap-2 rounded-xl border border-moj-green/20 bg-white dark:bg-[var(--surface)] p-2 text-sm">
+      {onUndo && (
+        <button
+          type="button"
+          title="تراجع (Ctrl+Z)"
+          disabled={!canUndo}
+          onClick={onUndo}
+          className="px-2.5 py-1.5 rounded-lg border border-gray-300 dark:border-white/20 text-sm disabled:opacity-40"
+        >
+          ↶
+        </button>
+      )}
+      {onRedo && (
+        <button
+          type="button"
+          title="إعادة (Ctrl+Shift+Z)"
+          disabled={!canRedo}
+          onClick={onRedo}
+          className="px-2.5 py-1.5 rounded-lg border border-gray-300 dark:border-white/20 text-sm disabled:opacity-40"
+        >
+          ↷
+        </button>
+      )}
       <div>
         <label className="label text-xs mb-0.5">الخط</label>
         <select
@@ -201,16 +298,7 @@ export default function StyleToolbar({
                 ع
               </button>
             )}
-            {onInsertTable && (
-              <button
-                type="button"
-                title="إدراج جدول 3×3"
-                className="px-2 py-1.5 rounded-lg border border-moj-green/40 text-xs text-moj-green font-bold"
-                onClick={() => onInsertTable()}
-              >
-                جدول
-              </button>
-            )}
+            {onInsertTable && <TableGridPicker onPick={onInsertTable} />}
             {onInsertAdaptedTable && (
               <button
                 type="button"

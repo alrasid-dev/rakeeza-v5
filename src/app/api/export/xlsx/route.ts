@@ -6,9 +6,10 @@ import { attachmentDisposition } from '@/lib/download-headers';
 import { officialDateDisplay } from '@/lib/hijri';
 import { loadEmblemPng, BRAND } from '@/lib/brand-assets';
 import ExcelJS from 'exceljs';
+import { parseCaseCard } from '@/lib/case-card';
 
 /** Official template olive header + gold strip (MOJ letterhead). */
-const HEADER = '1B4D3E';
+const HEADER = '2E9E5C';
 const GREEN = HEADER; // alias for legacy call sites in this file
 const GOLD = 'C5A059';
 const LIGHT = 'E6F2EB';
@@ -53,6 +54,51 @@ function styleKvValue(cell: ExcelJS.Cell) {
   cell.font = { size: 11, name: 'Arial', color: { argb: `FF${INK}` } };
   cell.alignment = { horizontal: 'right', vertical: 'top', readingOrder: 'rtl', wrapText: true };
   cell.border = THIN_HEADER;
+}
+
+/**
+ * Render a parsed case-card as real Excel rows (label in column A with green
+ * fill, value in column B..D with gold border) instead of raw HTML text.
+ */
+function addCaseCardTable(ws: ExcelJS.Worksheet, rows: { label: string; value: string }[]): void {
+  if (!rows.length) return;
+  const ban = ws.addRow(['بطاقة القضية']);
+  ws.mergeCells(ban.number, 1, ban.number, 4);
+  styleHeaderCell(ban.getCell(1), { fill: HEADER });
+
+  const goldBorder = {
+    top: { style: 'thin' as const, color: { argb: `FF${GOLD}` } },
+    bottom: { style: 'thin' as const, color: { argb: `FF${GOLD}` } },
+    left: { style: 'thin' as const, color: { argb: `FF${GOLD}` } },
+    right: { style: 'thin' as const, color: { argb: `FF${GOLD}` } },
+  };
+
+  for (const row of rows) {
+    const r = ws.addRow([row.label, row.value]);
+    ws.mergeCells(r.number, 2, r.number, 4);
+
+    const label = r.getCell(1);
+    label.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11, name: 'Arial' };
+    label.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: `FF${HEADER}` } };
+    label.alignment = { horizontal: 'right', vertical: 'middle', readingOrder: 'rtl', wrapText: true };
+    label.border = {
+      top: { style: 'thin', color: { argb: `FF${HEADER}` } },
+      bottom: { style: 'thin', color: { argb: `FF${HEADER}` } },
+      left: { style: 'thin', color: { argb: `FF${HEADER}` } },
+      right: { style: 'thin', color: { argb: `FF${GOLD}` } },
+    };
+
+    for (let c = 2; c <= 4; c++) {
+      const cell = r.getCell(c);
+      cell.font = { size: 11, name: 'Arial', color: { argb: `FF${INK}` } };
+      cell.alignment = { horizontal: 'right', vertical: 'top', readingOrder: 'rtl', wrapText: true };
+      cell.border = goldBorder;
+    }
+
+    const lines = row.value.split('\n').length;
+    r.height = Math.min(140, 18 + Math.ceil(row.value.length / 55) * 14 + (lines - 1) * 14);
+  }
+  ws.addRow([]);
 }
 
 /**
@@ -195,7 +241,18 @@ export async function GET(req: NextRequest) {
     if (!isBriefing) {
       addKv('الأطراف', doc.parties, true);
       addKv('الأسباب', doc.reasons, true);
-      if (doc.body) addKv('نص المكاتبة', doc.body, true);
+      if (doc.body) {
+        const caseCard = parseCaseCard(doc.body);
+        if (caseCard) {
+          addCaseCardTable(ws, caseCard);
+          const rest = String(doc.body)
+            .replace(/<table\b[^>]*class="[^"]*case-card[^"]*"[^>]*>[\s\S]*?<\/table>/i, '')
+            .trim();
+          if (rest) addKv('نص المكاتبة', rest, true);
+        } else {
+          addKv('نص المكاتبة', doc.body, true);
+        }
+      }
       addKv('الدراسة', doc.studyFields, true);
     } else {
       if (fields.observationText?.trim()) addKv('الملاحظة', fields.observationText, true);

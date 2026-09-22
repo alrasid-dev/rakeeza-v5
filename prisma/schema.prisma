@@ -96,6 +96,7 @@ model Template {
   bodyHtml    String   @default("")
   isEmpty     Boolean  @default(true)
   sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
 }
 

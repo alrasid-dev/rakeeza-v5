@@ -11,7 +11,7 @@ const config: Config = {
     extend: {
       colors: {
         moj: {
-          green: "#006C35",
+          green: "#2e9e5c",
           light: "#e6f2eb",
           gold: "#C5A059",
         },

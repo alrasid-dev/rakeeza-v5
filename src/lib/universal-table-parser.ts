@@ -528,15 +528,69 @@ export function gridToEditorTableHtml(
     ? ' style="border:1px solid #ccc;padding:4px 8px;text-align:right;vertical-align:top"'
     : '';
   const pStyle = bordered ? ' style="margin:0"' : '';
+
+  // ميزة: كشف أعمدة الأرقام/المبالغ/التواريخ لإضافة data-col-type="number"
+  const width = g[0]?.length || 0;
+  const header = headerIdx >= 0 ? g[headerIdx] : [];
+  const numberCols: boolean[] = [];
+  for (let col = 0; col < width; col += 1) {
+    const h = String(header[col] || '').trim();
+    let isNumber = /(رقم|مبلغ|تاريخ)/.test(h);
+    if (!isNumber) {
+      const body = g.slice(headerIdx >= 0 ? headerIdx + 1 : 0).map((r) => r[col] || '');
+      const nonEmpty = body.filter((c) => String(c).trim());
+      const numeric = nonEmpty.filter((c) => /^\d[\d,\s/]*$/.test(String(c).trim()));
+      isNumber = nonEmpty.length > 0 && numeric.length / nonEmpty.length > 0.6;
+    }
+    numberCols[col] = isNumber;
+  }
+
   const rows = g
     .map((row, i) => {
       const tag: 'th' | 'td' = i === headerIdx ? 'th' : 'td';
       const style = tag === 'th' ? thStyle : tdStyle;
-      return `<tr>${row.map((c) => `<${tag}${style}><p${pStyle}>${esc(c)}</p></${tag}>`).join('')}</tr>`;
+      return `<tr>${row
+        .map((c, colIdx) => {
+          const attr = numberCols[colIdx] ? ' data-col-type="number"' : '';
+          return `<${tag}${style}${attr}><p${pStyle}>${esc(c)}</p></${tag}>`;
+        })
+        .join('')}</tr>`;
     })
     .join('');
   const tableStyle = bordered ? ' style="width:100%;border-collapse:collapse;border:1px solid #ccc"' : '';
   return `<table${tableStyle}>${rows}</table>`;
+}
+
+/** ميزة: بناء بطاقة قضية بعمودين (label/value) من شبكة 6 أعمدة. */
+export function buildCaseCardHtml(grid: Grid): string {
+  const g = cleanGrid(grid);
+  if (g.length < 2) return gridToEditorTableHtml(g);
+
+  const header = g[0].map((h) => String(h || '').trim());
+  const body = g.slice(1);
+
+  // ترتيب الحقول في البطاقة
+  const CARD_ORDER = ['التشكيل', 'رقم القضية', 'مصدر الحكم', 'رقم الحكم', 'الرصد', 'المعالجة المقترحة'];
+
+  const esc = (s: string) =>
+    String(s || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+
+  const rows: string[] = [];
+  for (const label of CARD_ORDER) {
+    const colIdx = header.indexOf(label);
+    if (colIdx < 0) continue;
+    const values = body.map((r) => String(r[colIdx] || '').trim()).filter(Boolean);
+    if (!values.length) continue;
+    const ps = values.map((v) => `<p>${esc(v)}</p>`).join('');
+    rows.push(
+      `<tr><td class="label" data-col-type="label" style="border:1px solid #2e9e5c;padding:8px 12px;text-align:right;vertical-align:top"><p style="margin:0">${esc(label)}</p></td><td class="value" data-col-type="value" style="border:1px solid #2e9e5c;padding:8px 12px;text-align:right;vertical-align:top">${ps}</td></tr>`,
+    );
+  }
+
+  return `<table class="case-card" style="width:100%;border-collapse:collapse;border-spacing:0;border:1px solid #2e9e5c">${rows.join('')}</table>`;
 }
 
 export type AdaptedTablePreview = {
@@ -549,6 +603,54 @@ export type AdaptedTablePreview = {
   editorHtml: string;
 };
 
+/** ميزة جديدة: استخراج "التشكيل" من نص "الدائرة". */
+export function extractTashkeel(dairaText: string): string {
+  const s = String(dairaText || '');
+  const idx = s.indexOf('التشكيل');
+  if (idx < 0) return s; // لا توجد كلمة "التشكيل" → النص الأصلي
+  const rest = s.slice(idx);
+  const match = rest.match(/[^-/]*/);
+  const extracted = (match ? match[0] : '').trim();
+  return extracted || s;
+}
+
+/** ميزة جديدة: تعيين عمود مصدر إلى عمود هدف (مع تحويل اختياري). */
+export type ColumnMapping = {
+  from: string;
+  to: string;
+  transform?: (value: string) => string;
+};
+
+/** ميزة جديدة: أعمدة الجدول المطلوبة (جدول 11 عمود → 6 أعمدة). */
+export const DESIRED_COLUMNS: ColumnMapping[] = [
+  { from: 'مصدر الحكم', to: 'مصدر الحكم' },
+  { from: 'رقم الحكم', to: 'رقم الحكم' },
+  { from: 'رقم القضية', to: 'رقم القضية' },
+  { from: 'الدائرة', to: 'التشكيل', transform: extractTashkeel },
+  { from: 'الملحوظة الرئيسية', to: 'الرصد' },
+  { from: 'المعالجة', to: 'المعالجة المقترحة' },
+];
+
+/** ميزة جديدة: فلترة/إعادة ترتيب الأعمدة حسب القائمة المطلوبة. */
+export function filterAndReorderColumns(grid: Grid, desired: ColumnMapping[]): Grid {
+  if (grid.length < 2) return grid;
+  const header = grid[0].map((h) => String(h || '').trim());
+  const mapping: { to: string; colIndex: number; transform?: (v: string) => string }[] = [];
+  for (const d of desired) {
+    const colIndex = header.indexOf(d.from);
+    if (colIndex >= 0) mapping.push({ to: d.to, colIndex, transform: d.transform });
+  }
+  if (!mapping.length) return grid; // لا يوجد أي عمود مطلوب → كما هي
+  const newHeader = mapping.map((m) => m.to);
+  const newBody = grid.slice(1).map((row) =>
+    mapping.map((m) => {
+      const v = row[m.colIndex] ?? '';
+      return m.transform ? m.transform(v) : v;
+    }),
+  );
+  return [newHeader, ...newBody];
+}
+
 /**
  * Full adaptation pipeline for the live-preview popup:
  * parse (HTML/plain) → clean → aggregate/dedupe → platform-identity HTML.
@@ -557,9 +659,28 @@ export type AdaptedTablePreview = {
 export function adaptPastedTable(raw: string): AdaptedTablePreview | null {
   const input = String(raw || '');
   const parsed = parseAnyTable(input);
-  const agg = aggregateGrid(parsed.grid);
-  const width = agg.grid[0]?.length || 0;
-  if (agg.grid.length < 2 || width < 2) return null;
+  const width = parsed.grid[0]?.length || 0;
+
+  // إصلاح 1: للجداول الكبيرة (≥ 3 صفوف و≥ 3 أعمدة) تخطَّ التجميع/إزالة التكرار
+  // كلياً حتى لا تنهار عشرات الصفوف في صف واحد. يبقى التجميع للجداول الصغيرة فقط.
+  const useRawGrid = parsed.grid.length >= 3 && width >= 3;
+
+  let agg = useRawGrid
+    ? { grid: parsed.grid, mergedCount: 0, entityColumn: 0 }
+    : aggregateGrid(parsed.grid);
+
+  // ميزة جديدة: فلترة/إعادة ترتيب الأعمدة (جدول 11 عمود → 6 أعمدة)
+  let filtered6Col = false;
+  if (parsed.hasHeader && agg.grid.length >= 2 && (agg.grid[0]?.length || 0) > 6) {
+    const filtered = filterAndReorderColumns(agg.grid, DESIRED_COLUMNS);
+    if ((filtered[0]?.length || 0) !== (agg.grid[0]?.length || 0)) {
+      agg = { grid: filtered, mergedCount: agg.mergedCount, entityColumn: agg.entityColumn };
+      filtered6Col = true;
+    }
+  }
+
+  const aggWidth = agg.grid[0]?.length || 0;
+  if (agg.grid.length < 2 || aggWidth < 2) return null;
 
   return {
     hasTable: true,
@@ -568,7 +689,11 @@ export function adaptPastedTable(raw: string): AdaptedTablePreview | null {
     mergedCount: agg.mergedCount,
     originalHtml: gridToHtmlTable(parsed.grid, { headers: parsed.hasHeader }),
     adaptedHtml: gridToHtmlTable(agg.grid, { headers: parsed.hasHeader }),
-    editorHtml: gridToEditorTableHtml(agg.grid),
+    // ميزة: بطاقة بعمودين (إذا ≤ 10 صفوف) — وإلا 6 أعمدة
+    editorHtml:
+      filtered6Col && agg.grid.length - 1 <= 10
+        ? buildCaseCardHtml(agg.grid)
+        : gridToEditorTableHtml(agg.grid),
   };
 }
 

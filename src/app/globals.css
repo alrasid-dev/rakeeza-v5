@@ -3,14 +3,14 @@
 @tailwind utilities;
 
 :root {
-  --moj-green: #006C35;
+  --moj-green: #2e9e5c;
   --moj-light: #e6f2eb;
   --moj-gold: #C5A059;
   --surface: #ffffff;
   --surface-2: #f3f7f4;
   --ink: #1a1a1a;
   --muted: #6b7280;
-  --border: rgba(0, 108, 53, 0.12);
+  --border: rgba(31, 122, 63, 0.12);
 }
 
 html.dark {
@@ -141,11 +141,11 @@ html.dark main {
   border-collapse: collapse;
   width: 100%;
   margin: 0.5em 0;
-  table-layout: fixed;
+  table-layout: auto;
 }
 .tiptap-body-shell .tiptap-body-editor td,
 .tiptap-body-shell .tiptap-body-editor th {
-  border: 1px solid #006C35;
+  border: 1px solid #2e9e5c;
   padding: 4px 8px;
   vertical-align: top;
   min-width: 2rem;
@@ -153,7 +153,7 @@ html.dark main {
 .tiptap-body-shell .tiptap-body-editor th {
   background: #e6f2eb;
   font-weight: 700;
-  color: #006C35;
+  color: #2e9e5c;
 }
 .tiptap-body-shell .tiptap-body-editor .selectedCell {
   background: rgba(197, 160, 89, 0.25);
@@ -162,6 +162,78 @@ html.dark main {
   border-radius: 2px;
   padding: 0 1px;
 }
+
+/* منع كسر الأرقام والتواريخ داخل جداول المحرر */
+.tiptap-body-shell .tiptap-body-editor td {
+  word-break: normal;
+  overflow-wrap: normal;
+  white-space: normal;
+  line-height: 1.5;
+  vertical-align: top;
+}
+
+/* ======================== */
+/* بطاقة القضية — CSS نظيف */
+/* ======================== */
+
+table.case-card {
+  width: 100% !important;
+  border-collapse: collapse !important;
+  border-spacing: 0 !important;
+  table-layout: auto !important;
+  direction: rtl !important;
+  margin: 12px 0 !important;
+  border: 1px solid #2e9e5c !important;
+}
+
+table.case-card td {
+  padding: 10px 14px !important;
+  vertical-align: middle !important;
+  border: none !important;
+}
+
+table.case-card td.label,
+table.case-card td[data-col-type='label'] {
+  width: 0 !important;
+  min-width: max-content !important;
+  white-space: nowrap !important;
+  word-break: keep-all !important;
+  overflow-wrap: normal !important;
+  background: #2e9e5c !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  text-align: right !important;
+  direction: rtl !important;
+  border: none !important;
+  border-left: 1px solid #2e9e5c !important;
+  padding: 10px 14px !important;
+}
+
+table.case-card td.label p,
+table.case-card td[data-col-type='label'] p {
+  white-space: nowrap !important;
+}
+
+table.case-card td.value,
+table.case-card td[data-col-type='value'] {
+  background: #ffffff !important;
+  color: #111111 !important;
+  text-align: right !important;
+  direction: rtl !important;
+  border: none !important;
+  padding: 10px 14px !important;
+}
+
+table.case-card td.value p {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+table.case-card td.value p:not(:last-child) {
+  margin-bottom: 4px !important;
+}
+
+
 
 
 /* Background linter inline highlights (TipTap decorations) */
@@ -181,7 +253,7 @@ html.dark main {
   background: rgba(234, 88, 12, 0.1);
 }
 .tiptap-body-shell .tiptap-body-editor .linter-issue--judicial {
-  border-bottom-color: #006C35;
+  border-bottom-color: #2e9e5c;
   background: rgba(0, 108, 53, 0.1);
 }
 

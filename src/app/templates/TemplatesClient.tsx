@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import OfficialPaperPreview from '@/components/OfficialPaperPreview';
 import PaperLayoutPicker from '@/components/PaperLayoutPicker';
-import { DEFAULT_PAPER_LAYOUT, type PaperLayoutId } from '@/lib/paper-layouts';
+import { DEFAULT_PAPER_LAYOUT, normalizePaperLayout, type PaperLayoutId } from '@/lib/paper-layouts';
 import {
   JUDGMENT_CARD_RECIPIENTS,
   JUDGMENT_CARD_SEED,
@@ -18,6 +18,9 @@ type Tpl = {
   category: string;
   href: string;
   group: string;
+  // المرحلة الثانية: حالة تفعيل القالب
+  isActive: boolean;
+  defaultPaperLayout?: string | null;
 };
 
 type SampleDoc = {
@@ -65,6 +68,14 @@ const SAMPLE: Record<string, SampleDoc> = {
     judgmentCard: JUDGMENT_CARD_SEED,
     layout: 'modern-hex',
   },
+  // المرحلة الثانية: معاينة قالب تصحيح الحكم
+  'بطاقة عرض تصحيح حكم': {
+    subject: JUDGMENT_CARD_SUBJECT,
+    recipients: JUDGMENT_CARD_RECIPIENTS,
+    body: '',
+    judgmentCard: JUDGMENT_CARD_SEED,
+    layout: 'taameem-circular',
+  },
 };
 
 const DEFAULT_SAMPLE: SampleDoc = {
@@ -86,11 +97,20 @@ function openHref(base: string, layout: PaperLayoutId) {
 
 export default function TemplatesClient({
   groups,
+  isAdmin = false,
 }: {
   groups: { key: string; title: string; subtitle: string; items: Tpl[] }[];
+  isAdmin?: boolean;
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [paperLayout, setPaperLayout] = useState<PaperLayoutId>(DEFAULT_PAPER_LAYOUT);
+  // المرحلة الثانية: خريطة حالة تفعيل/تعطيل كل قالب (تُزامَن مع الخادم)
+  const [activeMap, setActiveMap] = useState<Record<string, boolean>>(() => {
+    const m: Record<string, boolean> = {};
+    for (const g of groups) for (const t of g.items) m[t.id] = t.isActive;
+    return m;
+  });
+  const [togglingId, setTogglingId] = useState<string | null>(null);
   const flat = useMemo(() => groups.flatMap((g) => g.items), [groups]);
   const selected = flat.find((t) => t.id === selectedId) || flat[0] || null;
 
@@ -98,7 +118,29 @@ export default function TemplatesClient({
     ? SAMPLE[selected.name] || { ...DEFAULT_SAMPLE, subject: selected.name }
     : DEFAULT_SAMPLE;
 
-  const effectiveLayout: PaperLayoutId = sample.layout || paperLayout;
+  const effectiveLayout: PaperLayoutId = selected?.defaultPaperLayout
+    ? normalizePaperLayout(selected.defaultPaperLayout)
+    : sample.layout || paperLayout;
+
+  // المرحلة الثانية: تبديل حالة التفعيل/التعطيل مع المزامنة مع الخادم
+  async function toggleTemplate(t: Tpl) {
+    if (togglingId) return;
+    const next = !activeMap[t.id];
+    setActiveMap((m) => ({ ...m, [t.id]: next }));
+    setTogglingId(t.id);
+    try {
+      const res = await fetch('/api/templates', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: t.id, isActive: next }),
+      });
+      if (!res.ok) throw new Error('update failed');
+    } catch {
+      setActiveMap((m) => ({ ...m, [t.id]: !next }));
+    } finally {
+      setTogglingId(null);
+    }
+  }
 
   return (
     <div className="grid lg:grid-cols-5 gap-4">
@@ -121,8 +163,12 @@ export default function TemplatesClient({
                       type="button"
                       onClick={() => {
                         setSelectedId(t.id);
-                        const s = SAMPLE[t.name];
-                        if (s?.layout) setPaperLayout(s.layout);
+                        if (t.defaultPaperLayout) {
+                          setPaperLayout(normalizePaperLayout(t.defaultPaperLayout));
+                        } else {
+                          const s = SAMPLE[t.name];
+                          if (s?.layout) setPaperLayout(s.layout);
+                        }
                       }}
                       className={`text-right card-surface rounded-2xl p-4 sm:p-5 min-h-[7.5rem] flex flex-col justify-between shadow-sm hover:shadow-md transition border min-w-0 ${
                         active
@@ -140,6 +186,40 @@ export default function TemplatesClient({
                           </p>
                         )}
                       </div>
+                      {/* المرحلة الثانية: عمود الحالة — مفتاح تفعيل/تعطيل القالب */}
+                      {isAdmin ? (
+                      <div
+                        className="mt-3 flex items-center justify-between gap-2"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <span className="text-xs text-gray-500 dark:text-white/45">حالة</span>
+                        <span className="flex items-center gap-2">
+                          <span
+                            className={`text-[11px] ${activeMap[t.id] ? 'text-moj-green' : 'text-gray-400'}`}
+                          >
+                            {activeMap[t.id] ? 'مفعّل' : 'معطّل'}
+                          </span>
+                          <span
+                            role="switch"
+                            aria-checked={activeMap[t.id]}
+                            title={activeMap[t.id] ? 'تعطيل القالب' : 'تفعيل القالب'}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleTemplate(t);
+                            }}
+                            className={`inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors ${
+                              activeMap[t.id] ? 'bg-moj-green' : 'bg-gray-300 dark:bg-white/20'
+                            }`}
+                          >
+                            <span
+                              className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                                activeMap[t.id] ? 'translate-x-[18px]' : 'translate-x-[2px]'
+                              }`}
+                            />
+                          </span>
+                        </span>
+                      </div>
+                      ) : null}
                       <Link
                         href={openHref(t.href, SAMPLE[t.name]?.layout || paperLayout)}
                         onClick={(e) => e.stopPropagation()}

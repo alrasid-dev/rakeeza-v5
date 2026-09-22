@@ -210,6 +210,11 @@ export const EXTENDED_FONT_OPTIONS: {
   { id: 'Mada', label: 'Mada', cssFamily: 'Mada', generic: 'sans-serif', pdfFallback: 'Cairo' },
   { id: 'Tahoma', label: 'Tahoma', cssFamily: 'Tahoma', generic: 'sans-serif', pdfFallback: 'Noto Naskh Arabic' },
   { id: 'Arial', label: 'Arial', cssFamily: 'Arial', generic: 'sans-serif', pdfFallback: 'Noto Naskh Arabic' },
+  { id: 'Diwani', label: 'ديواني (رقعة)', cssFamily: 'Aref Ruqaa', generic: 'serif', pdfFallback: 'Aref Ruqaa' },
+  { id: 'Thuluth', label: 'ثلث (أميري)', cssFamily: 'Amiri', generic: 'serif', pdfFallback: 'Amiri' },
+  { id: 'Ruqaa', label: 'رقعة', cssFamily: 'Aref Ruqaa', generic: 'serif', pdfFallback: 'Aref Ruqaa' },
+  { id: 'Farisi', label: 'فارسي (شهرزاد)', cssFamily: 'Scheherazade New', generic: 'serif', pdfFallback: 'Scheherazade New' },
+  { id: 'Koufi', label: 'كوفي (ريم كوفي)', cssFamily: 'Reem Kufi', generic: 'sans-serif', pdfFallback: 'Reem Kufi' },
 ];
 
 export const REQUIRED_PDF_FONT_FAMILIES: string[] = ARABIC_FONT_LIBRARY.filter(

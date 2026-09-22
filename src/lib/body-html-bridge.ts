@@ -59,7 +59,19 @@ export function editorHtmlToBody(html: string | null | undefined): string {
 
 /** Ensure TipTap/HTML paragraphs keep spaces visible in preview/PDF. */
 export function ensurePreWrapOnParagraphs(html: string): string {
-  return String(html || '').replace(/<p(\s[^>]*)?>/gi, (full, attrs = '') => {
+  // Case-card cells (label/value) control their own wrapping (label=nowrap,
+  // value=overflow-wrap). Protect them so white-space:pre-wrap does not break
+  // the nowrap on labels.
+  const protectedCells: string[] = [];
+  const withPlaceholders = String(html || '').replace(
+    /<td\b[^>]*(?:data-col-type="(?:label|value)"|class="[^"]*\b(?:label|value)\b[^"]*")[^>]*>[\s\S]*?<\/td>/gi,
+    (cell) => {
+      protectedCells.push(cell);
+      return `\u0000CASE_CARD_CELL_${protectedCells.length - 1}\u0000`;
+    },
+  );
+
+  const processed = withPlaceholders.replace(/<p(\s[^>]*)?>/gi, (full, attrs = '') => {
     const a = attrs || '';
     if (/white-space\s*:/i.test(a)) return full;
     if (/style\s*=\s*"/i.test(a)) {
@@ -67,6 +79,10 @@ export function ensurePreWrapOnParagraphs(html: string): string {
     }
     return `<p${a} style="white-space:pre-wrap">`;
   });
+
+  return processed.replace(/\u0000CASE_CARD_CELL_(\d+)\u0000/g, (_m, i: string) =>
+    protectedCells[Number(i)],
+  );
 }
 
 /** Convert plain tabular text (TSV/CSV/pipe) into a styled bordered table, else ''. */

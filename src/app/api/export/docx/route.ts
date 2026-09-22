@@ -36,7 +36,7 @@ import {
   VerticalAlign,
 } from 'docx';
 
-const GREEN = '006C35';
+const GREEN = '2E9E5C';
 const GOLD = 'C5A059';
 const LIGHT = 'E6F2EB';
 const PAGE_W = 9360;

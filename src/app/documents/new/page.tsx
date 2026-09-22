@@ -57,7 +57,6 @@ import {
   isBriefingTitle,
   isJudgmentBriefingFormSlug,
   isJudgmentBriefingMeta,
-  isKnownMechanism,
   normalizeJudgmentCard,
   parseTemplateFieldsJson,
   setJudgmentCardValue,
@@ -107,6 +106,8 @@ function NewDocumentInner() {
   const formName = searchParams.get('name') || '';
   const templateIdParam = searchParams.get('templateId') || '';
   const layoutParam = searchParams.get('layout') || '';
+  // إصلاح 2: ?new=1 يطلب مستنداً نظيفاً (يمسح المسودة)
+  const newParam = searchParams.get('new') || '';
 
   const [user, setUser] = useState<User | null>(null);
   const [step, setStep] = useState(1);
@@ -118,6 +119,8 @@ function NewDocumentInner() {
   const undoStackRef = useRef<string[]>([]);
   const skipUndoPushRef = useRef(false);
   const [canUndo, setCanUndo] = useState(false);
+  const [editorCanUndo, setEditorCanUndo] = useState(false);
+  const [editorCanRedo, setEditorCanRedo] = useState(false);
 
   const pushUndoSnapshot = useCallback((nextForm: typeof form) => {
     if (skipUndoPushRef.current) return;
@@ -155,6 +158,8 @@ function NewDocumentInner() {
   const [observationText, setObservationText] = useState('');
   const [mechanismText, setMechanismText] = useState('');
   const [judgmentCard, setJudgmentCard] = useState<JudgmentCardRow[] | null>(null);
+  // المرحلة الثانية: خيارات آلية المعالجة — تتغير حسب القالب المختار (افتراضياً القائمة العامة)
+  const [mechanismOptions, setMechanismOptions] = useState<string[]>([...PROCESSING_MECHANISMS]);
   const [briefingTitle, setBriefingTitle] = useState<BriefingTitle>('بطاقة عرض');
   const [judgmentPriority, setJudgmentPriority] = useState<JudgmentPriority>('عادي');
   const [studySections, setStudySections] = useState<StudySections | null>(null);
@@ -186,6 +191,9 @@ function NewDocumentInner() {
 
   useEffect(() => {
     skipSave.current = true;
+
+    // إصلاح 2: استئناف العمل تلقائياً — المسح فقط عند ?new=1 أو زر "مستند جديد"
+    if (formSlug && newParam === '1') clearDraft(formSlug);
 
     const draft = formSlug ? loadDraft(formSlug) : null;
     if (draft) {
@@ -238,6 +246,8 @@ function NewDocumentInner() {
       if (isJudgmentBriefingFormSlug(formSlug)) {
         const seedCard = JUDGMENT_CARD_SEED.map((r) => ({ ...r }));
         setJudgmentCard(seedCard);
+        // المرحلة الثانية: إعادة ضبط خيارات آلية المعالجة للقائمة العامة
+        setMechanismOptions([...PROCESSING_MECHANISMS]);
         setBriefingTitle('بطاقة عرض');
         setJudgmentPriority('عادي');
         setStudySections(null);
@@ -255,7 +265,7 @@ function NewDocumentInner() {
         setJudgmentPriority('عادي');
         setStudySections(null);
       }
-      setPaperLayout(normalizePaperLayout(layoutParam || DEFAULT_PAPER_LAYOUT));
+      if (layoutParam) setPaperLayout(normalizePaperLayout(layoutParam));
       setSavedDocId(null);
       setDraftRestored(false);
       const hint = suggestFont(formName || 'مكاتبة');
@@ -271,7 +281,7 @@ function NewDocumentInner() {
     }, 50);
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formSlug, formName]);
+  }, [formSlug, formName, newParam]);
 
   useEffect(() => {
     fetch('/api/auth/me')
@@ -290,7 +300,13 @@ function NewDocumentInner() {
         const nameQ = searchParams.get('name');
         if (nameQ) {
           const match = list.find((t) => t.name === nameQ);
-          if (match) setTemplateId(match.id);
+          if (match) {
+            setTemplateId(match.id);
+          } else {
+            // المرحلة الثانية: guard — الاسم في ?name= غير مفعّل (isActive=false)
+            // فلا نضبط docType منه ولا نعرضه في المحرر
+            setForm((f) => ({ ...f, docType: f.docType === nameQ ? 'مكاتبة' : f.docType }));
+          }
         }
       });
   }, [searchParams]);
@@ -310,6 +326,11 @@ function NewDocumentInner() {
 
     const briefing =
       isJudgmentBriefingMeta(meta) || isJudgmentBriefingFormSlug(formSlug);
+
+    // المرحلة الثانية: اعتمد آليات المعالجة الخاصة بالقالب إن وُجدت
+    setMechanismOptions(
+      meta.mechanisms && meta.mechanisms.length ? meta.mechanisms : [...PROCESSING_MECHANISMS],
+    );
 
     setForm((f) => {
       const next = { ...f, docType: formName || match.name || f.docType };
@@ -704,6 +725,7 @@ function NewDocumentInner() {
 
   function setBodyField(value: string) {
     setForm((f) => ({ ...f, body: value }));
+    refreshEditorHistory();
   }
 
   async function persistDocument(issue: boolean): Promise<{ id: string } | null> {
@@ -794,6 +816,26 @@ function NewDocumentInner() {
     return ed;
   };
 
+  function refreshEditorHistory() {
+    const ed = bodyEditorRef.current?.getEditor() || null;
+    setEditorCanUndo(ed ? ed.can().undo() : false);
+    setEditorCanRedo(ed ? ed.can().redo() : false);
+  }
+
+  const undoEditorBody = () => {
+    const ed = requireBodyEditor();
+    if (!ed) return;
+    ed.commands.undo();
+    refreshEditorHistory();
+  };
+
+  const redoEditorBody = () => {
+    const ed = requireBodyEditor();
+    if (!ed) return;
+    ed.commands.redo();
+    refreshEditorHistory();
+  };
+
   const applyBodyAlign = (align: DocStyle['align']) => {
     const ed = requireBodyEditor();
     if (!ed) return;
@@ -847,10 +889,10 @@ function NewDocumentInner() {
     if (!ed || ed.state.selection.empty) return;
     editorApplyFontSize(ed, pt);
   };
-  const insertBodyTable = () => {
+  const insertBodyTable = (rows: number, cols: number) => {
     const ed = requireBodyEditor();
     if (!ed) return;
-    editorInsertTable(ed, 3, 3);
+    editorInsertTable(ed, rows, cols);
   };
 
   /** Adopt the adapted/aggregated table into the TipTap body editor. */
@@ -938,7 +980,36 @@ function NewDocumentInner() {
           )}
         </div>
       )}
-      <PageHeader title={title} subtitle="معالج من 3 خطوات مع صندوق لصق ذكي ومعاينة رسمية" />
+      <PageHeader
+        title={title}
+        subtitle="معالج من 3 خطوات مع صندوق لصق ذكي ومعاينة رسمية"
+        actions={
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              className="btn-outline"
+              onClick={() => {
+                if (window.history.length > 1) router.back();
+                else router.push('/');
+              }}
+            >
+              → رجوع
+            </button>
+            <button
+              type="button"
+              className="btn-outline"
+              onClick={() => {
+                // إصلاح 2: امسح المسودة ثم أعد تحميل الصفحة لبدء مستند نظيف
+                if (formSlug) clearDraft(formSlug);
+                else clearAllDrafts();
+                window.location.reload();
+              }}
+            >
+              مستند جديد
+            </button>
+          </div>
+        }
+      />
       <div className="flex flex-wrap gap-2 mb-4 text-sm">
         {[1, 2, 3].map((n) => (
           <button
@@ -1059,6 +1130,10 @@ function NewDocumentInner() {
             <StyleToolbar
               value={style}
               onChange={setStyle}
+              onUndo={undoEditorBody}
+              onRedo={redoEditorBody}
+              canUndo={editorCanUndo}
+              canRedo={editorCanRedo}
               onAlignSelection={applyBodyAlign}
               onColorSelection={applyBodyColor}
               onBackgroundSelection={applyBodyBackground}
@@ -1388,11 +1463,8 @@ function NewDocumentInner() {
                                 <select
                                   className="input py-1.5 text-sm"
                                   style={editorFontStyle}
-                                  value={
-                                    isKnownMechanism(row.value)
-                                      ? row.value
-                                      : row.value || PROCESSING_MECHANISMS[0]
-                                  }
+                                  // المرحلة الثانية: استخدم خيارات آلية المعالجة الخاصة بالقالب
+                                  value={row.value || mechanismOptions[0] || ''}
                                   onChange={(e) => {
                                     const v = e.target.value;
                                     setJudgmentCard((prev) =>
@@ -1400,10 +1472,10 @@ function NewDocumentInner() {
                                     );
                                   }}
                                 >
-                                  {!isKnownMechanism(row.value) && row.value ? (
+                                  {row.value && !mechanismOptions.includes(row.value) ? (
                                     <option value={row.value}>{row.value}</option>
                                   ) : null}
-                                  {PROCESSING_MECHANISMS.map((m) => (
+                                  {mechanismOptions.map((m) => (
                                     <option key={m} value={m}>
                                       {m}
                                     </option>

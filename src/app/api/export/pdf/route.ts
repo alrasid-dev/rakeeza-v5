@@ -34,7 +34,19 @@ function localChromePath(): string | null {
     '/usr/bin/google-chrome',
     '/usr/bin/google-chrome-stable',
     '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+    // Windows — local dev / desktop Chrome & Edge
+    'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+    'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+    'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
+    'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
   ];
+  const localAppData = process.env.LOCALAPPDATA;
+  if (localAppData) {
+    candidates.push(
+      `${localAppData}\\Google\\Chrome\\Application\\chrome.exe`,
+      `${localAppData}\\Microsoft\\Edge\\Application\\msedge.exe`,
+    );
+  }
   for (const c of candidates) {
     if (fs.existsSync(c)) return c;
   }

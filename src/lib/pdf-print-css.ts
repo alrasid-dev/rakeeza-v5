@@ -6,7 +6,11 @@
 
 /** Exact @page + break rules required for printable A4 official letters. */
 export const PDF_A4_PAGE_RULES = `@page { size: A4 portrait; margin: 10mm 15mm 15mm 15mm; }
-table, tr, td, .card-block { page-break-inside: avoid; }`;
+tr, td, .card-block { page-break-inside: avoid !important; }
+table { max-width: 100% !important; page-break-inside: auto !important; }
+td, th { overflow-wrap: anywhere !important; word-break: normal !important; }
+img, svg { max-width: 100% !important; height: auto !important; }
+.paper, .body, .section { max-width: 100% !important; overflow-wrap: anywhere !important; page-break-after: auto; }`;
 
 /**
  * Full print stylesheet fragment (no @font-face — fonts come from pdf-font-css).
@@ -42,9 +46,7 @@ export function pdfPrintCssHasA4Rules(css: string): boolean {
     /@page\s*\{[^}]*size:\s*A4\s+portrait/i.test(css) &&
     /margin:\s*10mm\s+15mm\s+15mm\s+15mm/i.test(css);
   const hasBreak =
-    /table\s*,\s*tr\s*,\s*td\s*,\s*\.card-block\s*\{[^}]*page-break-inside:\s*avoid/i.test(css) ||
-    (/page-break-inside:\s*avoid/i.test(css) &&
-      /table/.test(css) &&
-      /\.card-block/.test(css));
+    /tr\s*,\s*td\s*,\s*\.card-block\s*\{[^}]*page-break-inside:\s*avoid/i.test(css) ||
+    (/page-break-inside:\s*avoid/i.test(css) && /\.card-block/.test(css));
   return hasPage && hasBreak;
 }

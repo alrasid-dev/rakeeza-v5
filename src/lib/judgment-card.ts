@@ -56,6 +56,8 @@ export type TemplateFieldsMeta = {
   /** `briefing` = عرض شف — hide parties/body editors & sections */
   mode?: 'briefing' | string;
   hideBodyAndParties?: boolean;
+  /** المرحلة الثانية: قائمة آليات المعالجة الخاصة بالقالب (مثلاً قالب تصحيح الحكم) */
+  mechanisms?: string[];
   seed?: {
     subject?: string;
     recipients?: string;
@@ -163,6 +165,10 @@ export function parseTemplateFieldsJson(raw: string | null | undefined): Templat
               : undefined,
         mode,
         hideBodyAndParties,
+        // المرحلة الثانية: استخراج آليات المعالجة الخاصة بالقالب إن وُجدت
+        mechanisms: Array.isArray(parsed.mechanisms)
+          ? parsed.mechanisms.filter((m: unknown): m is string => typeof m === 'string')
+          : undefined,
         seed: seed
           ? {
               subject: typeof seed.subject === 'string' ? seed.subject : undefined,
@@ -675,7 +681,7 @@ export function buildJudgmentBriefingBlockHtml(opts: {
   fontFamily?: string | null;
 }): string {
   if (!opts.card?.length) return '';
-  const GREEN = opts.green || '#006C35';
+  const GREEN = opts.green || '#2e9e5c';
   void opts.recipients;
   void opts.title;
   const letter = resolveBriefingLetterBody({

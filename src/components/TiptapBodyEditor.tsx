@@ -129,16 +129,22 @@ const TiptapBodyEditor = forwardRef<TiptapBodyEditorHandle, Props>(function Tipt
           const cleaned = wrapFloatingTableRows(sanitizeClipboardHtml(rawHtml));
           if (looksLikeTableHtml(cleaned)) {
             const html = adaptTableToEditorHtml(rawHtml);
-            if (html) editorInsertAdaptedTableAtSelection(ed, html);
-            return true;
+            if (html) {
+              // إصلاح 1: نرجع true فقط بعد إدراج جدول فعلاً.
+              return editorInsertAdaptedTableAtSelection(ed, html);
+            }
+            // إصلاح 1: فشل التكييف → ارجع false ليعمل اللصق الافتراضي.
+            return false;
           }
         }
 
         // 2) Plain-text Excel TSV fallback.
         if (plain && looksLikeExcelTsv(plain)) {
           const html = adaptTableToEditorHtml(plain);
-          if (html) editorInsertAdaptedTableAtSelection(ed, html);
-          return true;
+          if (html) {
+            return editorInsertAdaptedTableAtSelection(ed, html);
+          }
+          return false;
         }
 
         return false;
@@ -160,6 +166,12 @@ const TiptapBodyEditor = forwardRef<TiptapBodyEditorHandle, Props>(function Tipt
   // Keep a ref to the editor for the paste handler (defined before editor exists).
   useEffect(() => {
     editorRef.current = editor;
+  }, [editor]);
+
+  // اللون الافتراضي للنص: أسود #000000 (لكل مستند جديد)
+  useEffect(() => {
+    if (!editor || editor.isDestroyed) return;
+    editor.commands.setColor('#000000');
   }, [editor]);
 
   // Wire linter activate callback once editor exists
@@ -319,7 +331,7 @@ export function editorApplyColor(editor: Editor | null, hex: string): boolean {
 
 export function editorApplyBackground(editor: Editor | null, hex: string): boolean {
   if (!editor) return false;
-  return editor.chain().focus().setBackgroundColor(hex).run();
+  return editor.chain().focus().setHighlight({ color: hex }).run();
 }
 
 export function editorApplyAlign(

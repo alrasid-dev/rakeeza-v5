@@ -49,12 +49,12 @@ export default function PaperLayoutPicker({
                         : l.id === 'formal-gold'
                         ? '#C5A059'
                         : l.id === 'taameem-circular'
-                          ? '#004d26'
+                          ? '#2e9e5c'
                           : l.id === 'identity-service-a'
                             ? '#F7F1E3'
                             : l.id === 'identity-service-b'
                               ? '#147A5F'
-                              : '#006C35',
+                              : '#2e9e5c',
                     border:
                       l.id === 'identity-service-a' || l.id === 'modern-hex'
                         ? '1px solid #C5A059'
@@ -66,9 +66,9 @@ export default function PaperLayoutPicker({
                   style={{
                     background:
                       l.id === 'modern-hex'
-                        ? '#1B4332'
+                        ? '#2e9e5c'
                         : l.id === 'identity-service-a'
-                        ? '#006C35'
+                        ? '#2e9e5c'
                         : l.id === 'identity-service-b'
                           ? '#0B6E4F'
                           : '#C5A059',

@@ -21,3 +21,10 @@ reference-models/
 .env.deploy
 .env.secrets*
 .env.vercel*
+
+# temp build/dev files
+dev-err.txt
+dev-out.txt
+build-out.txt
+table-render-shot.png
+*.log
