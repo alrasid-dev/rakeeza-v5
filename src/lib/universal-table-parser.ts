@@ -601,6 +601,11 @@ export type AdaptedTablePreview = {
   originalHtml: string;
   adaptedHtml: string;
   editorHtml: string;
+  /**
+   * true → جدول غير مُعرَّف كـ «مدخلات الأحكام» (قالب معقد / خلايا مدموجة /
+   * نموذج دراسة شكوى) لُصق كما هو بدون فلترة أو تجميع أو إزالة تكرار.
+   */
+  isComplexTemplate?: boolean;
 };
 
 /** ميزة جديدة: استخراج "التشكيل" من نص "الدائرة". */
@@ -652,13 +657,56 @@ export function filterAndReorderColumns(grid: Grid, desired: ColumnMapping[]): G
 }
 
 /**
- * Full adaptation pipeline for the live-preview popup:
- * parse (HTML/plain) → clean → aggregate/dedupe → platform-identity HTML.
+ * Full adaptation pipeline for the live-preview popup.
+ *
+ * القاعدة الحاسمة:
+ *  - 🅰️ جدول «مدخلات الأحكام» (11 عمود: الدائرة، مصدر الحكم، رقم الحكم،
+ *    تاريخ الحكم، رقم القضية، مبلغ المطالبة، مدخلات الحكم، الملحوظة الرئيسية،
+ *    نص الملحوظة، المعالجة، الموظف) → فلترة إلى 6 أعمدة + بطاقة بعمودين.
+ *  - 🅱️ أي جدول آخر (قالب معقد، خلايا مدموجة، نموذج دراسة شكوى) → لصق كما هو
+ *    بدون أي تعديل (لا فلترة، لا تجميع، لا إزالة تكرار).
+ *
  * Returns null when the input does not contain a table-like structure.
  */
 export function adaptPastedTable(raw: string): AdaptedTablePreview | null {
   const input = String(raw || '');
   const parsed = parseAnyTable(input);
+  if (!parsed.grid.length) return null;
+
+  // شرط الفلترة: جدول «مدخلات الأحكام» بدقة.
+  const header = (parsed.grid[0] || []).map((h) => String(h || '').trim());
+  const requiredColumns = [
+    'مصدر الحكم',
+    'رقم الحكم',
+    'رقم القضية',
+    'الدائرة',
+    'الملحوظة الرئيسية',
+    'المعالجة',
+  ];
+  const hasAllRequired = requiredColumns.every((req) =>
+    header.some((h) => h === req || h.includes(req)),
+  );
+  const hasMergedCells =
+    /colspan\s*=\s*["']?[2-9]/i.test(input) || /rowspan\s*=\s*["']?[2-9]/i.test(input);
+  const colCount = header.length;
+  const inRange = colCount >= 8 && colCount <= 12;
+  const isJudgmentTable = hasAllRequired && !hasMergedCells && inRange;
+
+  // 🅱️ أي جدول آخر → لصق كما هو بدون أي تعديل.
+  if (!isJudgmentTable) {
+    return {
+      hasTable: true,
+      original: parsed.grid,
+      adapted: parsed.grid,
+      mergedCount: 0,
+      originalHtml: gridToHtmlTable(parsed.grid, { headers: parsed.hasHeader }),
+      adaptedHtml: gridToHtmlTable(parsed.grid, { headers: parsed.hasHeader }),
+      editorHtml: gridToEditorTableHtml(parsed.grid, { headers: parsed.hasHeader }),
+      isComplexTemplate: true,
+    };
+  }
+
+  // 🅰️ جدول مدخلات الأحكام: الفلترة + البطاقة (المنطق الحالي).
   const width = parsed.grid[0]?.length || 0;
 
   // إصلاح 1: للجداول الكبيرة (≥ 3 صفوف و≥ 3 أعمدة) تخطَّ التجميع/إزالة التكرار
@@ -669,7 +717,7 @@ export function adaptPastedTable(raw: string): AdaptedTablePreview | null {
     ? { grid: parsed.grid, mergedCount: 0, entityColumn: 0 }
     : aggregateGrid(parsed.grid);
 
-  // ميزة جديدة: فلترة/إعادة ترتيب الأعمدة (جدول 11 عمود → 6 أعمدة)
+  // فلترة/إعادة ترتيب الأعمدة (جدول 11 عمود → 6 أعمدة)
   let filtered6Col = false;
   if (parsed.hasHeader && agg.grid.length >= 2 && (agg.grid[0]?.length || 0) > 6) {
     const filtered = filterAndReorderColumns(agg.grid, DESIRED_COLUMNS);
@@ -694,6 +742,7 @@ export function adaptPastedTable(raw: string): AdaptedTablePreview | null {
       filtered6Col && agg.grid.length - 1 <= 10
         ? buildCaseCardHtml(agg.grid)
         : gridToEditorTableHtml(agg.grid),
+    isComplexTemplate: false,
   };
 }
 

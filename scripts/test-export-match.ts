@@ -3,7 +3,7 @@
  * لبطاقة قضية case-card.
  */
 import { buildOfficialLetterHtml, type OfficialLetterDoc } from '../src/lib/official-letter-html';
-import { parseCaseCard, inlineCaseCardStyles } from '../src/lib/case-card';
+import { parseAnyHtmlTable, parseCaseCard, inlineCaseCardStyles } from '../src/lib/case-card';
 import { Document, Packer, Table, TableRow, TableCell, Paragraph } from 'docx';
 
 const CASE_CARD_HTML = [
@@ -78,7 +78,37 @@ async function main() {
   results.outlookGreen = outlook.toLowerCase().includes('#2e9e5c');
   results.outlookNowrap = outlook.includes('white-space:nowrap');
 
-  console.log(JSON.stringify({ ...results, card }, null, 2));
+  // 5) جدول HTML عادي (ليس case-card) → parseAnyHtmlTable يعيد خلايا Excel
+  const genericTableHtml = [
+    '<table>',
+    '  <tr><th>الاسم</th><th>رقم القضية</th><th>ملاحظات</th></tr>',
+    '  <tr><td>فهد العتيبي</td><td>4670855622</td><td>أجور متأخرة</td></tr>',
+    '  <tr><td>فهد العتيبي</td><td>4670855623</td><td>فصل تعسفي</td></tr>',
+    '</table>',
+  ].join('\n');
+  const generic = parseAnyHtmlTable(genericTableHtml);
+  results.genericNotCaseCard = parseCaseCard(genericTableHtml) === null;
+  results.genericTableRows = generic?.rows.length ?? 0;
+  results.genericHeaderCells = generic?.rows[0]?.cells.length ?? 0;
+  results.genericHeaderIsHeader = generic?.rows[0]?.cells[0]?.isHeader ?? false;
+  results.genericFirstDataCell = generic?.rows[1]?.cells[0]?.content ?? '';
+
+  // 6) جدول بخلايا مدموجة (colspan) → تحترم الدمج
+  const mergedTableHtml = [
+    '<table>',
+    '  <tr><td colspan="2">بيانات القضية</td></tr>',
+    '  <tr><td>المدعي</td><td>أحمد</td></tr>',
+    '  <tr><td>المدعى عليه</td><td>شركة</td></tr>',
+    '</table>',
+  ].join('\n');
+  const merged = parseAnyHtmlTable(mergedTableHtml);
+  results.mergedColspan = merged?.rows[0]?.cells[0]?.colspan ?? 0;
+  results.mergedRows = merged?.rows.length ?? 0;
+
+  // 7) لا يوجد جدول → null (يسقط على النص العادي)
+  results.noTableNull = parseAnyHtmlTable('<p>نص عادي بدون جدول</p>') === null;
+
+  console.log(JSON.stringify({ ...results, card, generic, merged }, null, 2));
 }
 
 main().catch((e) => {

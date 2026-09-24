@@ -52,6 +52,51 @@ export function parseCaseCard(html: string | null | undefined): { label: string;
   return rows.length ? rows : null;
 }
 
+/** A single table cell parsed from generic HTML (content + span + header flag). */
+export type HtmlTableCell = {
+  content: string;
+  colspan: number;
+  rowspan: number;
+  isHeader: boolean;
+};
+
+/** A generic HTML table, ready to be written as real Excel rows/cells. */
+export type HtmlTable = {
+  rows: { cells: HtmlTableCell[] }[];
+};
+
+/**
+ * Parse ANY `<table>` out of a body HTML string into grid rows of cells,
+ * preserving `colspan`/`rowspan` and header (`<th>`) markers. Used by the
+ * Excel exporter to turn a plain table (not a case-card) into real spreadsheet
+ * cells instead of raw HTML text. Returns null when there is no `<table>`.
+ */
+export function parseAnyHtmlTable(html: string | null | undefined): HtmlTable | null {
+  const table = String(html || '').match(/<table\b[^>]*>([\s\S]*?)<\/table>/i);
+  if (!table) return null;
+
+  const rows: HtmlTable['rows'] = [];
+  for (const rowMatch of String(table[1]).matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)) {
+    const cells: HtmlTableCell[] = [];
+    const cellRe = /<(td|th)\b([^>]*)>([\s\S]*?)<\/(?:td|th)>/gi;
+    let m: RegExpExecArray | null;
+    while ((m = cellRe.exec(String(rowMatch[1])))) {
+      const tag = m[1].toLowerCase();
+      const attrs = m[2] || '';
+      const colspan = Number((attrs.match(/colspan\s*=\s*["']?(\d+)/i) || [])[1] || 1);
+      const rowspan = Number((attrs.match(/rowspan\s*=\s*["']?(\d+)/i) || [])[1] || 1);
+      cells.push({
+        content: stripHtml(m[3]),
+        colspan: Math.max(1, colspan),
+        rowspan: Math.max(1, rowspan),
+        isHeader: tag === 'th',
+      });
+    }
+    if (cells.length) rows.push({ cells });
+  }
+  return rows.length ? { rows } : null;
+}
+
 /** Add (or merge) an inline `style` attribute onto a single HTML tag. */
 function addStyle(tag: string, style: string): string {
   if (/style\s*=\s*["']/i.test(tag)) {

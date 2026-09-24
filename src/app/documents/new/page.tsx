@@ -532,20 +532,25 @@ function NewDocumentInner() {
       `تم تطبيق اللصق — حقول: ${filled.length ? filled.join(' / ') : '—'}`,
     );
 
-    // Live table preview — show how the adaptor reformatted/merged the grid
+    // Live table preview — show how the adaptor reformatted/merged the grid.
+    // قالب معقد (isComplexTemplate) → لصق كما هو بدون نافذة معاينة.
     const htmlTable = /<table\b/i.test(sanitizeClipboardHtml(paste));
     if (htmlTable || strictPatch.detectedKind === 'table' || strictPatch.tableRows.length >= 2) {
       const preview = adaptPastedTable(paste);
-      setTablePreview(
-        preview
-          ? {
-              originalHtml: preview.originalHtml,
-              adaptedHtml: preview.adaptedHtml,
-              editorHtml: preview.editorHtml,
-              mergedCount: preview.mergedCount,
-            }
-          : null,
-      );
+      if (preview?.isComplexTemplate === true) {
+        setTablePreview(null);
+      } else {
+        setTablePreview(
+          preview
+            ? {
+                originalHtml: preview.originalHtml,
+                adaptedHtml: preview.adaptedHtml,
+                editorHtml: preview.editorHtml,
+                mergedCount: preview.mergedCount,
+              }
+            : null,
+        );
+      }
     } else {
       setTablePreview(null);
     }
@@ -1090,13 +1095,16 @@ function NewDocumentInner() {
               const tsv = /<table\b/i.test(html) ? htmlToPasteText(source) : source;
               e.preventDefault();
               if (tsv) setPaste(tsv);
-              if (preview) {
+              // قالب معقد (isComplexTemplate) → لصق كما هو بدون نافذة معاينة
+              if (preview && preview.isComplexTemplate !== true) {
                 setTablePreview({
                   originalHtml: preview.originalHtml,
                   adaptedHtml: preview.adaptedHtml,
                   editorHtml: preview.editorHtml,
                   mergedCount: preview.mergedCount,
                 });
+              } else {
+                setTablePreview(null);
               }
             }}
             placeholder={`مثال خطاب:\nالرقم: ...\nإلى: ...\nالموضوع: ...\n\nأو الصق صفوف نموذج تحليل حكم (شكوى) من Excel مباشرة — أو الصق جدولاً منسقاً من Word/Excel/Outlook.`}

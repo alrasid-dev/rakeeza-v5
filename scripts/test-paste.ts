@@ -57,11 +57,11 @@ function buildHtml(rows: string[][]): string {
 }
 
 function labelsOf(html: string): string[] {
-  return [...html.matchAll(/data-col-type="label"><p>([^<]+)<\/p>/g)].map((m) => m[1]);
+  return [...html.matchAll(/data-col-type="label"[^>]*><p[^>]*>([^<]+)<\/p>/g)].map((m) => m[1]);
 }
 
 function valueCountOfFirstField(html: string): number {
-  const m = html.match(/data-col-type="value">([\s\S]*?)<\/td>/);
+  const m = html.match(/data-col-type="value"[^>]*>([\s\S]*?)<\/td>/);
   return m ? (m[1].match(/<p>/g) || []).length : 0;
 }
 

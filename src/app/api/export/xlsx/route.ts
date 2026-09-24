@@ -6,7 +6,7 @@ import { attachmentDisposition } from '@/lib/download-headers';
 import { officialDateDisplay } from '@/lib/hijri';
 import { loadEmblemPng, BRAND } from '@/lib/brand-assets';
 import ExcelJS from 'exceljs';
-import { parseCaseCard } from '@/lib/case-card';
+import { parseAnyHtmlTable, parseCaseCard, type HtmlTable } from '@/lib/case-card';
 
 /** Official template olive header + gold strip (MOJ letterhead). */
 const HEADER = '2E9E5C';
@@ -97,6 +97,80 @@ function addCaseCardTable(ws: ExcelJS.Worksheet, rows: { label: string; value: s
 
     const lines = row.value.split('\n').length;
     r.height = Math.min(140, 18 + Math.ceil(row.value.length / 55) * 14 + (lines - 1) * 14);
+  }
+  ws.addRow([]);
+}
+
+/**
+ * Render a generic HTML table (not a case-card) as real Excel cells instead of
+ * raw HTML text — each `<tr>` = an Excel row, each `<td>`/`<th>` = an Excel
+ * cell, respecting `colspan`/`rowspan` via merged cells, RTL right-aligned.
+ */
+function addHtmlTable(ws: ExcelJS.Worksheet, table: HtmlTable): void {
+  const rowCount = table.rows.length;
+  if (!rowCount) return;
+
+  let totalCols = 0;
+  for (const r of table.rows) {
+    let span = 0;
+    for (const c of r.cells) span += c.colspan;
+    totalCols = Math.max(totalCols, span);
+  }
+  totalCols = Math.max(1, totalCols);
+
+  // Grid layout (rowspan-aware) so merged cells reserve their columns.
+  const occupied: boolean[][] = Array.from({ length: rowCount }, () =>
+    Array<boolean>(totalCols).fill(false),
+  );
+  const placed: { r: number; c: number; cell: HtmlTable['rows'][number]['cells'][number] }[] = [];
+
+  for (let r = 0; r < rowCount; r += 1) {
+    let c = 0;
+    for (const cell of table.rows[r].cells) {
+      while (c < totalCols && occupied[r][c]) c += 1;
+      if (c >= totalCols) break;
+      const cEnd = Math.min(totalCols, c + cell.colspan) - 1;
+      const rEnd = Math.min(rowCount, r + cell.rowspan) - 1;
+      for (let rr = r; rr <= rEnd; rr += 1) {
+        for (let cc = c; cc <= cEnd; cc += 1) occupied[rr][cc] = true;
+      }
+      placed.push({ r, c, cell });
+      c = cEnd + 1;
+    }
+  }
+
+  const startRow = ws.rowCount + 1;
+  for (let i = 0; i < rowCount; i += 1) ws.addRow([]);
+
+  const thinBorder = {
+    top: { style: 'thin' as const, color: { argb: 'FFCCCCCC' } },
+    bottom: { style: 'thin' as const, color: { argb: 'FFCCCCCC' } },
+    left: { style: 'thin' as const, color: { argb: 'FFCCCCCC' } },
+    right: { style: 'thin' as const, color: { argb: 'FFCCCCCC' } },
+  };
+
+  for (const p of placed) {
+    const cell = ws.getRow(startRow + p.r).getCell(p.c + 1);
+    cell.value = p.cell.content;
+    cell.font = {
+      name: 'Arial',
+      size: 11,
+      bold: p.cell.isHeader,
+      color: { argb: `FF${INK}` },
+    };
+    cell.alignment = {
+      horizontal: 'right',
+      vertical: 'middle',
+      wrapText: true,
+      readingOrder: 'rtl',
+    };
+    cell.border = thinBorder;
+    if (p.cell.isHeader) {
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: `FF${LIGHT}` } };
+    }
+    if (p.cell.colspan > 1 || p.cell.rowspan > 1) {
+      ws.mergeCells(startRow + p.r, p.c + 1, startRow + p.r + p.cell.rowspan - 1, p.c + p.cell.colspan);
+    }
   }
   ws.addRow([]);
 }
@@ -250,7 +324,17 @@ export async function GET(req: NextRequest) {
             .trim();
           if (rest) addKv('نص المكاتبة', rest, true);
         } else {
-          addKv('نص المكاتبة', doc.body, true);
+          // جدول HTML عادي (ليس case-card) → خلايا Excel فعلية بدل نص خام.
+          const anyTable = parseAnyHtmlTable(doc.body);
+          if (anyTable) {
+            addHtmlTable(ws, anyTable);
+            const rest = String(doc.body)
+              .replace(/<table\b[^>]*>[\s\S]*?<\/table>/i, '')
+              .trim();
+            if (rest) addKv('نص المكاتبة', rest, true);
+          } else {
+            addKv('نص المكاتبة', doc.body, true);
+          }
         }
       }
       addKv('الدراسة', doc.studyFields, true);

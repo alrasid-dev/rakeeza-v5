@@ -45,6 +45,11 @@ export default function AdaptedTableInsertDialog({ open, onClose, onAdopt }: Pro
       return;
     }
     setError('');
+    // قالب معقد (isComplexTemplate) → اعتماد مباشر بدون معاينة (لصق كما هو).
+    if (p.isComplexTemplate === true) {
+      onAdopt(p.editorHtml);
+      return;
+    }
     setPreview({
       originalHtml: p.originalHtml,
       adaptedHtml: p.adaptedHtml,
